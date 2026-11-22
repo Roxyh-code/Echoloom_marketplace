@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./bazar-tokens.css";
 import "./editorial-global.css";
+import "./fantasy-typography.css";
 import { AppChrome } from "@/components/app-chrome";
 export const metadata: Metadata = {
   title: "EchoLoom Marketplace · Interactive character stories",

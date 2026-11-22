@@ -8,7 +8,7 @@
   flex-direction: column;
   background: var(--bazar-white, #ffffff);
   color: var(--bazar-text, #121212);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Open Sans", Roboto, "Segoe UI", Arial, sans-serif;
+  font-family: var(--el-font-ui, "Nunito Sans", system-ui, sans-serif);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -193,4 +193,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .canvas *, .canvas *::before, .canvas *::after { transition: none !important; }
+}
+
+/* Fantasy display faces follow the app-wide typography tokens. */
+.brand, .brandMark, .heading, .formHeading h2 {
+  font-family: var(--el-font-display, "Philosopher", Georgia, serif);
 }

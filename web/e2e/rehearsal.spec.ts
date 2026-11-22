@@ -20,6 +20,7 @@ test("English mobile rehearsal → takeover → event → branch → save result
     fullPage: true,
   });
   await page.locator(".rh-example").click();
+  await page.screenshot({ path: "test-results/editorial-story-setup.png", fullPage: true });
   await page.getByRole("button", { name: /Start rehearsal/ }).click();
   await readCurrentSegment(page);
   await expect(
@@ -62,6 +63,7 @@ test("English mobile rehearsal → takeover → event → branch → save result
   await expect(
     panel.getByRole("heading", { name: "A partial confession" }),
   ).toBeVisible();
+  await page.screenshot({ path: "test-results/editorial-story-directions.png", fullPage: true });
   await page.screenshot({
     path: "test-results/rehearsal-directions.png",
     fullPage: true,
@@ -103,6 +105,7 @@ test("English mobile rehearsal → takeover → event → branch → save result
   await expect(
     page.getByRole("heading", { name: /A scene worth/ }),
   ).toBeVisible();
+  await page.screenshot({ path: "test-results/editorial-story-review.png", fullPage: true });
   await page.getByRole("button", { name: /Save this scene/ }).click();
   await expect(
     page.getByText("Saved as this scene’s result", { exact: false }).first(),
@@ -137,6 +140,7 @@ test("in-scene creation includes portraits, preserves cast and setup at 320px", 
   await page
     .getByRole("button", { name: "Rehearse a scene", exact: false })
     .click();
+  await expect(page.getByRole("heading", { name: /Who is in/ })).toBeVisible();
   const panel = page.getByRole("dialog");
   for (const [name, description] of [
     ["Lena", "A quiet restorer who wants an honest answer."],

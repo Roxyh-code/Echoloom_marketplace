@@ -11,6 +11,7 @@ test("bookshop-style discovery shows sample covers, search and filter", async ({
   await expect(page.getByRole("heading", { name: /Discover characters/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /sample character Leo/ })).toBeVisible();
+  await page.screenshot({ path: "test-results/editorial-marketplace.png", fullPage: true });
   await page.getByRole("searchbox", { name: "Search characters" }).fill("Mira");
   await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /sample character Leo/ })).toHaveCount(0);

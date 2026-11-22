@@ -401,7 +401,7 @@ export function MobileCharacterStudio({
               ? "A PERSONALITY. A PORTRAIT."
               : picking
                 ? "CHOOSE YOUR CAST"
-                : "THE REHEARSAL STUDIO"}
+                : "THE CHARACTER LIBRARY"}
           </small>
         </div>
         <button
@@ -438,7 +438,7 @@ export function MobileCharacterStudio({
       )}
       {mode === "library" && (
         <div className="rh-scroll rh-pad mc-library">
-          <span className="rh-eyebrow">YOUR CAST, YOUR STORIES</span>
+          <span className="rh-eyebrow">THE CHARACTER LIBRARY · VOL. 01</span>
           <h1>
             Every story
             <br />
@@ -558,7 +558,7 @@ export function MobileCharacterStudio({
       {mode === "create" && (
         <>
           <div className="rh-scroll rh-pad mc-create">
-            <span className="rh-eyebrow">BRING SOMEONE TO LIFE</span>
+            <span className="rh-eyebrow">YOUR CHARACTER · A NEW STORY</span>
             <h1>
               Who do you
               <br />

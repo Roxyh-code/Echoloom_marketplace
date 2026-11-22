@@ -1047,8 +1047,8 @@ export function RehearsalApp() {
             <div>
               {page === "list" ? (
                 <>
-                  <span className="rh-brand">EchoLoom</span>
-                  <small>THE REHEARSAL STUDIO</small>
+                  <span className="rh-brand">echoloom<span className="rh-brand-dot">.</span></span>
+                  <small>THE STORY STUDIO</small>
                 </>
               ) : (
                 <>
@@ -1240,7 +1240,7 @@ export function RehearsalApp() {
                 </div>
                 <span className="rh-eyebrow">
                   {tr(
-                    "A LITTLE STAGE. ENDLESS POSSIBILITIES.",
+                    "THE STORY STUDIO · VOL. 01",
                     "让灵感，在这里登场。",
                   )}
                 </span>
@@ -2086,12 +2086,15 @@ export function RehearsalApp() {
           characterMode === "library" &&
           !characterPicking)) && (
         <nav className="rh-nav" aria-label="Studio navigation">
+          <a className="rh-nav-discover" href="/marketplace">
+            <Glyph name="book" /> Discover
+          </a>
           <button
             className={page === "list" ? "active" : ""}
             onClick={() => navigate("list")}
           >
             <Glyph name="star" />
-            {tr("Create", "创作")}
+            {tr("My stories", "我的故事")}
           </button>
           <button
             className={page === "characters" ? "active" : ""}

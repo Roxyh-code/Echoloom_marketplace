@@ -63,3 +63,12 @@ jobs:
       - name: Test original mobile character and rehearsal flows
         working-directory: web
         run: npm run test:e2e
+
+      - name: Upload editorial mobile screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editorial-mobile-screens
+          path: web/test-results/editorial-*.png
+          if-no-files-found: ignore
+          retention-days: 14

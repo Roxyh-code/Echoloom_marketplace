@@ -1054,7 +1054,7 @@ export function RehearsalApp() {
             <div>
               {page === "list" ? (
                 <>
-                  <span className="rh-brand">echoloom<span className="rh-brand-dot">.</span></span>
+                  <span className="rh-brand"><img src="/echoloom-gothic-mark.svg" alt="" aria-hidden="true" className="rh-brand-icon" />Echoloom<span className="rh-brand-dot">.</span></span>
                   <small>THE STORY STUDIO</small>
                 </>
               ) : (

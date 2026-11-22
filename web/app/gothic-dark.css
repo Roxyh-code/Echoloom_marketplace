@@ -1,0 +1,189 @@
+/* Marketplace Discover preview ONLY. No other route imports this sheet.
+   Gothic accent: Pirata One / Grenze Gotisch; dark canvas and moonlit violet. */
+@import url("https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@400;500;600;700;800&family=Pirata+One&display=swap");
+
+body:has(.em-app .em-hero) { background: #090a10; }
+
+.em-app:has(.em-hero) {
+  --em-paper: #090a10;
+  --em-ink: #f5f0fc;
+  --em-muted: #bcb2ce;
+  --em-border: #302c40;
+  --em-plum: #6e52c8;
+  --em-terracotta: #a78bfa;
+  background: #090a10;
+  color: #f5f0fc;
+  border-color: #302c40;
+  box-shadow: none;
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", Arial, sans-serif;
+}
+.em-app:has(.em-hero) .em-header { border-color: #302c40; }
+.em-app:has(.em-hero) .em-brand {
+  color: #f5f0fc;
+  font: 400 27px/1 "Pirata One", Georgia, serif;
+  letter-spacing: .04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.em-app:has(.em-hero) .em-brand-icon {
+  width: 30px;
+  height: 36px;
+  display: block;
+  object-fit: contain;
+  flex: none;
+}
+.em-app:has(.em-hero) .em-brand-dot { color: #a78bfa; }
+.em-app:has(.em-hero) .em-top-create {
+  background: #201b2f;
+  border: 1px solid #483965;
+  color: #cab6ff;
+}
+.em-app:has(.em-hero) .em-hero {
+  background: radial-gradient(ellipse at 100% 0%, #3d275e 0%, #231a33 36%, #16131f 100%);
+  border: 1px solid #413156;
+  color: #f6f0ff;
+  min-height: 256px;
+  overflow: hidden;
+  isolation: isolate;
+}
+.em-app:has(.em-hero) .em-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  right: -30px;
+  top: -39px;
+  width: 175px;
+  height: 190px;
+  border: 1px solid #a78bfa2c;
+  border-radius: 96px 96px 4px 4px;
+  transform: rotate(13deg);
+}
+.em-app:has(.em-hero) .em-hero::after {
+  display: block;
+  width: 150px;
+  height: 150px;
+  border: 1px solid #b29cf433;
+  right: -73px;
+  top: -65px;
+}
+.em-app:has(.em-hero) .em-kicker {
+  color: #c5b3ff;
+  letter-spacing: 1.35px;
+}
+.em-app:has(.em-hero) .em-kicker-muted { color: #a598c0; }
+.em-app:has(.em-hero) .em-hero h1 {
+  font: 400 39px/1.02 "Pirata One", "Grenze Gotisch", Georgia, serif;
+  color: #f9f4ff;
+  letter-spacing: .012em;
+  margin: 16px 0 14px;
+}
+.em-app:has(.em-hero) .em-hero h1 em {
+  font-weight: 400;
+  color: #c5aeff;
+  font-style: normal;
+}
+.em-app:has(.em-hero) .em-hero p {
+  color: #ccc3dc;
+  max-width: 275px;
+  line-height: 1.65;
+  font-size: 12px;
+}
+.em-app:has(.em-hero) .em-hero-link {
+  color: #fff;
+  background: #6e52c8;
+  border: 1px solid #775ed0;
+  border-radius: 9px;
+  text-decoration: none;
+  padding: 10px 13px;
+  font-size: 12px;
+}
+.em-app:has(.em-hero) .em-section-title h2 {
+  color: #f4effb;
+  font: 700 28px/1.1 "Grenze Gotisch", Georgia, serif;
+  letter-spacing: .015em;
+  margin-bottom: 20px;
+}
+.em-app:has(.em-hero) .em-shelf-header { color: #a89cbd; }
+.em-app:has(.em-hero) .em-section-star { color: #a78bfa; }
+.em-app:has(.em-hero) .em-search {
+  color: #bdb0d0;
+  background: #171521;
+  border: 1px solid #332d46;
+}
+.em-app:has(.em-hero) .em-search input {
+  color: #f5f0fc;
+  background: transparent;
+}
+.em-app:has(.em-hero) .em-search input::placeholder { color: #958ba9; }
+.em-app:has(.em-hero) .em-search:focus-within { outline-color: #a78bfa; }
+.em-app:has(.em-hero) .em-filter {
+  background: #16151f;
+  color: #c6bdd6;
+  border-color: #362f49;
+}
+.em-app:has(.em-hero) .em-filter.active {
+  background: #6e52c8;
+  border-color: #6e52c8;
+  color: #fff;
+}
+.em-app:has(.em-hero) .em-book-card { color: #f5f0fc; }
+.em-app:has(.em-hero) .em-cover {
+  background: #211d2e;
+  box-shadow: 0 6px 16px #0004;
+}
+.em-app:has(.em-hero) .em-cover::after { border: 1px solid #aea0ce26; }
+.em-app:has(.em-hero) .em-cover-edition {
+  color: #d7c9ff;
+  background: #171322ed;
+}
+.em-app:has(.em-hero) .em-cover-title {
+  font: 700 22px/1.05 "Grenze Gotisch", Georgia, serif;
+  color: #f5f0fc;
+  letter-spacing: .012em;
+  margin-top: 11px;
+}
+.em-app:has(.em-hero) .em-cover-desc { color: #bdb2ce; }
+.em-app:has(.em-hero) .em-cover-caption { color: #b9a1ff; }
+.em-app:has(.em-hero) .em-cover-monogram {
+  font-family: "Grenze Gotisch", Georgia, serif;
+  color: #a78bfa;
+}
+.em-app:has(.em-hero) .em-empty {
+  background: #16141f;
+  border-color: #39314b;
+}
+.em-app:has(.em-hero) .em-empty :is(h3,p) { color: #e5def1; }
+.em-app:has(.em-hero) .em-empty h3 {
+  font-family: "Grenze Gotisch", Georgia, serif;
+  font-size: 27px;
+}
+.em-app:has(.em-hero) .em-empty a { color: #c5afff; }
+.em-app:has(.em-hero) .em-note {
+  color: #b4aac7;
+  border-top-color: #302c40;
+}
+.em-app:has(.em-hero) .em-note :is(strong,span) { color: #c4b0ff; }
+.em-app:has(.em-hero) .em-cast-tray,
+.em-app:has(.em-hero) .em-bottom-nav {
+  background: #0f0e17f2;
+  border-color: #302c40;
+  box-shadow: 0 -7px 20px #0003;
+}
+.em-app:has(.em-hero) .em-cast-copy > span,
+.em-app:has(.em-hero) .em-cast-instruction { color: #b9aec7; }
+.em-app:has(.em-hero) .em-cast-copy p {
+  color: #f4effb;
+  font-family: "Grenze Gotisch", Georgia, serif;
+  font-size: 21px;
+}
+.em-app:has(.em-hero) .em-cast-count { color: #bc9fff; }
+.em-app:has(.em-hero) .em-cast-action { color: white; background: #6e52c8; }
+.em-app:has(.em-hero) .em-cast-clear { color: #b4a6c9; }
+.em-app:has(.em-hero) .em-bottom-nav a { color: #a79bb8; }
+.em-app:has(.em-hero) .em-bottom-nav a[aria-current="page"] { color: #bda6ff; }
+@media (max-width: 360px) {
+  .em-app:has(.em-hero) .em-hero h1 { font-size: 34px; }
+  .em-app:has(.em-hero) .em-cover-title { font-size: 20px; }
+}

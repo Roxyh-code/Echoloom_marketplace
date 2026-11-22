@@ -13,7 +13,7 @@ import {
   type OwnedListingDetail,
 } from "@/components/marketplace-api";
 
-const accent = "#54408c";
+const accent = "#A78BFA";
 
 function parseLabels(text: string, label: string, maximum: number): string[] {
   const values = text.split(",").map((value) => value.trim()).filter(Boolean);
@@ -161,7 +161,7 @@ export default function PublishCharacterPage() {
   }
 
   return (
-    <main style={{ maxWidth: 700, margin: "0 auto", padding: "28px 20px 90px" }}>
+    <main className="el-listing-editor" style={{ maxWidth: 700, margin: "0 auto", padding: "28px 20px 90px" }}>
       <nav style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 24 }}>
         <Link href="/marketplace" style={{ color: accent, fontWeight: 650 }}>← Marketplace</Link>
         <Link href="/rehearsal?view=characters" style={{ color: accent }}>My characters</Link>
@@ -258,7 +258,7 @@ export default function PublishCharacterPage() {
             <span>I confirm I have the rights to publicly share this character and its artwork. Publishing makes the preview details and current portrait visible to anyone who opens the Marketplace.</span>
           </label>
 
-          <div style={{ padding: "13px 14px", background: "#f7f5fb", borderRadius: 10, margin: "18px 0 20px", fontSize: 13 }}>
+          <div className="el-listing-monetization-note" style={{ margin: "18px 0 20px" }}>
             <strong>Listing:</strong> Free to publish; public browsing only for now.<br />
             <strong>Monetization:</strong> Disabled until you verify a Solana payout wallet.<br />
             <strong>Future paid packs:</strong> Platform-set at 1 test USDC; 45% to each creator and 10% to the platform.

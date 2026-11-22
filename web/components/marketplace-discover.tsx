@@ -210,7 +210,7 @@ export function MarketplaceDiscover() {
     <main className="em-app">
       <div className="em-page">
         <header className="em-header">
-          <Link className="em-brand" href="/marketplace" aria-label="Echoloom Discover home"><span className="em-brand-mark">e.</span><span>echoloom<span className="em-brand-dot">.</span></span></Link>
+          <Link className="em-brand" href="/marketplace" aria-label="Echoloom Discover home"><img className="em-brand-icon" src="/echoloom-gothic-mark.svg" alt="" aria-hidden="true" /><span>Echoloom<span className="em-brand-dot">.</span></span></Link>
           <Link href="/characters/new" className="em-top-create" aria-label="Create a new character"><Icon name="plus" size={19}/></Link>
         </header>
 

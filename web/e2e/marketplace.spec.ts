@@ -9,8 +9,8 @@ test("bookshop-style discovery shows sample covers, search and filter", async ({
   await page.goto("/");
   await expect(page).toHaveURL(/\/marketplace$/);
   await expect(page.getByRole("heading", { name: /Discover characters/ })).toBeVisible();
-  await expect(page.locator(".em-app")).toHaveCSS("background-color", "rgb(255, 255, 255)");
-  await expect(page.locator(".em-filter.active")).toHaveCSS("background-color", "rgb(84, 64, 140)");
+  await expect(page.locator(".em-app")).toHaveCSS("background-color", "rgb(9, 10, 16)");
+  await expect(page.locator(".em-filter.active")).toHaveCSS("background-color", "rgb(110, 82, 200)");
   await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /sample character Leo/ })).toBeVisible();
   await expect(page.getByRole("img", { name: "Portrait of Mira" })).toHaveAttribute("src", "/portraits/mira.webp");
@@ -20,6 +20,9 @@ test("bookshop-style discovery shows sample covers, search and filter", async ({
   await expect(page.getByLabel("Artwork concept Vesper, not yet playable").locator("img")).toHaveAttribute("src", "/portraits/red-horn.webp");
   await expect(page.getByLabel("Artwork concept Ren, not yet playable").locator("img")).toHaveAttribute("src", "/portraits/red-boy.webp");
   await expect.poll(async () => page.locator(".em-book-grid img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator(".em-hero h1")).toHaveCSS("font-family", /Pirata One/);
+  await expect(page.locator(".em-cover-title").first()).toHaveCSS("font-family", /Grenze Gotisch/);
   await page.screenshot({ path: "test-results/editorial-marketplace.png", fullPage: true });
   await page.getByRole("searchbox", { name: "Search characters" }).fill("Mira");
   await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();
@@ -97,11 +100,17 @@ test("owned published character appears once, opens public detail and supports l
   await expect(page.getByRole("heading", { name: "Hazel" })).toBeVisible();
   await expect(page.getByText("A curious archivist.", { exact: true })).toBeVisible();
   await expect(page.getByText("Personality")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator(".em-detail-page")).toHaveCSS("background-color", "rgb(9, 10, 16)");
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.screenshot({ path: "test-results/editorial-public-listing.png", fullPage: true });
 
   await page.goto("/characters/publish?character=" + encodeURIComponent(character_id));
   await expect(page.getByRole("heading", { name: "Manage listing" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save listing changes" })).toBeVisible();
   await expect(page.getByLabel("Public description")).toHaveValue("A curious archivist.");
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: "test-results/editorial-listing-management.png", fullPage: true });
   page.once("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: "Unpublish listing" }).click();
   await expect(page.getByText(/Listing unpublished\. Your private character/)).toBeVisible();

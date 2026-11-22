@@ -18,8 +18,8 @@ function AccountPageFrame({ children }: { children: React.ReactNode }) {
     <main className={styles.canvas}>
       <header className={styles.topbar}>
         <Link href="/marketplace" className={styles.brand} aria-label="Echoloom marketplace home">
-          <span className={styles.brandMark}>e.</span>
-          <span>echoloom<span className={styles.brandDot}>.</span></span>
+          <img src="/echoloom-gothic-mark.svg" alt="" aria-hidden="true" className="el-brand-icon" />
+          <span>Echoloom<span className={styles.brandDot}>.</span></span>
         </Link>
         <Link href="/marketplace" className={styles.exploreLink}>
           Explore <span aria-hidden="true">→</span>

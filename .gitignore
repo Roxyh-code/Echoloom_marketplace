@@ -1,0 +1,49 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+
+# Local data and databases
+/data/private/
+*.db
+*.sqlite
+*.sqlite3
+
+# Task scratch files and generated deliverables
+/work/
+/outputs/
+
+# Downloaded literature originals and text extracts stay local
+/literature/sources/pdf/
+/literature/sources/text/
+/literature/sources/html/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# MVP frontend
+/web/node_modules/
+/web/.next/
+/web/playwright-report/
+/web/test-results/
+/web/*.tsbuildinfo
+
+# Local backups (may contain secrets and databases)
+*-backup-*/
+*-backup-*.py
+.venv-memory/

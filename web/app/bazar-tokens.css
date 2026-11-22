@@ -1,0 +1,19 @@
+/* Bazar Books UI Kit — exact reference values from user's original .fig.
+   Source: 🎲 Styleguide and 🚀 Design / 4. Home, 375px.
+   Purple is used in screen instances and labelled Primary 500; styleguide's
+   green swatch instance conflicts with its purple text label. Purple chosen
+   from actual home screens, not inferred from cover artwork. */
+:root {
+  --bazar-white: #FFFFFF;
+  --bazar-surface: #FAFAFA;
+  --bazar-surface-muted: #F5F5F5;
+  --bazar-border: #E8E8E8;
+  --bazar-border-strong: #D6D6D6;
+  --bazar-text: #121212;
+  --bazar-text-secondary: #7A7A7A;
+  --bazar-primary: #54408C;
+  --bazar-primary-hover: #352368;
+  --bazar-primary-pale: #FAF9FD;
+  --bazar-success: #307A59;
+  --bazar-danger: #EF5A56;
+}

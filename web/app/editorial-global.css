@@ -1,12 +1,19 @@
+/* Use Bazar's original UI color system, not the previous yellow editorial palette. */
 /* Application-wide elements outside the isolated story studio canvas. */
-:root { color-scheme: light; --bg: #f8f5ee; --ink: #342c32; --muted: #867c77; --purple: #554052; --purple-dark: #44303f; --lavender: #f0e7de; --line: #e4d9ce; --teal: #537a60; --white: #fffdf8; --radius: 5px; }
-html { background: #f8f5ee; }
-body { background: #f8f5ee; color: #342c32; font-family: Inter,"Segoe UI","PingFang SC",Arial,sans-serif; }
-.account-gate { max-width: 520px; min-height: 100dvh; margin: auto; padding: 66px 23px; background: #f8f5ee; }
-.account-gate .account-form { background: #fffdf8; border: 1px solid #e3d7ca; border-radius: 4px; padding: 26px 23px; box-shadow: none; }
-.account-gate .account-form h2 { color: #40333b; font: normal 27px/1.25 Georgia,serif; margin: 0 0 20px; }
+:root { color-scheme: light; --bg: #FFFFFF; --ink: #121212; --muted: #7A7A7A; --purple: #54408C; --purple-dark: #352368; --lavender: #FAF9FD; --line: #E8E8E8; --teal: #307A59; --white: #FFFFFF; --radius: 10px; }
+html { background: #ffffff; }
+body { background: #ffffff; color: #121212; font-family: Inter,"Segoe UI","PingFang SC",Arial,sans-serif; }
+.account-gate { max-width: 520px; min-height: 100dvh; margin: auto; padding: 66px 23px; background: #ffffff; }
+.account-gate .account-form { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 4px; padding: 26px 23px; box-shadow: none; }
+.account-gate .account-form h2 { color: #333333; font: normal 27px/1.25 Georgia,serif; margin: 0 0 20px; }
 .account-gate .account-form label { font-size: 13px; color: #564c49; }
-.account-gate .account-form :is(input,textarea) { background: #fffdfa; border: 1px solid #ddd1c6; border-radius: 4px; color: #382d32; }
-.account-gate .account-form .button.primary { background: #554052; border: 1px solid #554052; border-radius: 4px; color: #fffaf4; }
+.account-gate .account-form :is(input,textarea) { background: #ffffff; border: 1px solid #ddd1c6; border-radius: 4px; color: #333333; }
+.account-gate .account-form .button.primary { background: #54408c; border: 1px solid #54408c; border-radius: 4px; color: #ffffff; }
 .account-gate .account-form p { color: #867a74; font-size: 12px; line-height: 1.6; }
-.account-status { background: #fffdfa; color: #55454e; border-color: #ddd1c6; }
+.account-status { background: #ffffff; color: #55454e; border-color: #ddd1c6; }
+
+html,body { background:#FFFFFF; color:#121212; font-family: -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,"Segoe UI",Arial,sans-serif; }
+.account-gate { background:#FFFFFF; }
+.account-gate .account-form { background:#FFFFFF; border-color:#E8E8E8; border-radius:12px; }
+.account-gate .account-form h2 { font:700 26px/1.25 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,"Segoe UI",Arial,sans-serif; color:#121212; }
+.account-gate .account-form .button.primary { background:#54408C; border-color:#54408C; border-radius:10px; color:#FFFFFF; }

@@ -1240,7 +1240,7 @@ export function RehearsalApp() {
                 </div>
                 <span className="rh-eyebrow">
                   {tr(
-                    "THE STORY STUDIO · VOL. 01",
+                    "STORY STUDIO",
                     "让灵感，在这里登场。",
                   )}
                 </span>

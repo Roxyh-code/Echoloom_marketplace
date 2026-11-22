@@ -131,7 +131,7 @@ export function MarketplaceDiscover() {
 
         <section className="em-hero" aria-labelledby="em-hero-heading">
           <div className="em-hero-ornament" aria-hidden="true">✳</div>
-          <span className="em-kicker">THE CHARACTER LIBRARY <span>·</span> VOL. 01</span>
+          <span className="em-kicker">DISCOVER <span>·</span> CHARACTERS</span>
           <h1 id="em-hero-heading">A new chapter<br/>begins with <em>you.</em></h1>
           <p>Choose two characters. Imagine what happens when their worlds collide.</p>
           <Link className="em-hero-link" href="/rehearsal">Explore the story studio <Icon name="arrow" size={16}/></Link>
@@ -139,7 +139,7 @@ export function MarketplaceDiscover() {
 
         <section className="em-discover" aria-labelledby="em-discover-heading">
           <div className="em-section-title">
-            <div><span className="em-kicker em-kicker-muted">01 / THE COLLECTION</span><h2 id="em-discover-heading">Discover characters</h2></div>
+            <div><span className="em-kicker em-kicker-muted">EXPLORE</span><h2 id="em-discover-heading">Discover characters</h2></div>
             <span className="em-section-star" aria-hidden="true">✷</span>
           </div>
           <label className="em-search">
@@ -152,7 +152,7 @@ export function MarketplaceDiscover() {
               <button key={key} type="button" onClick={() => setFilter(key)} aria-pressed={filter === key} className={filter === key ? "em-filter active" : "em-filter"}>{label}</button>
             ))}
           </div>
-          <div className="em-shelf-header"><span>{filter === "mine" ? "YOUR PRIVATE CHARACTERS" : filter === "samples" ? "IN THE SPOTLIGHT" : "FROM THE SHELVES"}</span><span>{loading ? "Loading…" : visible.length + " characters"}</span></div>
+          <div className="em-shelf-header"><span>{filter === "mine" ? "YOUR PRIVATE CHARACTERS" : filter === "samples" ? "IN THE SPOTLIGHT" : "CHARACTER COLLECTION"}</span><span>{loading ? "Loading…" : visible.length + " characters"}</span></div>
           {visible.length ? (
             <div className="em-book-grid">
               {visible.map((item) => <Cover key={item.id} item={item} selected={selected.includes(item.id)} onSelect={() => toggle(item.id)}/>)}

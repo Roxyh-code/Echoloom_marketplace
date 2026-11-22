@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import "./globals.css";
+import "./bazar-tokens.css";
 import "./editorial-global.css";
 import { AppChrome } from "@/components/app-chrome";
 export const metadata: Metadata = {

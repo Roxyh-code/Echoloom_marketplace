@@ -46,7 +46,7 @@ python -m pytest -q tests/mvp/test_creator.py tests/mvp/test_rehearsal.py tests/
 cd web && npm ci && npm run typecheck && npm run build
 ```
 
-The CI workflow runs the Python and Next.js checks. Selected Playwright test specs remain in `web/e2e/` but are not part of initial CI.
+GitHub Actions checks the Python backend, Next.js production build, and the extracted mobile UI in Chromium using mocked AI providers and temporary data. Playwright's test server runs only with `ECHOLOOM_TEST_SERVER=1`.
 
 ## Safety and limitations
 

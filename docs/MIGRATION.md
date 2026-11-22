@@ -33,4 +33,4 @@ Public creator-owned listings and safe DTOs; marketplace and casting UI; immutab
 3. `cd web && npm ci && npm run typecheck && npm run build`.
 4. Run FastAPI and Next.js locally; visit `/rehearsal`, select the prepared railway-station demo and exercise create/direct/save. Custom scenes require provider credentials.
 
-The GitHub Actions workflow checks Python and Next.js. UI E2E tests are preserved, but not executed by the initial CI job. Record CI results before calling the extraction validated.
+GitHub Actions validates Python, Next.js and selected mobile UI flows in Chromium with a temporary test server. The test server was reduced to character and rehearsal fixtures only; no Companion or Google Calendar test dependency remains. Record the latest workflow outcome before calling the extraction validated.

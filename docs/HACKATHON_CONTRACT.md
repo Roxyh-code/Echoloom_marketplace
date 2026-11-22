@@ -13,7 +13,20 @@ App/AI developer: safe public catalog, two-character casting, scene setup, quote
 - Quote: `order_id`, `quote_id`, `scene_id`, `buyer_wallet`, `token_mint`, `expires_at`, `total_minor_units`, `payout_lines[{wallet, amount_minor_units}]`, unique `order_reference`.
 - Verify result: `pending | paid | rejected`, verified signature and reason. Access: `buyer_wallet`, `scene_id`, `allowed_directions`, status.
 
-For the demo, an example 1.00 test USDC scene splits as 0.45 / 0.45 / 0.10 (creators A/B/platform). These are **illustrative**, not validated economics. Backend freezes all amounts and recipient wallets; combine lines for duplicate creator wallets. Never trust the browser's price or a browser-provided `paid` flag. Authenticate buyer wallet with a server challenge and signature. Verify exact mint, payer, signature status, recipient totals and unique reference on chain before issuing the entitlement. One purchase should unlock one scene and at most five directed continuations.
+## Product decision log (owner selections; **teammate approval pending**)
+
+### Decision 1 — monetization: **C3 selected by product owner**
+
+- **First-time trial:** the user's first scene is free, including its initial AI-generated opening and **one** user-directed continuation.
+- **After free trial:** a Solana payment unlocks **five additional** user-directed continuations **on that same scene**. The demo payment price is not finalized; 1.00 test USDC is an illustrative figure only.
+- **Free use incurs no creator payout transaction**; creator/platform revenue shares apply when a paid unlock occurs. Costs of the trial are borne by the application during the demo, not charged on-chain.
+- **Server-side quota and entitlement are required:** frontend counters are not authoritative. Exact identity/anti-abuse binding and rules for subsequent new scenes will be agreed in later decisions; a wallet-only first-use counter is not robust against multiple-wallet farming.
+- **Status:** selected by product owner on 2026-11-22; not yet reviewed or approved by Solana teammate. This decision **supersedes the previous paid-before-first-scene demo assumption**.
+
+### Decision 2 — creator/platform revenue split: **pending product owner choice and teammate approval**
+
+For illustration only, one paid unlock priced at 1.00 test USDC could split 0.45 / 0.45 / 0.10 (creator A / creator B / platform); these are **not agreed rates or validated economics**. The backend must freeze all amounts and recipients. Merge payout lines when both roles have the same creator wallet. Never trust a browser-supplied price or `paid` flag. Authenticate buyer wallet with server challenge and signature; verify mint, payer, transaction success/finality, recipients, amounts, and a unique order reference before granting **additional paid directions**. Reject replayed signatures and duplicate orders.
+
 
 ## Milestones
 

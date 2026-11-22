@@ -163,7 +163,7 @@ export function AccountForm({
   );
 }
 
-/** Anonymous discovery; character editing and publication require an account. */
+/** Public Marketplace routes stay browsable without a local account. */
 function isPrivateRoute(pathname: string | null): boolean {
   if (pathname === null) return true;
   return !(
@@ -182,6 +182,12 @@ export function AccountShell({
 }) {
   const pathname = usePathname();
   const privateRoute = isPrivateRoute(pathname);
+  // Local bootstrap supports creating/rehearsing characters before the first
+  // account exists (as the API already does). Publishing is different: it
+  // always requires an authenticated owner, even on a fresh installation.
+  const publishingRoute =
+    pathname === "/characters/publish" ||
+    pathname?.startsWith("/characters/publish/") === true;
   const [account, setAccount] = useState<AccountState | null>(null);
   const [statusError, setStatusError] = useState(false);
 
@@ -231,7 +237,12 @@ export function AccountShell({
     );
   }
 
-  if (privateRoute && account && !account.authenticated) {
+  if (
+    privateRoute &&
+    account &&
+    !account.authenticated &&
+    (!account.setup_required || publishingRoute)
+  ) {
     return (
       <AccountPageFrame>
         <AccountForm setup={account.setup_required} onDone={() => window.location.reload()} />

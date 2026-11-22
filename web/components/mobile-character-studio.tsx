@@ -569,11 +569,6 @@ export function MobileCharacterStudio({
                   ? "Your archived characters will appear here."
                   : "Someone only you could imagine."}
               </p>
-              <small>
-                {archived
-                  ? "Return to My characters to keep creating."
-                  : "Describe them. We will bring their personality and portrait together."}
-              </small>
             </div>
           )}
         </div>
@@ -587,9 +582,6 @@ export function MobileCharacterStudio({
               <br />
               <em>have in mind?</em>
             </h1>
-            <p className="mc-intro">
-              One description. Their character and portrait, together.
-            </p>
             <form
               id="mc-create"
               onSubmit={(e) => {
@@ -1160,9 +1152,6 @@ export function MobileCharacterStudio({
                   </section>
                 ))}
               </div>
-              <p className="rh-muted">
-                Portrait changes do not rewrite the character profile.
-              </p>
             </>
           )}
           {panel === "history" && (

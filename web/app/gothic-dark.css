@@ -187,3 +187,10 @@ body:has(.em-app .em-hero) { background: #090a10; }
   .em-app:has(.em-hero) .em-hero h1 { font-size: 34px; }
   .em-app:has(.em-hero) .em-cover-title { font-size: 20px; }
 }
+
+/* Copy-first layout: hero and shelf keep their rhythm without filler text. */
+.em-app:has(.em-hero) .em-hero { min-height: 222px; }
+.em-app:has(.em-hero) .em-hero h1 { margin-bottom: 16px; }
+.em-app:has(.em-hero) .em-hero-link { margin-top: 0; }
+.em-app:has(.em-hero) .em-section-title h2 { margin-bottom: 18px; }
+.em-app:has(.em-hero) .em-shelf-header { justify-content: flex-end; }

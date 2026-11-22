@@ -9,6 +9,9 @@ test("bookshop-style discovery shows sample covers, search and filter", async ({
   await page.goto("/");
   await expect(page).toHaveURL(/\/marketplace$/);
   await expect(page.getByRole("heading", { name: /Discover characters/ })).toBeVisible();
+  await expect(page.getByText("Choose two characters. Imagine what happens when their worlds collide.")).toHaveCount(0);
+  await expect(page.getByText("Marketplace preview.")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Open story studio/ })).toBeVisible();
   await expect(page.locator(".em-app")).toHaveCSS("background-color", "rgb(9, 10, 16)");
   await expect(page.locator(".em-filter.active")).toHaveCSS("background-color", "rgb(110, 82, 200)");
   await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();
@@ -98,6 +101,7 @@ test("owned published character appears once, opens public detail and supports l
   await publicCard.click();
   await expect(page).toHaveURL(new RegExp("/marketplace/" + listing_id));
   await expect(page.getByRole("heading", { name: "Hazel" })).toBeVisible();
+  await expect(page.getByText("Character preview.")).toHaveCount(0);
   await expect(page.getByText("A curious archivist.", { exact: true })).toBeVisible();
   await expect(page.getByText("Personality")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
@@ -108,6 +112,8 @@ test("owned published character appears once, opens public detail and supports l
   await page.goto("/characters/publish?character=" + encodeURIComponent(character_id));
   await expect(page.getByRole("heading", { name: "Manage listing" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save listing changes" })).toBeVisible();
+  await expect(page.getByText("Future creator payouts")).toBeVisible();
+  await expect(page.getByText(/Planned test pack:/)).toBeHidden();
   await expect(page.getByLabel("Public description")).toHaveValue("A curious archivist.");
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: "test-results/editorial-listing-management.png", fullPage: true });

@@ -114,10 +114,6 @@ export default function PublicListingPage() {
               </section>
             )}
 
-            <aside className="em-note" style={{ marginTop: 28 }}>
-              <span aria-hidden="true">✧</span>
-              <p><strong>Character preview.</strong> This is the creator-approved public information. Story checkout and paid character casting are not available yet.</p>
-            </aside>
             <Link href="/marketplace" className="em-hero-link" style={{ marginTop: 24 }}>
               ← Explore more characters
             </Link>

@@ -11,7 +11,7 @@ type ShelfItem = {
   name: string;
   description: string;
   image: string | null;
-  kind: "sample" | "mine";
+  kind: "sample" | "mine" | "concept";
 };
 
 const samples: ShelfItem[] = [
@@ -19,15 +19,29 @@ const samples: ShelfItem[] = [
     id: "sample-mira",
     name: "Mira",
     description: "A quiet archivist with a story left unfinished.",
-    image: "/creator/mira.svg",
+    image: "/portraits/mira.webp",
     kind: "sample",
   },
   {
     id: "sample-leo",
     name: "Leo",
     description: "A wanderer whose past won't stay buried.",
-    image: "/creator/leo.svg",
+    image: "/portraits/leo.webp",
     kind: "sample",
+  },
+  {
+    id: "concept-vesper",
+    name: "Vesper",
+    description: "An enigmatic spirit drawn from a forgotten fairytale.",
+    image: "/portraits/red-horn.webp",
+    kind: "concept",
+  },
+  {
+    id: "concept-ren",
+    name: "Ren",
+    description: "A restless rival with a story yet to be written.",
+    image: "/portraits/red-boy.webp",
+    kind: "concept",
   },
 ];
 
@@ -50,19 +64,21 @@ function Cover({ item, selected, onSelect }: { item: ShelfItem; selected: boolea
     <>
       <span className={"em-cover em-cover-" + item.kind}>
         {item.image ? <img src={item.image} alt={"Portrait of " + item.name} loading="lazy" /> : <span className="em-cover-monogram">{item.name.slice(0, 1)}</span>}
-        <span className="em-cover-edition">{item.kind === "sample" ? "STORY PREVIEW" : "YOUR CHARACTER"}</span>
+        <span className="em-cover-edition">{item.kind === "sample" ? "STORY PREVIEW" : item.kind === "concept" ? "ART CONCEPT" : "YOUR CHARACTER"}</span>
         {selected && <span className="em-cover-selected"><Icon name="check" size={15} /></span>}
       </span>
       <span className="em-cover-title">{item.name}</span>
       <span className="em-cover-desc">{item.description}</span>
-      <span className="em-cover-caption">{item.kind === "sample" ? "Sample · View rehearsal" : selected ? "Selected for your cast" : "Tap to add to your cast"}</span>
+      <span className="em-cover-caption">{item.kind === "sample" ? "Sample · View rehearsal" : item.kind === "concept" ? "Artwork only · coming later" : selected ? "Selected for your cast" : "Tap to add to your cast"}</span>
     </>
   );
-  return item.kind === "sample" ? (
-    <Link className="em-book-card" href="/rehearsal" aria-label={"Open the rehearsal demo featuring sample character " + item.name}>{inner}</Link>
-  ) : (
-    <button type="button" className="em-book-card em-selectable" onClick={onSelect} aria-pressed={selected} aria-label={(selected ? "Remove " : "Select ") + item.name + (selected ? " from" : " for") + " your cast"}>{inner}</button>
-  );
+  if (item.kind === "sample") {
+    return <Link className="em-book-card" href="/rehearsal" aria-label={"Open the rehearsal demo featuring sample character " + item.name}>{inner}</Link>;
+  }
+  if (item.kind === "concept") {
+    return <div className="em-book-card em-book-concept" aria-label={"Artwork concept " + item.name + ", not yet playable"}>{inner}</div>;
+  }
+  return <button type="button" className="em-book-card em-selectable" onClick={onSelect} aria-pressed={selected} aria-label={(selected ? "Remove " : "Select ") + item.name + (selected ? " from" : " for") + " your cast"}>{inner}</button>;
 }
 
 export function MarketplaceDiscover() {
@@ -148,11 +164,11 @@ export function MarketplaceDiscover() {
             <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters and stories" />
           </label>
           <div className="em-filters" role="group" aria-label="Character collection filter">
-            {([["all","All characters"],["mine","My characters"],["samples","Samples"]] as const).map(([key,label]) => (
+            {([["all","All characters"],["mine","My characters"],["samples","Art previews"]] as const).map(([key,label]) => (
               <button key={key} type="button" onClick={() => setFilter(key)} aria-pressed={filter === key} className={filter === key ? "em-filter active" : "em-filter"}>{label}</button>
             ))}
           </div>
-          <div className="em-shelf-header"><span>{filter === "mine" ? "YOUR PRIVATE CHARACTERS" : filter === "samples" ? "IN THE SPOTLIGHT" : "CHARACTER COLLECTION"}</span><span>{loading ? "Loading…" : visible.length + " characters"}</span></div>
+          <div className="em-shelf-header"><span>{filter === "mine" ? "YOUR PRIVATE CHARACTERS" : filter === "samples" ? "SAMPLE CHARACTERS & ARTWORK" : "CHARACTER COLLECTION"}</span><span>{loading ? "Loading…" : visible.length + " characters"}</span></div>
           {visible.length ? (
             <div className="em-book-grid">
               {visible.map((item) => <Cover key={item.id} item={item} selected={selected.includes(item.id)} onSelect={() => toggle(item.id)}/>)}

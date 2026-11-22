@@ -1269,11 +1269,11 @@ export function RehearsalApp() {
                 <div className="rh-stage-art" aria-hidden="true">
                   <div className="rh-orbit" />
                   <div className="rh-art-person a">
-                    <img src="/creator/mira.svg" alt="" />
+                    <img src="/portraits/mira.webp" alt="" />
                     <span>LIN</span>
                   </div>
                   <div className="rh-art-person b">
-                    <img src="/creator/leo.svg" alt="" />
+                    <img src="/portraits/leo.webp" alt="" />
                     <span>XU</span>
                   </div>
                   <div className="rh-art-caption">

@@ -9,6 +9,8 @@ test("bookshop-style discovery shows sample covers, search and filter", async ({
   await page.goto("/");
   await expect(page).toHaveURL(/\/marketplace$/);
   await expect(page.getByRole("heading", { name: /Discover characters/ })).toBeVisible();
+  await expect(page.locator(".em-app")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(page.locator(".em-filter.active")).toHaveCSS("background-color", "rgb(84, 64, 140)");
   await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /sample character Leo/ })).toBeVisible();
   await page.screenshot({ path: "test-results/editorial-marketplace.png", fullPage: true });

@@ -1,0 +1,457 @@
+/* Echoloom shared dark-fantasy system.
+   Two display faces only: Pirata One (brand/hero), Grenze Gotisch (titles
+   and navigation). Long prose and user input use familiar, readable UI fonts.
+   This stylesheet deliberately comes after the legacy light-theme styles. */
+:root {
+  color-scheme: dark;
+  --el-bg: #090a10;
+  --el-panel: #14131e;
+  --el-raised: #1e1b2b;
+  --el-hero: #231a33;
+  --el-line: #393149;
+  --el-text: #f5f0fc;
+  --el-muted: #bcb2ce;
+  --el-subtle: #9e93b1;
+  --el-purple: #6e52c8;
+  --el-purple-hover: #8063dc;
+  --el-glow: #a78bfa;
+  --el-display: "Grenze Gotisch", "Songti SC", Georgia, serif;
+  --el-brand: "Pirata One", "Grenze Gotisch", Georgia, serif;
+  --el-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  --bg: var(--el-bg);
+  --ink: var(--el-text);
+  --muted: var(--el-muted);
+  --purple: var(--el-purple);
+  --purple-dark: #513aa7;
+  --lavender: var(--el-panel);
+  --line: var(--el-line);
+  --bazar-white: var(--el-bg);
+  --bazar-surface: var(--el-panel);
+  --bazar-surface-muted: var(--el-raised);
+  --bazar-border: var(--el-line);
+  --bazar-border-strong: #55466a;
+  --bazar-text: var(--el-text);
+  --bazar-text-secondary: var(--el-muted);
+  --bazar-primary: var(--el-purple);
+  --bazar-primary-hover: var(--el-purple-hover);
+  --bazar-primary-pale: var(--el-hero);
+}
+html, body {
+  background: var(--el-bg) !important;
+  color: var(--el-text) !important;
+  color-scheme: dark;
+}
+body { font-family: var(--el-ui); }
+body ::selection { background: #6e52c8; color: #fff; }
+:where(a,button,input,select,textarea):focus-visible {
+  outline-color: var(--el-glow) !important;
+}
+:where(input,textarea,select) { color-scheme: dark; accent-color: var(--el-purple); }
+:where(input,textarea)::placeholder { color: var(--el-subtle) !important; }
+
+/* Shared interactive typography: a single humanist blackletter in controls.
+   Keep the story reader and text input in system / reading fonts. */
+.em-app :is(.em-hero-link,.em-filter,.em-bottom-nav a,.em-top-create,
+  .em-cast-action,.em-empty a,.em-cast-clear),
+.rehearsal-app :is(.rh-primary,.rh-secondary,.rh-text-button,.rh-filters button,
+  .rh-nav > *,.rh-card-open h3,.rh-cast-slot strong,.rh-character-pick strong,
+  .rh-stage-actions > button,.rh-replace-buttons button,.mc-character-caption > strong,
+  .mc-edit-actions button,.mc-cover-edit,.rh-direction-card h3),
+.rh-sheet :is(button:not(.rh-icon),.rh-direction-card h3,.rh-takeover-picks strong,
+  .rh-version-list strong),
+.el-listing-editor :is(button,.button,nav a),
+.account-gate :is(button,.button),
+[class*="account-shell_primaryButton__"],[class*="account-shell_exploreLink__"] {
+  font-family: var(--el-display) !important;
+  font-weight: 600 !important;
+  letter-spacing: .015em;
+}
+.em-app :is(.em-hero-link,.em-filter,.em-cast-action) {
+  font-size: 17px !important;
+  line-height: 1.15;
+}
+.em-app .em-bottom-nav a {
+  font-size: 15px !important;
+  line-height: 1.15;
+}
+.em-app .em-bottom-nav a span { font: inherit; }
+.rehearsal-app :is(.rh-primary,.rh-secondary,.rh-text-button,.rh-filters button,
+  .rh-stage-actions > button,.rh-nav > *) {
+  font-size: 17px !important;
+  line-height: 1.16;
+}
+.rh-sheet button:not(.rh-icon) { font-size: 17px !important; }
+.el-listing-editor :is(button,.button,nav a) { font-size: 17px; }
+[class*="account-shell_primaryButton__"] { font-size: 18px !important; }
+
+/* Both public listing detail and logged-out sign-in screens. */
+.em-app.em-detail-page {
+  --em-paper: var(--el-bg);
+  --em-ink: var(--el-text);
+  --em-muted: var(--el-muted);
+  --em-border: var(--el-line);
+  --em-plum: var(--el-purple);
+  --em-terracotta: var(--el-glow);
+  background: var(--el-bg) !important;
+  color: var(--el-text) !important;
+  box-shadow: none !important;
+  color-scheme: dark;
+}
+.em-detail-page .em-header { border-color: var(--el-line) !important; }
+.em-detail-page .em-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 25px/1.1 var(--el-brand) !important;
+  color: var(--el-text) !important;
+  letter-spacing: .02em;
+}
+.em-detail-page .em-brand-dot { color: var(--el-glow) !important; }
+.em-detail-page .em-brand-icon { width: 27px; height: 32px; object-fit: contain; }
+.em-detail-page .em-kicker { color: #cbb7ff !important; }
+.em-detail-page .em-empty {
+  background: var(--el-panel) !important;
+  border-color: var(--el-line) !important;
+}
+.em-detail-page article :is(h1,h2),
+.em-detail-page .em-empty h1 {
+  font-family: var(--el-display) !important;
+  color: var(--el-text) !important;
+  font-weight: 700;
+}
+.em-detail-page article h1 { font-size: 32px !important; }
+.em-detail-page article h2 { font-size: 22px !important; }
+.em-detail-page article p { color: var(--el-muted) !important; }
+.em-detail-page article strong { color: var(--el-text) !important; }
+.em-detail-page article > div > div:first-child {
+  background: var(--el-raised) !important;
+}
+.em-detail-page article section span {
+  background: #211b31 !important;
+  color: #d7c9fc !important;
+  border-color: var(--el-line) !important;
+}
+.em-detail-page .em-note { color: var(--el-muted) !important; border-color: var(--el-line) !important; }
+.em-detail-page .em-note span { color: var(--el-glow) !important; }
+.em-detail-page .em-hero-link { background: var(--el-purple) !important; color: #fff !important; }
+.em-detail-page .em-bottom-nav {
+  background: #101018f3 !important;
+  border-color: var(--el-line) !important;
+}
+.em-detail-page .em-bottom-nav a { color: var(--el-muted) !important; }
+.em-detail-page .em-bottom-nav a[aria-current="page"] { color: #cbb7ff !important; }
+
+/* Character publishing and listing management: the older form has light
+   inline colors; specifically override them without changing any behavior. */
+.el-listing-editor {
+  background: var(--el-bg) !important;
+  color: var(--el-text) !important;
+  color-scheme: dark;
+}
+.el-listing-editor :is(h1,h2,h3) {
+  font-family: var(--el-display) !important;
+  color: var(--el-text) !important;
+}
+.el-listing-editor h1 { font-size: 38px; line-height: 1.08; }
+.el-listing-editor p, .el-listing-editor label, .el-listing-editor small {
+  color: var(--el-muted) !important;
+}
+.el-listing-editor nav a { color: #cbb7ff !important; }
+.el-listing-editor .notice, .el-listing-editor .panel, .el-listing-editor [role="status"] {
+  background: var(--el-panel) !important;
+  border-color: var(--el-line) !important;
+  color: var(--el-muted) !important;
+  box-shadow: none !important;
+}
+.el-listing-editor :is(.notice,.panel,[role="status"]) strong {
+  color: var(--el-text) !important;
+}
+.el-listing-editor :is(input,select,textarea) {
+  background: var(--el-raised) !important;
+  border-color: var(--el-line) !important;
+  color: var(--el-text) !important;
+  accent-color: var(--el-purple);
+}
+.el-listing-editor :is(select,option) { background: var(--el-raised) !important; color: var(--el-text) !important; }
+.el-listing-editor :is(.button.primary,button.primary) {
+  background: var(--el-purple) !important;
+  color: #fff !important;
+  border-color: var(--el-purple) !important;
+}
+.el-listing-editor .button:not(.primary) {
+  background: var(--el-raised) !important;
+  border-color: var(--el-line) !important;
+  color: #d3c3ff !important;
+}
+.el-listing-editor a { color: #c6b1ff !important; }
+.el-listing-editor section[aria-label="Listing preview"] {
+  background: #211a30 !important;
+  border-color: var(--el-line) !important;
+}
+.el-listing-editor section[aria-label="Listing preview"] :is(p,h2) { color: var(--el-text) !important; }
+.el-listing-editor .error { background: #331a27 !important; border-color: #714157 !important; color: #ffc0d4 !important; }
+
+/* Legacy editor / character / stage application. */
+.rehearsal-app, .rh-sheet {
+  --rh-bg: var(--el-bg);
+  --rh-top: var(--el-bg);
+  --rh-card: var(--el-panel);
+  --rh-raised: var(--el-raised);
+  --rh-gold: var(--el-purple);
+  --rh-text: var(--el-text);
+  --rh-muted: var(--el-muted);
+  --rh-border: var(--el-line);
+  --ed-plum: var(--el-purple);
+  --ed-terracotta: var(--el-purple);
+  --ed-paper: var(--el-bg);
+  --ed-ivory: var(--el-panel);
+  --ed-rule: var(--el-line);
+  --ed-subtle: var(--el-muted);
+  background: var(--el-bg) !important;
+  color: var(--el-text) !important;
+  border-color: var(--el-line) !important;
+  color-scheme: dark;
+}
+.rehearsal-app :is(h1,h2,h3), .rh-sheet :is(h2,h3) {
+  font-family: var(--el-display) !important;
+  font-weight: 700;
+  color: var(--el-text) !important;
+}
+.rehearsal-app :is(.rh-hero h1,.mc-library h1,.mc-create h1,.mc-cover-title h1) {
+  font-family: var(--el-brand) !important;
+  font-weight: 400 !important;
+  letter-spacing: .018em;
+}
+.rehearsal-app .rh-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 400 25px/1.1 var(--el-brand) !important;
+  color: var(--el-text) !important;
+  letter-spacing: .02em;
+}
+.rehearsal-app .rh-brand-dot { color: var(--el-glow) !important; }
+.rehearsal-app .rh-brand-icon { width: 25px; height: 29px; display: block; object-fit: contain; }
+.rehearsal-app .rh-top-title, .rh-sheet > header h2 {
+  font-family: var(--el-display) !important;
+  color: var(--el-text) !important;
+  font-size: 23px !important;
+}
+.rehearsal-app :is(.rh-top,.rh-list .rh-top,.mc-top,.rh-pad,
+  .rh-library,.rh-scroll,.mc-library,.mc-create,.mc-detail,.mc-profile-body,
+  .rh-characters,.rh-reading),
+.rh-sheet :is(header,.rh-sheet-body) {
+  background: var(--el-bg) !important;
+  border-color: var(--el-line) !important;
+}
+.rehearsal-app .rh-list .rh-top, .rehearsal-app .mc-top, .rh-sheet > header { border-color: var(--el-line) !important; }
+.rehearsal-app :is(.rh-icon,.rh-top > .rh-icon), .rh-sheet .rh-icon {
+  background: var(--el-panel) !important;
+  color: #c9b8fa !important;
+  border-color: var(--el-line) !important;
+}
+.rehearsal-app :is(.rh-hero,.rh-example,.rh-source,.rh-review-summary,.rh-warning,.rh-alert,.rh-empty),
+.rh-sheet :is(.rh-alert,.rh-source) {
+  background: var(--el-panel) !important;
+  border-color: var(--el-line) !important;
+  color: var(--el-text) !important;
+}
+.rehearsal-app .rh-hero {
+  background: radial-gradient(ellipse at 95% 10%,#36234f,#1b1626 72%) !important;
+  border: 1px solid #413052 !important;
+}
+.rehearsal-app :is(.rh-hero p,.rh-card-open p,.rh-card-open small,.mc-intro,
+  .rh-muted,.rh-optional,.rh-top small,.rh-reading-divider,.rh-segment > header,
+  .rh-stage-context button,.rh-sync,.rh-example small,.rh-review-detail p),
+.rh-sheet :is(.rh-muted,.rh-optional) { color: var(--el-muted) !important; }
+.rehearsal-app :is(.rh-eyebrow,.rh-version-link,.rh-example-star,.rh-card-more,
+  .rh-text-button,.rh-slot-letter,.rh-add-circle,.rh-filters button.active,
+  .rh-character-caption > span,.mc-character-caption > span,.rh-review-links a),
+.rh-sheet .rh-eyebrow { color: #c6aeff !important; }
+.rehearsal-app :is(.rh-primary,.rh-send),.rh-sheet .rh-primary {
+  color: white !important;
+  background: var(--el-purple) !important;
+  border: 1px solid var(--el-purple) !important;
+  box-shadow: none !important;
+}
+.rehearsal-app .rh-primary:hover:not(:disabled),.rh-sheet .rh-primary:hover:not(:disabled) {
+  background: var(--el-purple-hover) !important;
+}
+.rehearsal-app .rh-secondary, .rh-sheet .rh-secondary {
+  background: var(--el-raised) !important;
+  border-color: var(--el-line) !important;
+  color: #dfd4ff !important;
+}
+.rehearsal-app :is(.rh-search,.rh-scene-card,.rh-cast-slot,.rh-character-list article,
+  .rh-empty-cast,.rh-empty-list,.rh-details,.rh-direction-card,.rh-version-list > article,
+  .rh-export-preview,.rh-stage-context,.rh-review-detail,.rh-stage-footer,
+  .mc-character-card,.mc-character-caption,.mc-pending,.mc-creation-progress,.mc-fact,
+  .mc-proposal > section),
+.rh-sheet :is(.rh-direction-card,.rh-details,.rh-extracted,.rh-version-list > article,
+  .rh-edit-type label,.rh-interventions > button,.rh-takeover-picks button,
+  .mc-portrait-grid section,.rh-active-direction,.rh-font-control button) {
+  background: var(--el-panel) !important;
+  color: var(--el-text) !important;
+  border-color: var(--el-line) !important;
+  box-shadow: none !important;
+}
+.rehearsal-app .rh-search svg { color: #c9b8fa !important; }
+.rehearsal-app .rh-filters button,.rh-sheet .rh-filters button {
+  background: var(--el-panel) !important;
+  border-color: var(--el-line) !important;
+  color: var(--el-muted) !important;
+}
+.rehearsal-app .rh-filters button.active, .rh-sheet .rh-filters button.active,
+.rehearsal-app .rh-cast-slot.selected,
+.rehearsal-app .rh-character-list article.selected {
+  background: #302447 !important;
+  color: #f9f2ff !important;
+  border-color: var(--el-purple) !important;
+}
+.rehearsal-app .rh-stage-art { background: #22182c !important; }
+.rehearsal-app .rh-stage-art:after { background: linear-gradient(0deg,#22182c,transparent 67%) !important; }
+.rehearsal-app .rh-orbit { border-color: #7e5db7 !important; box-shadow:0 0 0 17px #5037712b,0 0 0 18px #8365b656 !important; }
+.rehearsal-app .rh-art-person { background: #2a2537 !important; border-color: #55436b !important; }
+.rehearsal-app .rh-art-caption { color: var(--el-muted) !important; }
+.rehearsal-app :is(.rh-nav,.rh-form-footer,.rh-stage-footer,.rh-cast-strip,.rh-stage-context),
+.rh-sheet > header {
+  background: #101018 !important;
+  border-color: var(--el-line) !important;
+}
+.rehearsal-app .rh-nav > * { color: #a99dba !important; }
+.rehearsal-app .rh-nav .active { color: #ccb7ff !important; }
+.rehearsal-app .rh-cast-slot strong, .rehearsal-app .rh-character-pick strong,
+.rehearsal-app .rh-card-open h3, .rehearsal-app .mc-character-caption > strong {
+  font-family: var(--el-display) !important;
+  font-weight: 700 !important;
+  font-size: 21px !important;
+  color: var(--el-text) !important;
+}
+.rehearsal-app .mc-character-cover { background: #171522 !important; }
+.rehearsal-app .mc-portrait, .rehearsal-app .rh-avatar {
+  background: var(--el-raised) !important;
+  border-color: var(--el-line) !important;
+}
+.rehearsal-app .mc-cover-shade { background: linear-gradient(0deg,#090a10e8 0%,transparent 72%) !important; }
+.rehearsal-app .mc-cover-title :is(h1,p),.rehearsal-app .mc-cover-title .rh-eyebrow { color: white !important; }
+.rehearsal-app .mc-cover-edit {
+  background: var(--el-panel) !important;
+  color: #cfbaff !important;
+  border-color: var(--el-line) !important;
+}
+.rehearsal-app .mc-facts p { color: #ded5e9 !important; }
+.rehearsal-app :is(.mc-character-caption > small,.mc-pending small,.mc-creation-progress small) {
+  color: var(--el-muted) !important;
+}
+.rehearsal-app :is(.rh-reading,.rh-block,.rh-segment,.rh-scene-opening) {
+  background: var(--el-bg) !important;
+  color: var(--el-text) !important;
+  border-color: var(--el-line) !important;
+}
+.rehearsal-app .rh-scene-opening p {
+  color: #cfc2df !important;
+  font-family: Georgia, "Songti SC", serif !important;
+  font-size: 15px;
+  line-height: 1.83;
+}
+.rehearsal-app :is(.rh-block p,.rh-review-summary p,.mc-facts p) {
+  color: #eee7f6 !important;
+  font-family: Georgia, "Songti SC", serif !important;
+  line-height: 1.85;
+}
+.rehearsal-app .rh-block.narration p { color: #d2c3e8 !important; font-style: italic; }
+.rehearsal-app .rh-block.action p { color: #c6bdd2 !important; font-style: normal; }
+.rehearsal-app .rh-speaker strong {
+  color: #d6c2ff !important;
+  font-family: var(--el-display) !important;
+  font-size: 21px !important;
+}
+.rehearsal-app :is(.rh-reading-divider,.rh-segment > header,.rh-stage-context > button) {
+  color: var(--el-muted) !important;
+}
+.rehearsal-app .rh-reading-divider { border-color: var(--el-line) !important; }
+.rehearsal-app .rh-alert.error,.rh-sheet .rh-alert.error {
+  background: #341b2a !important;
+  color: #ffb8d1 !important;
+  border-color: #69334f !important;
+}
+.rehearsal-app :is(input:not([type="radio"]):not([type="checkbox"]),textarea,select),
+.rh-sheet :is(input:not([type="radio"]):not([type="checkbox"]),textarea,select) {
+  color: var(--el-text) !important;
+  background: var(--el-raised) !important;
+  border-color: var(--el-line) !important;
+}
+.rehearsal-app .rh-search input { background: transparent !important; }
+.rh-sheet :is(h2,h3,strong) { color: var(--el-text) !important; }
+.rh-sheet :is(p,small,label,summary,button) { color: var(--el-muted); }
+.rh-sheet :is(.rh-takeover-picks strong,.rh-version-list strong) { color: var(--el-text) !important; }
+.rh-sheet blockquote { background: #211b2d !important; border-color: var(--el-purple) !important; color: #e7dbf5 !important; }
+.rh-sheet :is(.rh-paragraph-menu button,.rh-more-menu > button,.rh-more-menu > a) { border-color: var(--el-line) !important; }
+.rh-sheet :is(.rh-extracted small,.rh-active-direction small,.rh-version-tags) { color: #c7b5ff !important; }
+.rehearsal-app .rh-stage-footer .rh-send { background: var(--el-purple) !important; }
+
+/* Authentication (CSS Modules are local; target their semantic shell locally). */
+[class*="account-shell_canvas__"] {
+  background: var(--el-bg) !important;
+  color: var(--el-text) !important;
+  border-color: var(--el-line) !important;
+  box-shadow: none !important;
+}
+[class*="account-shell_topbar__"],[class*="account-shell_footer__"] { border-color: var(--el-line) !important; }
+[class*="account-shell_intro__"] { background: #21192e !important; }
+[class*="account-shell_brand__"] {
+  font-family: var(--el-brand) !important;
+  font-weight: 400 !important;
+  font-size: 25px;
+  color: var(--el-text) !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.el-brand-icon { height: 29px; width: 26px; display: inline-block; object-fit: contain; }
+[class*="account-shell_brandDot__"] { color: var(--el-glow) !important; }
+[class*="account-shell_heading__"],[class*="account-shell_formHeading__"] h2 {
+  font-family: var(--el-display) !important;
+  font-weight: 700;
+  color: var(--el-text) !important;
+}
+[class*="account-shell_description__"],[class*="account-shell_note__"],
+[class*="account-shell_helper__"],[class*="account-shell_field__"],
+[class*="account-shell_footer__"] { color: var(--el-muted) !important; }
+[class*="account-shell_eyebrow__"],[class*="account-shell_exploreLink__"],
+[class*="account-shell_passwordToggle__"],[class*="account-shell_note__"] > span {
+  color: #c8b3ff !important;
+}
+[class*="account-shell_field__"] input {
+  color: var(--el-text) !important;
+  background: var(--el-raised) !important;
+  border-color: var(--el-line) !important;
+}
+[class*="account-shell_primaryButton__"] {
+  color: white !important;
+  border-color: var(--el-purple) !important;
+  background: var(--el-purple) !important;
+}
+[class*="account-shell_error__"] { background: #341b2a !important; color: #ffb8d1 !important; }
+
+/* Old fallback account gate when account-shell is not mounted. */
+.account-gate { background: var(--el-bg) !important; color: var(--el-text) !important; }
+.account-gate .account-form {
+  background: var(--el-panel) !important;
+  border-color: var(--el-line) !important;
+}
+.account-gate .account-form h2 { font-family: var(--el-display) !important; color: var(--el-text) !important; }
+.account-gate .account-form label,.account-gate .account-form p { color: var(--el-muted) !important; }
+.account-gate .account-form :is(input,textarea) {
+  background: var(--el-raised) !important;
+  color: var(--el-text) !important;
+  border-color: var(--el-line) !important;
+}
+.account-gate .account-form .button.primary { background: var(--el-purple) !important; border-color: var(--el-purple) !important; color: #fff !important; }
+@media (min-width:650px) {
+  body:has(.rehearsal-app) { background: var(--el-bg) !important; }
+}
+@media (max-width:360px) {
+  .rehearsal-app :is(.rh-primary,.rh-secondary,.rh-nav > *) { font-size: 15px !important; }
+  .em-app .em-filter { font-size: 15px !important; }
+}

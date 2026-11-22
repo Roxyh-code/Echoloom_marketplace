@@ -360,3 +360,68 @@ def test_public_browse_limit_is_validated(setup):
     assert client.get("/api/marketplace/listings?limit=0").status_code == 422
     assert client.get("/api/marketplace/listings?limit=101").status_code == 422
     assert client.get("/api/marketplace/listings?limit=50").status_code == 200
+
+
+def test_owned_listings_are_authenticated_and_allowlisted(setup):
+    client, _, _, _, _ = setup
+    assert client.get("/api/marketplace/my-listings").status_code == 401
+    account_id = register_account(setup)
+    assert client.get("/api/marketplace/my-listings").json() == []
+    character_id = seed_character(setup, account_id)
+    listing = publish(client, character_id)
+    owned = client.get("/api/marketplace/my-listings")
+    assert owned.status_code == 200, owned.text
+    assert len(owned.json()) == 1
+    info = owned.json()[0]
+    assert info == {
+        "listing_id": listing["listing_id"],
+        "character_id": character_id,
+        "status": "published",
+        "latest_revision": 1,
+        "name": "Mira",
+        "short_description": "A determined art restorer.",
+        "tags": ["Mystery", "Adventure"],
+        "public_personality": ["Calm", "Determined"],
+        "rights_basis": "original",
+    }
+    assert SECRET not in owned.text
+    assert "wallet_address" not in owned.text
+    assert client.post("/api/account/logout").status_code == 200
+    assert client.get("/api/marketplace/my-listings").status_code == 401
+
+
+def test_owned_listing_management_survives_unpublish_and_edits(setup):
+    client, _, _, _, _ = setup
+    account_id = register_account(setup)
+    character_id = seed_character(setup, account_id)
+    first = publish(client, character_id)
+    hidden = client.post(
+        f"/api/marketplace/listings/{first['listing_id']}/unpublish"
+    )
+    assert hidden.status_code == 200
+    owned = client.get("/api/marketplace/my-listings").json()
+    assert len(owned) == 1
+    assert owned[0]["status"] == "unpublished"
+    assert owned[0]["short_description"] == "A determined art restorer."
+    assert client.get("/api/marketplace/listings").json() == []
+    republished = publish(
+        client, character_id,
+        short_description="Edited public story summary.",
+        rights_basis="licensed",
+    )
+    assert republished["listing_id"] == first["listing_id"]
+    assert republished["latest_revision"] == 2
+    again = client.get("/api/marketplace/my-listings").json()
+    assert again[0]["status"] == "published"
+    assert again[0]["short_description"] == "Edited public story summary."
+    assert again[0]["rights_basis"] == "licensed"
+
+
+def test_other_creator_cannot_enumerate_owned_listings(setup):
+    client, _, _, settings, _ = setup
+    alice_id = register_account(setup, "alice")
+    alice_character = seed_character(setup, alice_id)
+    publish(client, alice_character)
+    settings.allow_additional_accounts = True
+    register_account(setup, "bob")
+    assert client.get("/api/marketplace/my-listings").json() == []

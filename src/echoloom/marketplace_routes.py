@@ -15,6 +15,7 @@ from sqlalchemy import and_, select
 from .db import Portrait
 from .marketplace_models import CharacterListing, ListingRevision
 from .marketplace_schemas import (
+    ListingOwnerDetailResponse,
     ListingOwnerResponse,
     ListingPublicResponse,
     ListingPublishRequest,
@@ -22,6 +23,7 @@ from .marketplace_schemas import (
 from .marketplace_service import (
     get_owner_listing,
     get_public_listing,
+    list_owner_listings,
     list_public_listings,
     publish_listing,
     unpublish_listing,
@@ -38,6 +40,15 @@ def register_marketplace(app: FastAPI, factory, settings) -> None:
     def browse_listings(limit: int = Query(default=50, ge=1, le=100)):
         with factory() as db:
             return list_public_listings(db, limit=limit)
+
+    @app.get(
+        "/api/marketplace/my-listings",
+        response_model=list[ListingOwnerDetailResponse],
+    )
+    def browse_my_listings(request: Request):
+        account_id = getattr(request.state, "user_id", None)
+        with factory() as db:
+            return list_owner_listings(db, account_id=account_id)
 
     @app.get(
         "/api/marketplace/listings/{listing_id}",

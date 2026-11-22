@@ -71,3 +71,17 @@ class ListingOwnerResponse(MarketplaceSchema):
     character_id: UUID
     status: Literal["published", "unpublished"]
     latest_revision: int = Field(ge=0)
+
+
+class ListingOwnerDetailResponse(ListingOwnerResponse):
+    """Private owner-only listing snapshot, including unpublished revisions.
+
+    Still allowlisted: no character profile, prompt, payout wallet, account ID
+    or private story data is serialized into the dashboard.
+    """
+
+    name: str = Field(min_length=1, max_length=80)
+    short_description: str = Field(min_length=1, max_length=320)
+    tags: list[str] = Field(default_factory=list, max_length=8)
+    public_personality: list[str] = Field(default_factory=list, max_length=6)
+    rights_basis: Literal["original", "licensed"]

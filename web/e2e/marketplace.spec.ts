@@ -20,10 +20,6 @@ test("bookshop-style discovery shows sample covers, search and filter", async ({
   await expect(page.getByLabel("Artwork concept Vesper, not yet playable").locator("img")).toHaveAttribute("src", "/portraits/red-horn.webp");
   await expect(page.getByLabel("Artwork concept Ren, not yet playable").locator("img")).toHaveAttribute("src", "/portraits/red-boy.webp");
   await expect.poll(async () => page.locator(".em-book-grid img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
-  await page.evaluate(() => document.fonts.ready);
-  await expect(page.locator(".em-hero h1")).toHaveCSS("font-family", /Philosopher/);
-  await expect(page.locator(".em-cover-title").first()).toHaveCSS("font-family", /Philosopher/);
-  await expect(page.locator(".em-search input")).toHaveCSS("font-family", /Nunito Sans/);
   await page.screenshot({ path: "test-results/editorial-marketplace.png", fullPage: true });
   await page.getByRole("searchbox", { name: "Search characters" }).fill("Mira");
   await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();

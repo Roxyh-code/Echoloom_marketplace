@@ -79,10 +79,17 @@ function Avatar({
   size?: string;
 }) {
   const [bad, setBad] = useState(false);
+  // Older saved demo scenes reference the previous SVG placeholders.
+  // Map them to the selected artwork without rewriting users' scene data.
+  const portrait = actor.avatar === "/creator/mira.svg"
+    ? "/portraits/mira.webp"
+    : actor.avatar === "/creator/leo.svg"
+      ? "/portraits/leo.webp"
+      : actor.avatar;
   return (
     <span className={"rh-avatar " + size}>
-      {actor.avatar && !bad ? (
-        <img src={actor.avatar} alt={actor.name} onError={() => setBad(true)} />
+      {portrait && !bad ? (
+        <img src={portrait} alt={actor.name} onError={() => setBad(true)} />
       ) : (
         <span>{actor.name.slice(0, 1)}</span>
       )}

@@ -52,5 +52,5 @@ class Settings(BaseSettings):
     )
     calendar_key_file: Path = Path("work/secrets/calendar.key")
     calendar_encryption_key: SecretStr = SecretStr("")
-    companion_worker_enabled: bool = True
+    companion_worker_enabled: bool = False
     allow_additional_accounts: bool = False

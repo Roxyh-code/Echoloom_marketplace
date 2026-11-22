@@ -6,8 +6,11 @@ import type { Character } from "@/components/api";
 import { rehearsal } from "@/components/rehearsal-api";
 import {
   MarketplaceApiError,
+  listOwnedListings,
   publishCharacterListing,
+  unpublishCharacterListing,
   type OwnedListing,
+  type OwnedListingDetail,
 } from "@/components/marketplace-api";
 
 const accent = "#54408c";
@@ -28,6 +31,8 @@ function parseLabels(text: string, label: string, maximum: number): string[] {
 
 export default function PublishCharacterPage() {
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [ownedListings, setOwnedListings] = useState<OwnedListingDetail[]>([]);
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [characterId, setCharacterId] = useState("");
@@ -41,28 +46,31 @@ export default function PublishCharacterPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<OwnedListing | null>(null);
 
-  function chooseCharacter(character: Character) {
+  function chooseCharacter(character: Character, listings = ownedListings) {
+    const existing = listings.find((item) => item.character_id === character.id);
     setCharacterId(character.id);
-    setName(character.profile.name.slice(0, 80));
-    setDescription(character.profile.short_description.slice(0, 320));
-    // Public details are explicitly reviewed; do not copy private backstory.
-    setTagsText("");
-    setTraitsText("");
+    // Always prefer an explicit public revision over private Character fields.
+    setName(existing?.name ?? character.profile.name.slice(0, 80));
+    setDescription(existing?.short_description ?? character.profile.short_description.slice(0, 320));
+    setTagsText(existing?.tags.join(", ") ?? "");
+    setTraitsText(existing?.public_personality.join(", ") ?? "");
     setRightsConfirmed(false);
-    setRightsBasis("original");
+    setRightsBasis(existing?.rights_basis ?? "original");
     setError("");
+    setNotice("");
     setResult(null);
   }
 
   useEffect(() => {
     let active = true;
-    rehearsal<Character[]>("/characters")
-      .then((records) => {
+    Promise.all([rehearsal<Character[]>("/characters"), listOwnedListings()])
+      .then(([records, listings]) => {
         if (!active) return;
         setCharacters(records);
+        setOwnedListings(listings);
         const requested = new URLSearchParams(window.location.search).get("character");
         const chosen = records.find((c) => c.id === requested) ?? records[0];
-        if (chosen) chooseCharacter(chosen);
+        if (chosen) chooseCharacter(chosen, listings);
       })
       .catch((cause: unknown) => {
         if (active) setLoadError(cause instanceof Error ? cause.message : "Unable to load your characters.");
@@ -75,6 +83,7 @@ export default function PublishCharacterPage() {
     () => characters.find((character) => character.id === characterId) ?? null,
     [characters, characterId],
   );
+  const currentListing = ownedListings.find((listing) => listing.character_id === characterId) ?? null;
   const portrait = selected?.current_image_id
     ? `/api/characters/${selected.id}/images/${selected.current_image_id}/file`
     : null;
@@ -83,6 +92,7 @@ export default function PublishCharacterPage() {
     event.preventDefault();
     if (!selected || submitting) return;
     setError("");
+    setNotice("");
     setResult(null);
     try {
       if (!name.trim() || !description.trim()) throw new Error("Name and description are required.");
@@ -100,6 +110,17 @@ export default function PublishCharacterPage() {
         rights_confirmed: true,
       });
       setResult(listing);
+      setOwnedListings((old) => [
+        ...old.filter((item) => item.character_id !== selected.id),
+        {
+          ...listing,
+          name: name.trim(),
+          short_description: description.trim(),
+          tags,
+          public_personality: publicPersonality,
+          rights_basis: rightsBasis,
+        },
+      ]);
     } catch (cause: unknown) {
       if (cause instanceof MarketplaceApiError) {
         if (cause.status === 401) {
@@ -119,6 +140,26 @@ export default function PublishCharacterPage() {
     }
   }
 
+  async function unpublish() {
+    if (!currentListing || currentListing.status !== "published" || submitting) return;
+    if (!window.confirm("Unpublish this character? It will disappear from public discovery but its history will be saved.")) return;
+    setSubmitting(true);
+    setError("");
+    setNotice("");
+    setResult(null);
+    try {
+      const latest = await unpublishCharacterListing(currentListing.listing_id);
+      setOwnedListings((old) => old.map((item) =>
+        item.listing_id === latest.listing_id ? { ...item, ...latest } : item,
+      ));
+      setNotice("Listing unpublished. Your private character and listing history are preserved.");
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : "Could not unpublish this listing.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <main style={{ maxWidth: 700, margin: "0 auto", padding: "28px 20px 90px" }}>
       <nav style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 24 }}>
@@ -127,7 +168,7 @@ export default function PublishCharacterPage() {
       </nav>
 
       <p style={{ color: accent, fontSize: 12, fontWeight: 700, letterSpacing: 1.8 }}>CREATOR STUDIO</p>
-      <h1 style={{ margin: "7px 0 8px" }}>Publish a character</h1>
+      <h1 style={{ margin: "7px 0 8px" }}>{currentListing ? "Manage listing" : "Publish a character"}</h1>
       <p style={{ color: "#6b6473", marginBottom: 22 }}>
         Choose one of your characters and review exactly what other people will see.
         Private backstory, prompts and memories are never included in this form.
@@ -165,6 +206,18 @@ export default function PublishCharacterPage() {
               <option value={character.id} key={character.id}>{character.profile.name}</option>
             ))}
           </select>
+
+          {currentListing && (
+            <div role="status" style={{ marginBottom: 20, padding: "13px 15px", background: "#faf8fd", borderRadius: 10, border: "1px solid #e6dff5" }}>
+              <strong>Listing status: {currentListing.status === "published" ? "Published" : "Unpublished"}</strong>
+              <span style={{ display: "block", marginTop: 5, fontSize: 12, color: "#6b6473" }}>
+                Revision {currentListing.latest_revision}. Editing the public details creates a new saved revision.
+              </span>
+              {currentListing.status === "published" && (
+                <Link href={"/marketplace/" + encodeURIComponent(currentListing.listing_id)} style={{ display: "inline-block", marginTop: 9, textDecoration: "underline", color: accent }}>View public listing →</Link>
+              )}
+            </div>
+          )}
 
           <section aria-label="Listing preview" style={{ display: "flex", gap: 17, alignItems: "center", padding: 14, background: "#faf8fd", borderRadius: 12, marginBottom: 24 }}>
             <div style={{ width: 92, height: 130, overflow: "hidden", flexShrink: 0, borderRadius: 9, background: "#eae5f2", display: "grid", placeItems: "center" }}>
@@ -212,16 +265,22 @@ export default function PublishCharacterPage() {
           </div>
 
           {error && <p className="error" role="alert">{error}</p>}
+          {notice && <p role="status" style={{ color: accent, marginBottom: 15 }}>{notice}</p>}
           {result && (
             <div role="status" style={{ padding: 14, border: "1px solid #b7d8bb", background: "#f1faf3", borderRadius: 10, marginBottom: 18 }}>
-              <strong>Published successfully.</strong> Your listing is public (revision {result.latest_revision}).<br />
+              <strong>{result.latest_revision > 1 ? "Listing saved successfully." : "Published successfully."}</strong> Your listing is public (revision {result.latest_revision}).<br />
               <span style={{ display: "block", marginTop: 5, fontSize: 12 }}>Paid scenes are not enabled until you complete wallet verification later.</span>
-              <Link href="/marketplace" style={{ display: "inline-block", marginTop: 10, color: accent, textDecoration: "underline" }}>View Marketplace → choose Published</Link>
+              <Link href={"/marketplace/" + encodeURIComponent(result.listing_id)} style={{ display: "inline-block", marginTop: 10, color: accent, textDecoration: "underline" }}>View public listing →</Link>
             </div>
           )}
           <button className="button primary full" type="submit" disabled={submitting || !selected || !rightsConfirmed}>
-            {submitting ? "Submitting…" : "Publish to Marketplace"}
+            {submitting ? "Submitting…" : currentListing?.status === "published" ? "Save listing changes" : currentListing?.status === "unpublished" ? "Republish to Marketplace" : "Publish to Marketplace"}
           </button>
+          {currentListing?.status === "published" && (
+            <button type="button" className="button full" disabled={submitting} onClick={() => void unpublish()} style={{ marginTop: 12, border: "1px solid #d8c9e8", background: "#fff", color: accent }}>
+              Unpublish listing
+            </button>
+          )}
           <p className="form-note">The server verifies your signed-in account and ownership of this character. No wallet or creator approval is needed to publish.</p>
         </form>
       )}

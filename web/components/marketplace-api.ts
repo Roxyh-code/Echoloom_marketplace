@@ -38,6 +38,15 @@ export type OwnedListing = {
   latest_revision: number;
 };
 
+/** Owner-only editing data, including currently unpublished snapshots. */
+export type OwnedListingDetail = OwnedListing & {
+  name: string;
+  short_description: string;
+  tags: string[];
+  public_personality: string[];
+  rights_basis: "original" | "licensed";
+};
+
 export class MarketplaceApiError extends Error {
   constructor(
     message: string,
@@ -53,6 +62,7 @@ const BASE = "/api/marketplace/listings";
 async function requestMarketplace<T>(
   path: string,
   options: RequestInit = {},
+  promptForAuth = true,
 ): Promise<T> {
   const response = await fetch(path, {
     ...options,
@@ -61,7 +71,7 @@ async function requestMarketplace<T>(
   });
 
   if (!response.ok) {
-    if (response.status === 401 && typeof window !== "undefined") {
+    if (promptForAuth && response.status === 401 && typeof window !== "undefined") {
       window.dispatchEvent(new Event("echoloom-auth-required"));
     }
     const data: unknown = await response.json().catch(() => null);
@@ -104,7 +114,14 @@ export function getPublishedListing(
   );
 }
 
-/** Private: approved creator only; buyer cannot supply a payout wallet. */
+/** Private: the logged-in creator's own listing snapshots, no wallet fields. */
+export function listOwnedListings(signal?: AbortSignal): Promise<OwnedListingDetail[]> {
+  // Optional enrichment for Discover. An anonymous visitor can still browse
+  // public listings without opening a login dialog.
+  return requestMarketplace<OwnedListingDetail[]>("/api/marketplace/my-listings", { signal }, false);
+}
+
+/** Private: authenticated character owner only; no payout wallet needed. */
 export function publishCharacterListing(
   input: ListingPublishInput,
 ): Promise<OwnedListing> {

@@ -10,6 +10,7 @@ import {
   Revision,
 } from "./api";
 import { creator } from "./creator-api";
+import { listOwnedListings, type OwnedListingDetail } from "./marketplace-api";
 import { localGet, localPut, operation } from "./rehearsal-api";
 type Mode = "library" | "create" | "detail";
 type Person = Character & { archived?: boolean };
@@ -96,6 +97,9 @@ export function MobileCharacterStudio({
   const [mode, setMode] = useState<Mode>(initialCreate ? "create" : "library");
   const [list, setList] = useState<Person[]>([]);
   const [person, setPerson] = useState<Person | null>(null);
+  const [ownedListings, setOwnedListings] = useState<OwnedListingDetail[]>([]);
+  const [ownedLoading, setOwnedLoading] = useState(true);
+  const [ownedError, setOwnedError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -159,6 +163,15 @@ export function MobileCharacterStudio({
       if (alive.current) setLoading(false);
     }
   }
+  useEffect(() => {
+    let active = true;
+    listOwnedListings()
+      .then((records) => { if (active) setOwnedListings(records); })
+      .catch(() => { if (active) setOwnedError("Listing status unavailable. Refresh before publishing."); })
+      .finally(() => { if (active) setOwnedLoading(false); });
+    return () => { active = false; };
+  }, []);
+
   useEffect(() => {
     alive.current = true;
     const q = new URLSearchParams(location.search);
@@ -459,7 +472,7 @@ export function MobileCharacterStudio({
               style={{ marginTop: 10, marginBottom: 12 }}
               onClick={() => window.location.assign("/characters/publish")}
             >
-              Publish a character →
+              {ownedListings.length ? "Publish or manage listings →" : "Publish a character →"}
             </button>
           )}
           {pending && (
@@ -819,14 +832,23 @@ export function MobileCharacterStudio({
                 type="button"
                 className="rh-secondary"
                 style={{ marginTop: 10 }}
+                disabled={ownedLoading || !!ownedError}
                 onClick={() =>
                   window.location.assign(
                     "/characters/publish?character=" + encodeURIComponent(person.id),
                   )
                 }
               >
-                Publish to Marketplace →
+                {ownedLoading ? "Checking listing…" :
+                  ownedListings.find((item) => item.character_id === person.id)?.status === "published"
+                    ? "Manage Listing →"
+                    : ownedListings.find((item) => item.character_id === person.id)?.status === "unpublished"
+                      ? "Republish Listing →"
+                      : "Publish to Marketplace →"}
               </button>
+            )}
+            {ownedError && !picking && !person.archived && (
+              <p className="rh-muted" role="alert">{ownedError}</p>
             )}
           </footer>
         </>

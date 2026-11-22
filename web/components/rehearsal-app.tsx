@@ -79,10 +79,17 @@ function Avatar({
   size?: string;
 }) {
   const [bad, setBad] = useState(false);
+  // Older saved demo scenes reference the previous SVG placeholders.
+  // Map them to the selected artwork without rewriting users' scene data.
+  const portrait = actor.avatar === "/creator/mira.svg"
+    ? "/portraits/mira.webp"
+    : actor.avatar === "/creator/leo.svg"
+      ? "/portraits/leo.webp"
+      : actor.avatar;
   return (
     <span className={"rh-avatar " + size}>
-      {actor.avatar && !bad ? (
-        <img src={actor.avatar} alt={actor.name} onError={() => setBad(true)} />
+      {portrait && !bad ? (
+        <img src={portrait} alt={actor.name} onError={() => setBad(true)} />
       ) : (
         <span>{actor.name.slice(0, 1)}</span>
       )}
@@ -1269,11 +1276,11 @@ export function RehearsalApp() {
                 <div className="rh-stage-art" aria-hidden="true">
                   <div className="rh-orbit" />
                   <div className="rh-art-person a">
-                    <img src="/creator/mira.svg" alt="" />
+                    <img src="/portraits/mira.webp" alt="" />
                     <span>LIN</span>
                   </div>
                   <div className="rh-art-person b">
-                    <img src="/creator/leo.svg" alt="" />
+                    <img src="/portraits/leo.webp" alt="" />
                     <span>XU</span>
                   </div>
                   <div className="rh-art-caption">

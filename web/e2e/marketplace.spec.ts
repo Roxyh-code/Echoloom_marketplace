@@ -13,6 +13,13 @@ test("bookshop-style discovery shows sample covers, search and filter", async ({
   await expect(page.locator(".em-filter.active")).toHaveCSS("background-color", "rgb(84, 64, 140)");
   await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /sample character Leo/ })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Portrait of Mira" })).toHaveAttribute("src", "/portraits/mira.webp");
+  await expect(page.getByRole("img", { name: "Portrait of Leo" })).toHaveAttribute("src", "/portraits/leo.webp");
+  await expect(page.getByLabel("Artwork concept Vesper, not yet playable")).toBeVisible();
+  await expect(page.getByLabel("Artwork concept Ren, not yet playable")).toBeVisible();
+  await expect(page.getByLabel("Artwork concept Vesper, not yet playable").locator("img")).toHaveAttribute("src", "/portraits/red-horn.webp");
+  await expect(page.getByLabel("Artwork concept Ren, not yet playable").locator("img")).toHaveAttribute("src", "/portraits/red-boy.webp");
+  await expect.poll(async () => page.locator(".em-book-grid img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
   await page.screenshot({ path: "test-results/editorial-marketplace.png", fullPage: true });
   await page.getByRole("searchbox", { name: "Search characters" }).fill("Mira");
   await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();

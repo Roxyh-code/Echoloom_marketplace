@@ -611,7 +611,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                             "wants": "An honest answer without revealing how much she knows."
                         },
                         "description": "A quiet, observant restorer. She knows Xu betrayed her.",
-                        "avatar": "/creator/mira.svg",
+                        "avatar": "/portraits/mira.webp",
                         "snapshot_revision": 1,
                     },
                     {
@@ -622,7 +622,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                             "wants": "Keep Lin from leaving; he believes she does not know."
                         },
                         "description": "An old friend, warm but evasive. He does not know Lin has discovered his betrayal.",
-                        "avatar": "/creator/leo.svg",
+                        "avatar": "/portraits/leo.webp",
                         "snapshot_revision": 1,
                     },
                 ]

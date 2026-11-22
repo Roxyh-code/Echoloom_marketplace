@@ -1,0 +1,115 @@
+/*
+ * Echoloom Fantasy Typography — a display / reading / interface type system.
+ *
+ * Philosopher gives character names and headlines a storybook / fantasy feel.
+ * Spectral keeps long English story passages comfortable to read.
+ * Nunito Sans is the friendly, readable UI companion (forms, navigation).
+ *
+ * Fonts are open-source Google Fonts; system and CJK fallbacks remain available.
+ * All existing Bazar layout, color, spacing and component behavior is retained.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800&family=Philosopher:wght@400;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap");
+
+:root {
+  --el-font-ui: "Nunito Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --el-font-display: "Philosopher", "Noto Serif SC", "Songti SC", "STSong", Georgia, serif;
+  --el-font-reading: "Spectral", "Noto Serif SC", "Songti SC", "STSong", Georgia, serif;
+}
+
+/* Default text and functional controls: stay approachable and legible. */
+html, body,
+.em-app, .rehearsal-app, .rh-sheet, .account-gate,
+button, input, textarea, select,
+.em-app :is(button,input,textarea,select),
+.rehearsal-app :is(button,input,textarea,select),
+.rh-sheet :is(button,input,textarea,select) {
+  font-family: var(--el-font-ui) !important;
+}
+
+/* Distinctive fantasy editorial / character display hierarchy. */
+.em-app .em-brand,
+.em-app .em-brand-mark,
+.em-app .em-hero h1,
+.em-app .em-section-title h2,
+.em-app .em-cover-title,
+.em-app .em-cover-monogram,
+.em-app .em-empty h3,
+.em-app .em-cast-copy p,
+.em-app article > h1,
+.em-app article h1,
+.rehearsal-app .rh-brand,
+.rehearsal-app .rh-top-title,
+.rehearsal-app :is(h1,h2,h3),
+.rehearsal-app .rh-card-open h3,
+.rehearsal-app .rh-character-pick strong,
+.rehearsal-app .mc-character-caption > strong,
+.rehearsal-app .mc-cover-title h1,
+.rehearsal-app .rh-cast-slot strong,
+.rehearsal-app .rh-speaker strong,
+.rehearsal-app .mc-portrait > span,
+.rh-sheet :is(h2,h3),
+.account-gate :is(h1,h2),
+.el-listing-editor :is(h1,h2) {
+  font-family: var(--el-font-display) !important;
+}
+
+.em-app .em-hero h1,
+.rehearsal-app :is(.rh-hero h1, .mc-library h1, .mc-create h1, .mc-cover-title h1),
+.account-gate h1,
+.el-listing-editor h1 {
+  font-weight: 700;
+  letter-spacing: -.3px;
+}
+
+.em-app .em-cover-title,
+.rehearsal-app .mc-character-caption > strong,
+.rehearsal-app .rh-character-pick strong,
+.rehearsal-app .rh-card-open h3 {
+  font-weight: 700;
+  line-height: 1.24;
+  letter-spacing: .08px;
+}
+
+.em-app .em-brand,
+.rehearsal-app .rh-brand,
+.account-gate .brand {
+  letter-spacing: -.55px;
+}
+
+/* Narrative should feel like reading fiction, rather than a chat dashboard. */
+.rehearsal-app .rh-block p,
+.rehearsal-app .rh-scene-opening p,
+.rehearsal-app .rh-review-summary p,
+.rehearsal-app .mc-facts p,
+.rehearsal-app .rh-source,
+.rh-sheet blockquote {
+  font-family: var(--el-font-reading) !important;
+}
+
+.rehearsal-app .rh-block p {
+  line-height: 1.85;
+  letter-spacing: .01em;
+}
+.rehearsal-app .rh-block.narration p {
+  font-style: italic;
+}
+.rehearsal-app .rh-speaker strong {
+  font-weight: 700;
+}
+
+/* Module-scoped account shell and public listing are deliberately included. */
+[class*="account-shell_brand__"],
+[class*="account-shell_heading__"],
+[class*="account-shell_formHeading__"] h2 {
+  font-family: var(--el-font-display) !important;
+}
+.em-app article :is(h1,h2),
+.em-app .em-empty h1 {
+  font-family: var(--el-font-display) !important;
+}
+
+/* Short screens still have enough room for distinctive ascenders and serifs. */
+@media (max-width: 360px) {
+  .em-app .em-hero h1 { line-height: 1.22; }
+  .rehearsal-app .mc-cover-title h1 { line-height: 1.18; }
+}

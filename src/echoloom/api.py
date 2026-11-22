@@ -395,146 +395,8 @@ def create_app(
             db.commit()
             return serialize(db, c)
 
-    @app.post("/api/characters/{cid}/conversations", status_code=201)
-    def new_conversation(cid: UUID, db: DbSession):
-        c = character(db, cid)
-        conv = Conversation(character_id=c.id)
-        db.add(conv)
-        db.commit()
-        return {"id": conv.id, "created_at": conv.created_at}
-
-    @app.get("/api/characters/{cid}/conversations")
-    def list_conversations(cid: UUID, db: DbSession):
-        c = character(db, cid)
-        return [
-            {"id": r.id, "created_at": r.created_at}
-            for r in db.scalars(
-                select(Conversation)
-                .where(Conversation.character_id == c.id)
-                .order_by(Conversation.created_at)
-            )
-        ]
-
-    def conversation(db, conv_id):
-        conv = db.get(Conversation, str(conv_id))
-        if not conv:
-            raise HTTPException(404, "Conversation not found.")
-        return conv
-
-    def messages(db, conv_id):
-        return [
-            {
-                "id": m.id,
-                "role": m.role,
-                "source_type": m.source_type,
-                "content": m.content,
-                "profile_version": m.profile_version,
-                "request_id": m.request_id,
-                "created_at": m.created_at,
-            }
-            for m in db.scalars(
-                select(Message)
-                .where(Message.conversation_id == str(conv_id))
-                .order_by(Message.timeline_order)
-            )
-        ]
-
-    @app.get("/api/conversations/{conv_id}/messages")
-    def get_messages(conv_id: UUID, db: DbSession):
-        conversation(db, conv_id)
-        return messages(db, conv_id)
-
-    @app.post("/api/conversations/{conv_id}/messages")
-    def send(conv_id: UUID, body: ChatInput, db: DbSession):
-        conv = conversation(db, conv_id)
-        key = conv.character_id
-        # Release the read transaction while waiting on another local request.
-        db.rollback()
-        with locks.hold(key):
-            conv = conversation(db, conv_id)
-            c = character(db, conv.character_id)
-            existing = db.scalar(
-                select(Message).where(
-                    Message.conversation_id == conv.id,
-                    Message.request_id == str(body.request_id),
-                    Message.role == "user",
-                )
-            )
-            if existing:
-                if existing.content != body.content:
-                    raise HTTPException(
-                        409, "This request ID was already used for a different message."
-                    )
-                return messages(db, conv.id)
-            # Bound rows read from DB too; old messages remain on disk.
-            recent = list(
-                db.scalars(
-                    select(Message)
-                    .where(Message.conversation_id == conv.id)
-                    .order_by(Message.timeline_order.desc())
-                    .limit(100)
-                )
-            )
-            history = [
-                {"role": m.role, "content": m.content, "source_type": m.source_type}
-                for m in reversed(recent)
-            ]
-            frame = app.state.companion.chat_frame(db, c, body.content)
-            recalled = None
-            if chat_memory and c.owner_id:
-                # Progressively index the same character's committed user
-                # turns across every conversation. No assistant messages.
-                recent_ids = list(db.scalars(
-                    select(Message.id)
-                    .join(Conversation, Message.conversation_id == Conversation.id)
-                    .where(Conversation.character_id == c.id,
-                           Message.role == "user",
-                           Message.source_type == "user_chat")
-                    .order_by(Message.created_at.desc(), Message.id.desc())
-                    .limit(settings.chat_memory_backfill_limit)
-                ))
-                chat_memory.schedule_ids(c.owner_id, c.id, list(reversed(recent_ids)))
-                result = chat_memory.lookup(c.owner_id, c.id, body.content)
-                recalled = result.get("items") or None
-            try:
-                context = chat_context(
-                    Profile.model_validate(revision(db, c).profile_json),
-                    history,
-                    body.content,
-                    settings,
-                    calendar_frame=frame,
-                    memory_frame=recalled,
-                )
-            except ValueError as exc:
-                raise HTTPException(422, str(exc)) from None
-            response = app.state.text.chat(context)
-            if not isinstance(response, str) or not response.strip():
-                raise ProviderError("The model did not return a valid reply.")
-            # Both messages commit together. Failed remote calls leave neither a false reply nor a duplicate user turn.
-            orders = allocate_timeline(db, conv.id, 2)
-            user_message = None
-            for order, (role, content) in zip(
-                orders, (("user", body.content), ("assistant", response)), strict=True
-            ):
-                message = Message(
-                        conversation_id=conv.id,
-                        timeline_order=order,
-                        request_id=str(body.request_id),
-                        role=role,
-                        content=content,
-                        profile_version=c.current_profile_version,
-                        created_at=now(),
-                    )
-                db.add(message)
-                if role == "user":
-                    user_message = message
-            app.state.companion.remember(db, c, body.content, frame)
-            conv.updated_at = c.updated_at = now()
-            db.commit()
-            # Index only after the authoritative chat transaction commits.
-            if chat_memory and user_message is not None:
-                chat_memory.schedule_ids(c.owner_id, c.id, [user_message.id])
-            return messages(db, conv.id)
+    # The legacy single-character chat endpoints are intentionally excluded.
+    # The marketplace uses the two-actor rehearsal service instead.
 
     def portrait(db, cid, image_id):
         item = db.get(Portrait, str(image_id))
@@ -714,14 +576,9 @@ def create_app(
             db.commit()
             (settings.image_directory / item.file_path).unlink(missing_ok=True)
 
-    from .story_service import register_story_routes
-
-    register_story_routes(app, factory, locks, settings)
-    from .companion_service import register_companion
     from .local_accounts import register_accounts
 
     register_accounts(app, factory, locks, settings)
-    register_companion(app, factory, locks, settings, calendar_provider, clock)
     from .creator_service import register_creator
 
     register_creator(app, factory, locks, settings, render, serialize)

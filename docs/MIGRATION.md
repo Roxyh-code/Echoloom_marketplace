@@ -18,7 +18,7 @@ All copied source modules retain their pre-existing functionality unless explici
 
 ## Temporary compatibility debt
 
-The **backend** currently still contains `story_service.py`, `companion_service.py`, `calendar_*.py`, `chat_memory.py` and their legacy DB models because the original `api.py` and Alembic revisions refer to them. They are **not** part of the planned Marketplace MVP. The companion worker is disabled by default; the old companion UI is not copied. Deleting those modules without first narrowing `api.py` and the shared models breaks the imported rehearsal and character code. Refactor this boundary after preserving a tested working baseline.
+The **backend API was narrowed after the passing baseline tests**: standalone story and single-character chat routes are not registered; `story_service.py`, `companion_service.py` and `calendar_auth.py` were removed. Shared legacy DB models in `companion_models.py` still define the local `Account` / `LoginSession` used by the extracted creator/rehearsal services and older Alembic revisions; `story_context.py`, `story_schemas.py` and `calendar_context.py` remain imported by the original provider adapter. Optional chat-memory support also remains a compatibility dependency. The old Companion worker is disabled by default. The old Companion UI was never copied. These residual compatibility structures should be slimmed down after marketplace account/DTO design is settled.
 
 The existing local-account system is **not** multi-user authorization for a public marketplace. Do **not** deploy this extraction as an open Marketplace or assume it has paid scene entitlements.
 

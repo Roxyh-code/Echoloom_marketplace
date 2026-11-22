@@ -32,9 +32,30 @@ App/AI developer: safe public catalog, two-character casting, scene setup, quote
 - Verify payer, successful transaction and finality, mint, exact recipient totals and unique order reference server-side; reject replayed signatures. This is a **demo revenue model, not a claim that a 10% platform share covers inference cost**.
 - **Status:** Option A selected by product owner on 2026-11-22, awaiting Solana teammate approval. This does not itself approve the illustrative token price.
 
-### Decision 3 — free/paid quota, retries and new-scene pricing: **pending product owner selection and teammate approval**
+### Decision 3 — free/paid quota, retries and new-scene pricing: **Option A selected by product owner; teammate approval pending**
 
-Decision 1 fixes the first free scene opening + one free direction, and five additional directions after a paid unlock of that free scene. Still to freeze: quota replenishment, how subsequent new scenes are purchased, whether a new-scene purchase includes an opening, and retry/failure/duplicate-request accounting.
+**Purchasing model: Scene + direction packs.**
+- **First-ever scene:** free opening generation + **one** user-directed continuation (Decision 1). No Solana payment or creator payout for the trial.
+- **Unlock the initial free scene:** a paid purchase adds **five** directions to that same scene.
+- **Refill an existing scene:** after the available directions are exhausted, a new paid purchase adds **five more directions** without closing or replacing the scene; repeated refills are allowed.
+- **Create any later scene:** purchase a new scene pack covering **one** opening generation **plus five** directions; further directions require refills.
+- **Demo price hypothesis:** 1.00 **test** USDC per paid unlock, refill or subsequent-scene pack, subject to joint agreement on actual amount and token mint. All paid pack purchases follow Decision 2's 45% / 45% / 10% creator/platform split, based on the scene's two creator-wallet snapshots.
+- **No calendar expiry** on an already purchased pack, subject to the service continuing to operate.
+
+**Direction accounting and failure policy:**
+- Reading, saving/viewing, editing a scene title, or manually editing existing text consumes **zero** directions.
+- A successful AI continuation, a successful AI rewrite/regeneration requested by the user, or a successful AI-generated new branch from history consumes **one** direction each.
+- AI calls that fail without generating a usable/persisted result consume **zero** directions.
+- A retry of the **same operation_id** must return the existing operation result without charging another direction or double-generating. Persist an operation record and use an atomic reservation/commit-or-release pattern to avoid concurrency overspend; do not trust client-side counters.
+- Rewriting content to a *new* result (even if disliked by user) costs a direction if successful; manual edits do not.
+- A scene's two roles and associated creator ownership/payout-wallet snapshots are fixed for that scene. Changing one or both characters requires a **new** scene purchase (unless it is the user's first-ever free scene).
+- The **first-ever free trial is one per verified user identity**, enforced server-side; exact anti-abuse account/wallet linkage remains a separate technical decision. Wallet-only Sybil protection is not assumed.
+
+**Status:** Option A and the recommended metering/edge-case rules selected by product owner on **2026-11-22**. Solana teammate review and approval remain **pending**. These decisions supersede the older “one paid scene may have only one five-direction pack” assumption.
+
+### Decision 4 — Solana network and payment token: **pending product owner choice and teammate approval**
+
+Still to confirm: cluster (Devnet/Testnet/Mainnet), exact payment token mint, decimals, RPC, faucets/token provisioning, and whether to use an existing test USDC mint or mint a custom token.
 
 
 ## Milestones

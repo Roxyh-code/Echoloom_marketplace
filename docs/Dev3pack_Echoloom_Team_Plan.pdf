@@ -1,0 +1,251 @@
+%PDF-1.4
+% ECHOLOOM ASCII PDF
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 5619 >>
+stream
+BT /F2 8.2 Tf 1 0 0 1 42 765 Tm (ECHOLOOM / DEV3PACK - PRODUCT & TECHNICAL PLAN) Tj ET
+0.65 G 0.5 w 42 756 m 570 756 l S
+BT /F2 16 Tf 1 0 0 1 42 737 Tm (Echoloom Marketplace) Tj ET
+BT /F2 13 Tf 1 0 0 1 42 703 Tm (Dev3pack - Product & Technical Plan) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 677 Tm (Discussion draft  /  22 November 2026) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 664.8 Tm (Repository: https://github.com/Roxyh-code/Echoloom_marketplace) Tj ET
+BT /F2 11 Tf 1 0 0 1 42 638.6 Tm (Project goal) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 615.6 Tm (A two-sided AI character marketplace: creators publish original or appropriately licensed characters; users choose two) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 603.4 Tm (characters, direct an interactive story, and pay to continue. We will demonstrate real Solana Devnet test-USDC) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 591.2 Tm (payments, not simulated checkout. The focus is a complete creator -> buyer -> paid AI story experience, rather than a) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 579 Tm (standalone crypto payment demo.) Tj ET
+BT /F2 13 Tf 1 0 0 1 42 552.8 Tm (1. Proposed product and technical decisions) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 526.8 Tm (#  |  Topic  |  Proposed decision) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 515.8 Tm (1  |  Monetization  |  Freemium: first story opening and one user-directed continuation are free.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 504.8 Tm (2  |  Revenue  |  Every paid pack splits 45% Creator A / 45% Creator B / 10% platform.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 493.8 Tm (3  |  Entitlements  |  Per-scene packs: paid unlocks/refills add five directions; later scenes are paid.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 482.8 Tm (4  |  Chain & asset  |  Solana Devnet + test USDC; standard Devnet mint and public RPC proposed below.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 471.8 Tm (5  |  Wallet stack  |  Wallet Standard + Solana Kit; Phantom required; Solflare secondary.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 460.8 Tm (6  |  Settlement  |  One atomic transaction, directly paying both creators and the platform.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 449.8 Tm (7  |  Authentication  |  Sign-In with Solana + FastAPI session + rate limiting.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 438.8 Tm (8  |  Verification  |  Backend RPC validation, replay protection, unlock only after finalized.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 427.8 Tm (9  |  Publishing  |  Wallet-authenticated allowlisted creators publish versioned listings.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 416.8 Tm (10  |  Checkout contract  |  Backend fixed price + immutable 15-minute Quote, idempotent Orders and a proposed expiry/recovery) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 405.8 Tm (policy.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 394.8 Tm (11  |  Ownership  |  Divide by technical domain; I own integration, we review shared interfaces.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 383.8 Tm (12  |  Delivery  |  Complete MVP + critical security tests, G1-G4 integration gates.) Tj ET
+BT /F2 13 Tf 1 0 0 1 42 358.8 Tm (2. Story, pricing and creator rules) Tj ET
+BT /F2 11 Tf 1 0 0 1 42 323.8 Tm (Packs and usage) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 300.8 Tm (Pack  |  What it does  |  Proposed demo price) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 289.8 Tm (FREE_TRIAL  |  First scene's AI opening plus 1 user-directed continuation; once per authenticated wallet.  |  Free) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 278.8 Tm (TRIAL_UNLOCK  |  Adds 5 directions to the original free scene.  |  1.00 test USDC) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 267.8 Tm (SCENE_REFILL  |  Adds 5 directions to an existing scene; can be purchased repeatedly.  |  1.00 test USDC) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 256.8 Tm (NEW_SCENE  |  Creates a later scene: one AI opening + 5 directions.  |  1.00 test USDC) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 240.8 Tm (My proposed hackathon demo default is 1.00 test USDC per paid pack \(easy to revise if you prefer another amount\). Free) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 228.6 Tm (trials do not create on-chain payments or creator payouts. Each successful AI continuation, rewrite/regeneration or new) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 216.4 Tm (branch costs one direction; intentionally requesting a new successful result costs another direction. Reading, title) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 204.2 Tm (changes and manual text edits cost nothing. Failed/unpersisted AI generation does not debit a direction. Repeating the) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 192 Tm (same operation_id must not double-generate or double-charge; concurrent requests cannot overspend quota. Purchased) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 179.8 Tm (packs do not expire by calendar date.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 162.6 Tm (A scene keeps its two characters, character versions, and creator payout snapshots. Changing the character pair) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 150.4 Tm (requires creating a new scene. For a 1.00 USDC pack, payouts are 0.45 / 0.45 / 0.10; if both characters belong to the same) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 138.2 Tm (receiving wallet, combine its share into 0.90, leaving 0.10 for the platform. All computations use integer token base units,) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 126 Tm (not floating point. Proposed rounding: for total units T, each creator receives floor\(45*T/100\) and the platform) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 113.8 Tm (receives the remainder; combine amounts payable to identical wallets. For the 1.00 USDC demo there is no rounding) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 101.6 Tm (difference.) Tj ET
+BT /F2 11 Tf 1 0 0 1 42 75.4 Tm (Creators and public listings) Tj ET
+0.7 G 0.5 w 42 41 m 570 41 l S
+BT /F1 7.5 Tf 1 0 0 1 42 27 Tm (Discussion draft  |  1 / 4) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 7219 >>
+stream
+BT /F2 8.2 Tf 1 0 0 1 42 765 Tm (ECHOLOOM / DEV3PACK - PRODUCT & TECHNICAL PLAN) Tj ET
+0.65 G 0.5 w 42 756 m 570 756 l S
+BT /F1 9.35 Tf 1 0 0 1 42 745 Tm (For the MVP, allow 2-3 approved creator wallets to create and publish characters; regular signed-in wallets can browse) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 732.8 Tm (and buy. Separate private Character data from public ListingRevision data. Public responses expose only approved fields) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 720.6 Tm (\(name, cover, short description, tags, public personality and creator display name\), never hidden backstory, private) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 708.4 Tm (memories or internal prompts. Publishing is checked against authenticated ownership on the server. Re-publishing creates) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 696.2 Tm (a new revision; it cannot silently change purchased scenes. Unpublishing stops new sales while normally preserving existing) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 684 Tm (purchases. Use only original or suitably licensed public-facing characters and artwork; NFTs are not required.) Tj ET
+BT /F2 13 Tf 1 0 0 1 42 657.8 Tm (3. Wallet, payment and backend security) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 631.8 Tm (Devnet defaults \(Decision 4\). RPC: https://api.devnet.solana.com; proposed Circle Devnet test-USDC mint:) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 619.6 Tm (4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU \(6 decimals\); use the mint's actual on-chain owner token program) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 607.4 Tm (\(expected: classic SPL Token; verify from RPC before testing\). Obtain test USDC from the Circle faucet and fee SOL from) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 595.2 Tm (the Solana faucet. The platform receiving wallet is configured server-side; creator payout wallets are taken from) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 583 Tm (verified listing snapshots. The buyer pays gas and, when necessary, the rent for missing recipient associated token) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 570.8 Tm (accounts \(ATAs\); create them idempotently as part of the same transaction. Keep all actual wallet addresses and) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 558.6 Tm (credentials in configuration, not hardcoded in UI.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 541.4 Tm (Wallet/auth. We use Wallet Standard with @solana/kit \(and compatible React integration\). First priority: Phantom on) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 529.2 Tm (desktop Chrome. Solflare is a secondary compatibility target. For login, FastAPI issues a short-lived, single-use SIWS) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 517 Tm (challenge/nonce; the wallet signs; FastAPI verifies signature/domain/expiry and creates a secure HttpOnly session;) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 504.8 Tm (proposed deployment uses a same-origin /api proxy, HttpOnly + SameSite=Lax cookies, Secure on HTTPS and CSRF protection) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 492.6 Tm (on mutations. Wallet switching requires fresh authentication. Rate-limit free-trial, sign-in and expensive AI requests.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 480.4 Tm (One free trial per wallet is enforceable; one per real person is not Sybil-proof.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 463.2 Tm (Atomic direct split. The buyer signs one Devnet transaction containing the required USDC transfers to the two creator) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 451 Tm (wallets and the platform, plus a server-issued unique order reference. Proposed format: one UTF-8 Memo instruction) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 438.8 Tm (containing ECHOLOOM:ORDER:<order_reference>. Transfers must succeed or fail together; we do not custody creator) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 426.6 Tm (funds or build a custom Solana Program for this MVP. Buyer covers Devnet SOL transaction fees and any agreed) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 414.4 Tm (token-account creation cost.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 397.2 Tm (Backend verification is mandatory. The browser submits only a transaction signature; FastAPI checks chain data through) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 385 Tm (RPC before unlocking anything:) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 367.8 Tm (1. Correct cluster, successful transaction, status finalized \(not merely processed or confirmed\).) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 355.6 Tm (2. Buyer/source authority matches the authenticated wallet; exact USDC mint and token program match the Quote.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 343.4 Tm (3. All recipient wallets/token accounts, ATA owners, integer amounts and net payment effects match the frozen payouts,) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 331.2 Tm (including merged recipients; allow only expected token transfers, idempotent ATA setup, the unique Memo and necessary) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 319 Tm (compute-budget instructions \(reject unexpected value-moving operations\).) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 306.8 Tm (4. The transaction carries the correct order reference and is tied to that Order.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 294.6 Tm (5. The signature has not paid another Order; database uniqueness and atomic writes prevent duplicate entitlement grants.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 277.4 Tm (A temporary RPC failure or a transaction not yet finalized remains pending and retryable. Repeated verification must) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 265.2 Tm (return the same result. If the buyer closes the browser after paying, they can retrieve the Order and recover the) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 253 Tm (entitlement. Proposed 15-minute expiry rule \(Decision 10\): Order creation and the transaction's chain inclusion must) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 240.8 Tm (occur before quote.expires_at \(use finalized transaction blockTime where available\). If it landed in time but finalizes) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 228.6 Tm (later, honor it. If it lands after expiry, or the timestamp cannot be established, do not auto-grant or request another) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 216.4 Tm (payment: flag NEEDS_RECONCILIATION for manual resolution/refund or verified credit. Record submitted signatures even) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 204.2 Tm (when RPC is temporarily unavailable.) Tj ET
+BT /F2 13 Tf 1 0 0 1 42 178 Tm (4. Shared Quote / Order API \(contract to freeze at G1\)) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 152 Tm (The backend is the price and recipient authority. An immutable Quote is valid for 15 minutes and freezes the authenticated) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 139.8 Tm (buyer, purchase type, scene or scene draft, character/listing revisions, mint, total amount and recipient payout lines.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 127.6 Tm (The frontend cannot set prices or wallets. Material changes require a new Quote. For all USDC values, send base-unit) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 115.4 Tm (integers as strings \("1000000" = 1.00 USDC at 6 decimals\).) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 98.2 Tm (API or function  |  Owner  |  Contract) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 87.2 Tm (POST /api/marketplace/scene-quotes  |  Me  |  Receive purchase_type + scene_id or server-owned scene_draft_id; return immutable) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 76.2 Tm (Quote.) Tj ET
+0.7 G 0.5 w 42 41 m 570 41 l S
+BT /F1 7.5 Tf 1 0 0 1 42 27 Tm (Discussion draft  |  2 / 4) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 11 0 R >>
+endobj
+11 0 obj
+<< /Length 6932 >>
+stream
+BT /F2 8.2 Tf 1 0 0 1 42 765 Tm (ECHOLOOM / DEV3PACK - PRODUCT & TECHNICAL PLAN) Tj ET
+0.65 G 0.5 w 42 756 m 570 756 l S
+BT /F1 8.55 Tf 1 0 0 1 44 745 Tm (POST /api/marketplace/orders  |  Me  |  Receive quote_id + idempotency key; return Order with unique order_reference.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 734 Tm (payQuote\(quote, order\)  |  You  |  Build/sign/send the exact atomic USDC transaction; return signature.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 723 Tm (POST /api/marketplace/orders/{id}/verify  |  Me, with your fixtures  |  Verify on-chain signature and issue the paid entitlement) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 712 Tm (once.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 701 Tm (GET /api/marketplace/orders/{id}  |  Me  |  Poll payment status and recover after disconnect/browser closure.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 690 Tm (POST /api/marketplace/scenes/{id}/directions  |  Me  |  Enforce quotas and idempotent AI-generation operations.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 674 Tm (Example Quote \(recipient addresses are placeholders; duplicate wallet lines would be merged\):) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 656.8 Tm ({) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 646.3 Tm (  "contract_version": 1, "quote_id": "quote_001",) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 635.8 Tm (  "purchase_type": "SCENE_REFILL", "scene_id": "scene_123",) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 625.3 Tm (  "buyer_wallet": "<buyer>", "cluster": "devnet",) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 614.8 Tm (  "token_mint": "<agreed-devnet-usdc-mint>", "token_decimals": 6,) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 604.3 Tm (  "total_minor_units": "1000000",) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 593.8 Tm (  "payout_lines": [) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 583.3 Tm (    {"wallet": "<creator-a>", "amount_minor_units": "450000"},) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 572.8 Tm (    {"wallet": "<creator-b>", "amount_minor_units": "450000"},) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 562.3 Tm (    {"wallet": "<platform>", "amount_minor_units": "100000"}) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 551.8 Tm (  ],) Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 541.3 Tm (  "expires_at": "<UTC ISO-8601; 15 minutes after issuance>") Tj ET
+BT /F3 8.5 Tf 1 0 0 1 52 530.8 Tm (}) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 515.3 Tm (Order flow: POST /orders {"quote_id":"quote_001"} -> {order_id, order_reference, status:"PENDING"} -> payQuote\(\) ->) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 503.1 Tm (POST /orders/{id}/verify {"transaction_signature":"..."} -> PENDING/VERIFYING, then PAID + exactly one entitlement) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 490.9 Tm (after finalized \(or REJECTED for demonstrably invalid transactions\). GET /orders/{id} supports recovery. Proposed API) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 478.7 Tm (defaults: send Idempotency-Key on Order creation and AI operations; return consistent JSON { "code": "...", "message":) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 466.5 Tm ("..." } errors \(401 unauthenticated, 403 unauthorized, 409 expired/duplicate/conflict, 422 invalid payment or input, 503) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 454.3 Tm (RPC temporarily unavailable\). Memo encoding is ECHOLOOM:ORDER:<order_reference>. Fail verification on unexpected) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 442.1 Tm (value-transfer instructions. At G1, compare fixtures before implementation. Keep separate persisted records for) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 429.9 Tm (Creator, Character, ListingRevision, Scene, Quote, Order, PaymentTransaction, Entitlement and GenerationOperation;) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 417.7 Tm (enforce uniqueness and atomic updates in the database. Proposed persistence workflow: use SQLAlchemy models and Alembic) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 405.5 Tm (migrations; transactions uniquely bind a signature to one order, and entitlement grants to one paid order.) Tj ET
+BT /F2 13 Tf 1 0 0 1 42 379.3 Tm (5. Who builds what - branches and PR workflow) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 353.3 Tm (Branch / owner  |  Work and code boundary) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 342.3 Tm (feat/marketplace-app - Me \(App / AI / Backend\)  |  Creator and listing UI, character/scene experience, FastAPI + SQLAlchemy models,) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 331.3 Tm (session verification, Quote/Order APIs, quota/entitlement enforcement and backend RPC validation. Primarily src/echoloom/ and the) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 320.3 Tm (marketplace UI under web/.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 309.3 Tm (feat/solana-wallet-payment - You \(Web3\)  |  Wallet Standard/Kit provider, Phantom connect/sign/send, Devnet USDC setup, ATA/fee) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 298.3 Tm (handling, atomic 45/45/10 transfer builder, order-reference instruction, transaction status UI and representative fixtures. Prefer) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 287.3 Tm (web/lib/solana/ and web/components/wallet/.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 276.3 Tm (feat/checkout-integration - Me \(integration owner\) + you  |  Wire Quote -> Order -> wallet payment -> finalized backend) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 265.3 Tm (verification -> story entitlement; fix interface mismatches together.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 254.3 Tm (main - Shared  |  Always buildable and demo-ready. Merge reviewed, tested PRs rather than pushing unfinished work directly.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 238.3 Tm (We should build in parallel against frozen sample JSON. Each developer owns their primary directories, uses small PRs, and) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 226.1 Tm (reviews changes to shared types/endpoints or the other developer's files. I coordinate final application integration; you) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 213.9 Tm (lead wallet/transaction/RPC-format troubleshooting. We jointly review payment verification semantics and run real chain) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 201.7 Tm (tests. Run Next.js build/TypeScript checks and relevant Python tests before merge; keep secrets/private keys out of) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 189.5 Tm (the repository \(.env.example contains placeholders only\). These branch names are my proposed defaults; feel free to) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 177.3 Tm (suggest different names or boundaries if your Solana workflow needs them.) Tj ET
+BT /F2 13 Tf 1 0 0 1 42 151.1 Tm (6. Milestones and acceptance) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 125.1 Tm (Gate  |  Deliverable / exit condition) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 114.1 Tm (G1 - Contract freeze  |  Review the proposed defaults in Decisions 4, 6, 8 and 10; verify mint/program/ATA behavior, exchange example) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 103.1 Tm (JSON and test fixtures, then both developers code independently.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 92.1 Tm (G2 - First real payment  |  Phantom executes a real Devnet test-USDC atomic split for a Backend Quote/Order; transaction is) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 81.1 Tm (inspectable via RPC/Explorer.) Tj ET
+0.7 G 0.5 w 42 41 m 570 41 l S
+BT /F1 7.5 Tf 1 0 0 1 42 27 Tm (Discussion draft  |  3 / 4) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 13 0 R >>
+endobj
+13 0 obj
+<< /Length 2877 >>
+stream
+BT /F2 8.2 Tf 1 0 0 1 42 765 Tm (ECHOLOOM / DEV3PACK - PRODUCT & TECHNICAL PLAN) Tj ET
+0.65 G 0.5 w 42 756 m 570 756 l S
+BT /F1 8.55 Tf 1 0 0 1 44 745 Tm (G3 - Paid story works  |  FastAPI validates finalized chain data, grants exactly five directions once, and the AI scene actually) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 734 Tm (continues.) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 723 Tm (G4 - Test + submit  |  Working creator -> free scene -> paid unlock/refill -> continued story demo, critical negative/recovery tests,) Tj ET
+BT /F1 8.55 Tf 1 0 0 1 44 712 Tm (clean builds and a 2-3 minute walkthrough video plus runnable app.) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 696 Tm (Must-pass tests \(Decision 12\): free trial once per wallet; correct trial unlock/refill/new-scene quotas; failed AI) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 683.8 Tm (generation and duplicate operation_id do not consume extra credits; unpublished/private data stay protected; wrong) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 671.6 Tm (buyer, mint, token program, amount, recipient, reference or unsuccessful transaction cannot unlock; non-finalized) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 659.4 Tm (payment does not unlock; reused signature or repeated verification cannot grant twice; browser-close/RPC-failure) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 647.2 Tm (recovery works; same-wallet creators receive combined payout; quote-expiry reconciliation is documented. Phantom +) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 635 Tm (desktop Chrome must work; Solflare is best effort. These are hackathon acceptance checks, not a production security) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 622.8 Tm (audit. Schedule proposal: use G1-G4 as relative gates, rather than invent fixed dates until we know our actual availability) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 610.6 Tm (and event deadline. The 2-3 minute video and runnable demo are our target deliverables; adjust to the organizer's official) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 598.4 Tm (submission requirements.) Tj ET
+BT /F2 13 Tf 1 0 0 1 42 572.2 Tm (7. Optional P2 - Voice interaction \(stretch goal\)) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 546.2 Tm (Only if both of us have extra time after G3 and the critical G4 tests pass. First add TTS play/pause for AI-generated) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 534 Tm (character dialogue, ideally with a consistent voice per character; STT voice input is optional after that. Prefer existing) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 521.8 Tm (services; review voice/image rights, API costs and latency. Voice does not change the paid-direction quota and is not a) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 509.6 Tm (condition of MVP completion. Extra dashboards, NFT features, complex search and cosmetic polish also remain secondary) Tj ET
+BT /F1 9.35 Tf 1 0 0 1 42 497.4 Tm (to the paid story flow.) Tj ET
+0.7 G 0.5 w 42 41 m 570 41 l S
+BT /F1 7.5 Tf 1 0 0 1 42 27 Tm (Discussion draft  |  4 / 4) Tj ET
+endstream
+endobj
+xref
+0 14
+0000000000 65535 f 
+0000000030 00000 n 
+0000000079 00000 n 
+0000000156 00000 n 
+0000000253 00000 n 
+0000000355 00000 n 
+0000000450 00000 n 
+0000000596 00000 n 
+0000006266 00000 n 
+0000006412 00000 n 
+0000013682 00000 n 
+0000013830 00000 n 
+0000020814 00000 n 
+0000020962 00000 n 
+trailer
+<< /Size 14 /Root 1 0 R >>
+startxref
+23891
+%%EOF

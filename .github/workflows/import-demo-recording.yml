@@ -24,6 +24,8 @@ jobs:
             --name echoloom-character-demo-video \
             --dir "$RUNNER_TEMP/recording"
           test -s "$RUNNER_TEMP/recording/Echoloom_Character_Demo.webm"
+      - name: Install FFmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
       - name: Create self-contained MP4 with title cards
         run: |
           set -euo pipefail

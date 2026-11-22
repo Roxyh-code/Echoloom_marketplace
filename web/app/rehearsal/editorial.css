@@ -402,3 +402,147 @@
 @media (prefers-reduced-motion: reduce) {
   .rehearsal-app *, .rh-sheet * { transition: none !important; scroll-behavior: auto !important; }
 }
+
+
+/* BAZAR MATCH: all retained interactive character / rehearsal screens.
+   Actual .fig home uses white #FFFFFF, neutral cards #FAFAFA/#F5F5F5,
+   black #121212 and purple #54408C. This final layer overrides previous
+   independent warm-paper interpretation; behavior remains unchanged. */
+.rehearsal-app,.rh-sheet {
+  --rh-bg:#FFFFFF; --rh-top:#FFFFFF; --rh-card:#FFFFFF;
+  --rh-raised:#F5F5F5; --rh-gold:#54408C; --rh-text:#121212;
+  --rh-muted:#7A7A7A; --rh-border:#E8E8E8;
+  --ed-plum:#54408C; --ed-terracotta:#54408C;
+  --ed-paper:#FFFFFF; --ed-ivory:#FFFFFF;
+  --ed-rule:#E8E8E8; --ed-subtle:#7A7A7A;
+  font: 15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,"Segoe UI",Arial,sans-serif;
+  color:#121212;
+}
+.rehearsal-app { background:#FFFFFF; box-shadow:none; }
+.rehearsal-app :is(h1,h2,h3),.rh-sheet :is(h2,h3) {
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,"Segoe UI",Arial,sans-serif;
+  font-style:normal;
+  color:#121212;
+  letter-spacing:-.2px;
+  font-weight:700;
+}
+.rehearsal-app h1 { font-size:29px; line-height:1.22; }
+.rehearsal-app h1 em { color:#54408C; font-weight:700; font-style:normal; }
+.rehearsal-app h2,.rh-sheet h2 { font-size:20px; font-weight:700; }
+.rehearsal-app .rh-pad { background:#FFFFFF; }
+.rehearsal-app .rh-top,
+.rehearsal-app .rh-list .rh-top,
+.rehearsal-app .mc-top,
+.rh-sheet > header {
+  background:#FFFFFF;
+  border-bottom:1px solid #E8E8E8;
+}
+.rehearsal-app .rh-brand {
+  font:800 22px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif;
+  color:#121212; letter-spacing:-.5px;
+}
+.rehearsal-app .rh-brand-dot { color:#54408C; }
+.rehearsal-app .rh-top-title { font:700 17px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; color:#121212; }
+.rehearsal-app .rh-top small { font-size:10px; letter-spacing:.7px; color:#7A7A7A; }
+.rehearsal-app .rh-top > .rh-icon { background:#FAFAFA; color:#54408C; border-color:#E8E8E8; border-radius:10px; }
+.rehearsal-app .rh-eyebrow,.rh-sheet .rh-eyebrow { color:#54408C; letter-spacing:.8px; }
+.rehearsal-app .rh-primary,.rh-sheet .rh-primary {
+  background:#54408C; color:#FFFFFF !important; border:1px solid #54408C;
+  border-radius:10px; box-shadow:none; font-weight:650!important;
+}
+.rehearsal-app .rh-primary:hover:not(:disabled),.rh-sheet .rh-primary:hover:not(:disabled) { background:#352368; }
+.rehearsal-app .rh-secondary,.rh-sheet .rh-secondary {
+  background:#FFFFFF; color:#54408C!important; border:1px solid #D6D6D6;
+  border-radius:10px;
+}
+.rehearsal-app .rh-text-button,.rh-sheet .rh-text-button { color:#54408C!important; }
+.rehearsal-app .rh-hero {
+  background:#FAF9FD; border:0; border-radius:14px;
+  margin:20px 20px 0; padding:24px 22px 0;
+}
+.rehearsal-app .rh-hero h1 { font-size:28px; letter-spacing:-.4px; }
+.rehearsal-app .rh-hero p { color:#525252; font-size:13px; }
+.rehearsal-app .rh-hero .rh-primary { border-radius:9px; }
+.rehearsal-app .rh-stage-art { background:#FAF9FD; }
+.rehearsal-app .rh-stage-art:after { background:linear-gradient(0deg,#FAF9FD 0,transparent 55%); }
+.rehearsal-app .rh-art-caption { color:#525252; }
+.rehearsal-app .rh-art-person { border-radius:10px; border-color:#FFFFFF; box-shadow:0 4px 10px #12121212; }
+.rehearsal-app .rh-library { background:#FFFFFF; }
+.rehearsal-app .rh-section-title h2 { font-size:20px; }
+.rehearsal-app .rh-scene-card { background:#FFFFFF; border:1px solid #E8E8E8; border-radius:10px; box-shadow:none; }
+.rehearsal-app .rh-card-open h3 { font:650 17px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; color:#121212; }
+.rehearsal-app .rh-card-open p,.rehearsal-app .rh-card-open small { color:#7A7A7A; }
+.rehearsal-app .rh-search,.rh-sheet .rh-search { background:#FAFAFA; border-color:#E8E8E8; border-radius:10px; }
+.rehearsal-app .rh-filters button.active,.rh-sheet .rh-filters button.active { background:#54408C; color:#FFFFFF; border-color:#54408C; }
+.rehearsal-app .rh-filters button { background:#FFFFFF; color:#525252; border-color:#E8E8E8; }
+.rehearsal-app .rh-example { background:#FAF9FD; border:1px solid #E5DEF8; border-radius:10px; }
+.rehearsal-app .rh-example strong { font:700 17px -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; color:#121212; }
+.rehearsal-app .rh-example-star { color:#54408C; }
+.rehearsal-app .rh-nav { background:#FFFFFF; border-color:#E8E8E8; }
+.rehearsal-app .rh-nav .active { color:#54408C!important; }
+.rehearsal-app .rh-nav > * { color:#7A7A7A!important; }
+.rehearsal-app .rh-cast-slot { background:#FAFAFA; border:1px solid #E8E8E8; border-radius:10px; }
+.rehearsal-app .rh-cast-slot.selected { border-color:#54408C; box-shadow:0 0 0 1px #54408C; }
+.rehearsal-app .rh-cast-slot strong { font:650 16px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; color:#121212; }
+.rehearsal-app .rh-slot-letter,.rehearsal-app .rh-add-circle { color:#54408C; }
+.rehearsal-app .rh-add-circle { background:#FAF9FD; border-color:#CABCEF; border-radius:8px; }
+.rehearsal-app .rh-character-list article { background:#FFFFFF; border:1px solid #E8E8E8; border-radius:10px; }
+.rehearsal-app .rh-character-list article.selected { background:#FAF9FD; border-color:#54408C; }
+.rehearsal-app .rh-character-pick strong { font:700 16px/1.25 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; color:#121212; }
+.rehearsal-app .rh-character-pick > .rh-avatar { border-radius:10px 10px 0 0; }
+.rehearsal-app .rh-character-pick small { color:#7A7A7A; }
+.rehearsal-app .rh-character-pick .rh-picked { color:#54408C; }
+.rehearsal-app .rh-form-footer { background:#FFFFFF; border-top-color:#E8E8E8; }
+.rehearsal-app .rh-source { background:#FAFAFA; color:#525252; border-left-color:#54408C; }
+.rehearsal-app .rh-details,.rh-sheet .rh-details { border-color:#E8E8E8; }
+.rehearsal-app .rh-details summary,.rh-sheet .rh-details summary { color:#121212; }
+.rehearsal-app .rh-reading { background:#FFFFFF; color:#121212; border-color:#F5F5F5; }
+.rehearsal-app .rh-block p { font-family:Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; line-height:1.85; color:#333333; }
+.rehearsal-app .rh-block.narration p { color:#525252; }
+.rehearsal-app .rh-block.action p { color:#7A7A7A; }
+.rehearsal-app .rh-speaker strong { color:#54408C; font:700 15px -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; }
+.rehearsal-app .rh-segment { border-top-color:#E8E8E8; }
+.rehearsal-app .rh-stage-footer { background:#FFFFFF; border-top-color:#E8E8E8; }
+.rehearsal-app .rh-stage-context { background:#FAFAFA; border-bottom-color:#E8E8E8; }
+.rehearsal-app .rh-stage-context > button { color:#525252; }
+.rehearsal-app .rh-send { background:#54408C; color:#FFFFFF!important; }
+.rehearsal-app .rh-review-summary { background:#FAFAFA; border:1px solid #E8E8E8; border-radius:10px; }
+.rehearsal-app .rh-review-summary p { color:#333333; font:400 16px/1.8 Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; }
+.rehearsal-app .rh-review-detail h3 { color:#121212; }
+.rehearsal-app .rh-review-detail p { color:#7A7A7A; border-left-color:#E8E8E8; }
+.rehearsal-app .mc-character-card .mc-portrait { border-radius:10px; border:0; box-shadow:none; background:#F5F5F5; }
+.rehearsal-app .mc-character-caption > strong { color:#121212; font:700 16px/1.25 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; }
+.rehearsal-app .mc-character-caption > small { color:#7A7A7A; }
+.rehearsal-app .mc-character-caption > span { color:#54408C; }
+.rehearsal-app .mc-pending { background:#FAF9FD; border-color:#E5DEF8; border-radius:10px; }
+.rehearsal-app .mc-character-cover { background:#F5F5F5; }
+.rehearsal-app .mc-cover-title h1 { color:#FFFFFF; font:700 32px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; }
+.rehearsal-app .mc-cover-title p { color:#FFFFFF; }
+.rehearsal-app .mc-cover-edit { color:#54408C!important; background:#FFFFFF; border:1px solid #E8E8E8; border-radius:9px; }
+.rehearsal-app .mc-profile-body { background:#FFFFFF; }
+.rehearsal-app .mc-facts p { color:#333333; font:400 15px/1.7 Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; }
+.rh-sheet { background:#FFFFFF; color:#121212; border-color:#E8E8E8; border-radius:16px 16px 0 0; }
+.rh-sheet > header,.rh-sheet .rh-sheet-body { background:#FFFFFF; }
+.rh-sheet > header h2 { font:700 20px -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; }
+.rh-sheet .rh-interventions > button,
+.rh-sheet .rh-takeover-picks button,
+.rh-sheet .rh-version-list > article,
+.rh-sheet .rh-direction-card,
+.rh-sheet .rh-edit-type label,
+.rh-sheet .mc-portrait-grid section {
+  background:#FFFFFF; border-color:#E8E8E8; border-radius:10px;
+}
+.rh-sheet .rh-version-list > article.current { background:#FAF9FD; border-color:#54408C; }
+.rh-sheet .rh-direction-card h3 { color:#121212; font-weight:700; }
+.rh-sheet .rh-interventions > button > svg { color:#54408C; }
+.rh-sheet .rh-actor-detail h2,.rh-sheet .rh-takeover-picks strong { color:#121212; }
+.rh-sheet .rh-active-direction { background:#FAF9FD; border-color:#E5DEF8; }
+.rh-sheet blockquote { background:#FAFAFA; border-left-color:#54408C; color:#333333; }
+.rh-sheet .rh-extracted { background:#FAFAFA; border-color:#E8E8E8; }
+.rehearsal-app input:not([type="radio"]):not([type="checkbox"]),.rehearsal-app textarea,.rehearsal-app select,
+.rh-sheet input:not([type="radio"]):not([type="checkbox"]),.rh-sheet textarea,.rh-sheet select {
+  background:#FFFFFF; color:#121212; border:1px solid #D6D6D6; border-radius:10px;
+}
+.rehearsal-app input::placeholder,.rehearsal-app textarea::placeholder,.rh-sheet input::placeholder,.rh-sheet textarea::placeholder { color:#A6A6A6; }
+.rehearsal-app :is(input,textarea,select):focus-visible,.rh-sheet :is(input,textarea,select):focus-visible { outline-color:#A28CE0; }
+@media (min-width:650px){ .rehearsal-app { border:1px solid #E8E8E8; box-shadow:0 8px 40px #1212120B; } }

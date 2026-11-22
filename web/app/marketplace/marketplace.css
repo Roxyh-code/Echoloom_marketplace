@@ -99,3 +99,135 @@
 @media (prefers-reduced-motion: reduce) {
  .em-app *, .em-app *::before, .em-app *::after { transition: none !important; scroll-behavior: auto !important; }
 }
+
+
+/* BAZAR MATCH — references the real 375px 4. Home frame, not a literary palette.
+   SF Pro Display appears in Home; Styleguide specifies Open Sans / Roboto. */
+.em-app {
+  --em-paper: #FFFFFF;
+  --em-ink: #121212;
+  --em-muted: #7A7A7A;
+  --em-border: #E8E8E8;
+  --em-plum: #54408C;
+  --em-terracotta: #54408C;
+  background: #FFFFFF;
+  color: #121212;
+  box-shadow: none;
+  width: min(100%, 520px);
+  font: 14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,"Segoe UI",Arial,sans-serif;
+}
+.em-page { padding: 0 22px 34px; }
+.em-header { height: 74px; border-bottom: 1px solid #F5F5F5; }
+.em-brand, .em-brand-mark {
+  font-family: -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,"Segoe UI",Arial,sans-serif;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: -.6px;
+}
+.em-brand { font-size: 24px; }
+.em-brand-mark,.em-brand-dot { color: #54408C; }
+.em-top-create {
+  background: #FAF9FD;
+  border-color: #E5DEF8;
+  color: #54408C;
+  border-radius: 10px;
+}
+.em-top-create:hover { background: #E5DEF8; }
+.em-hero {
+  border: 0;
+  border-radius: 14px;
+  background: #FAF9FD;
+  padding: 23px 22px;
+  min-height: 210px;
+  margin-top: 20px;
+}
+.em-hero::after, .em-hero-ornament { display: none; }
+.em-kicker { font-weight: 700; letter-spacing: 1px; color: #54408C; font-size: 10px; }
+.em-kicker-muted { color: #7A7A7A; }
+.em-hero h1 {
+  font: 700 29px/1.23 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,"Segoe UI",Arial,sans-serif;
+  letter-spacing: -.45px;
+  margin: 14px 0 9px;
+  color: #121212;
+}
+.em-hero h1 em { color: #54408C; font-style: normal; font-weight: 700; }
+.em-hero p { color: #525252; font-size: 13px; max-width: 270px; }
+.em-hero-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 11px;
+  padding: 10px 13px;
+  border: 0;
+  border-radius: 9px;
+  color: #FFFFFF;
+  background: #54408C;
+  font-weight: 650;
+  font-size: 12px;
+}
+.em-discover { padding-top: 30px; }
+.em-section-title h2 {
+  font: 700 20px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,"Segoe UI",Arial,sans-serif;
+  color: #121212;
+  letter-spacing: -.15px;
+  margin: 6px 0 17px;
+}
+.em-section-star { display: none; }
+.em-search {
+  background: #FAFAFA;
+  border-color: #E8E8E8;
+  color: #7A7A7A;
+  border-radius: 10px;
+  min-height: 46px;
+}
+.em-search input { color: #121212; }
+.em-search:focus-within { outline: 2px solid #A28CE0; }
+.em-search input::placeholder { color: #A6A6A6; }
+.em-filters { gap: 8px; }
+.em-filter {
+  color: #525252;
+  border-color: #E8E8E8;
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 8px 12px;
+}
+.em-filter.active { color: #FFFFFF; background: #54408C; border-color: #54408C; }
+.em-shelf-header { color: #7A7A7A; font-size: 10px; letter-spacing: .5px; }
+.em-book-grid { gap: 20px 14px; }
+.em-cover {
+  background: #F5F5F5;
+  border-radius: 10px;
+  box-shadow: none;
+  overflow: hidden;
+}
+.em-cover::after { border: 1px solid #F5F5F5; border-radius: 10px; }
+.em-cover-edition {
+  top: 8px; left: 8px;
+  color: #54408C; background: #FAF9FDF0;
+  font-size: 8px; border-radius: 5px;
+}
+.em-cover-title {
+  font: 650 16px/1.25 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,"Segoe UI",Arial,sans-serif;
+  color: #121212;
+  margin-top: 9px;
+}
+.em-cover-desc { font-size: 12px; color: #7A7A7A; }
+.em-cover-caption { color: #54408C; font-size: 10px; }
+.em-cover-monogram { color: #54408C; font-style: normal; }
+.em-cover-selected { background: #54408C; }
+.em-empty { background: #FAFAFA; border-color: #E8E8E8; border-radius: 12px; }
+.em-empty > span,.em-empty a { color: #54408C; }
+.em-empty h3 { font: 700 19px -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; color: #121212; }
+.em-empty p { color: #7A7A7A; }
+.em-note { color: #7A7A7A; border-top-color: #E8E8E8; }
+.em-note span,.em-note strong { color: #54408C; }
+.em-cast-tray { background: #FFFFFF; border-top-color: #E8E8E8; box-shadow: 0 -3px 12px #12121212; }
+.em-cast-copy > span { color: #7A7A7A; }
+.em-cast-copy p { font: 650 16px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif; color: #121212; }
+.em-cast-count,.em-cast-action { color: #54408C; }
+.em-cast-action { background: #54408C; color: #FFFFFF; border-radius: 9px; }
+.em-bottom-nav { background: #FFFFFFF5; border-top-color: #E8E8E8; }
+.em-bottom-nav a { color: #7A7A7A; }
+.em-bottom-nav a[aria-current="page"] { color: #54408C; }
+@media (min-width: 650px) { .em-app { border: 1px solid #E8E8E8; box-shadow: 0 8px 40px #1212120B; } }
+@media (max-width: 360px) { .em-hero h1 { font-size: 27px; } .em-cover-title { font-size: 15px; } }

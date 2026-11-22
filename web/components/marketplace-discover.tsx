@@ -5,13 +5,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Character, Scene } from "./rehearsal-api";
 import { blankSetup, operation, rehearsal } from "./rehearsal-api";
+import { listPublishedListings, type MarketplaceListing } from "./marketplace-api";
 
 type ShelfItem = {
   id: string;
   name: string;
   description: string;
   image: string | null;
-  kind: "sample" | "mine" | "concept";
+  kind: "sample" | "mine" | "concept" | "published";
+  creator?: string;
+  tags?: string[];
 };
 
 const samples: ShelfItem[] = [
@@ -64,12 +67,12 @@ function Cover({ item, selected, onSelect }: { item: ShelfItem; selected: boolea
     <>
       <span className={"em-cover em-cover-" + item.kind}>
         {item.image ? <img src={item.image} alt={"Portrait of " + item.name} loading="lazy" /> : <span className="em-cover-monogram">{item.name.slice(0, 1)}</span>}
-        <span className="em-cover-edition">{item.kind === "sample" ? "STORY PREVIEW" : item.kind === "concept" ? "ART CONCEPT" : "YOUR CHARACTER"}</span>
+        <span className="em-cover-edition">{item.kind === "sample" ? "STORY PREVIEW" : item.kind === "concept" ? "ART CONCEPT" : item.kind === "published" ? "PUBLISHED" : "YOUR CHARACTER"}</span>
         {selected && <span className="em-cover-selected"><Icon name="check" size={15} /></span>}
       </span>
       <span className="em-cover-title">{item.name}</span>
       <span className="em-cover-desc">{item.description}</span>
-      <span className="em-cover-caption">{item.kind === "sample" ? "Sample · View rehearsal" : item.kind === "concept" ? "Artwork only · coming later" : selected ? "Selected for your cast" : "Tap to add to your cast"}</span>
+      <span className="em-cover-caption">{item.kind === "sample" ? "Sample · View rehearsal" : item.kind === "concept" ? "Artwork only · coming later" : item.kind === "published" ? `By ${item.creator || "a creator"} · Story checkout coming soon` : selected ? "Selected for your cast" : "Tap to add to your cast"}</span>
     </>
   );
   if (item.kind === "sample") {
@@ -78,15 +81,23 @@ function Cover({ item, selected, onSelect }: { item: ShelfItem; selected: boolea
   if (item.kind === "concept") {
     return <div className="em-book-card em-book-concept" aria-label={"Artwork concept " + item.name + ", not yet playable"}>{inner}</div>;
   }
+  if (item.kind === "published") {
+    // This is a public Listing ID, not a private Character ID: do not pass it
+    // to the legacy rehearsal Scene API or permit a free checkout bypass.
+    return <div className="em-book-card em-book-concept" aria-label={"Published character " + item.name + ", preview only"}>{inner}</div>;
+  }
   return <button type="button" className="em-book-card em-selectable" onClick={onSelect} aria-pressed={selected} aria-label={(selected ? "Remove " : "Select ") + item.name + (selected ? " from" : " for") + " your cast"}>{inner}</button>;
 }
 
 export function MarketplaceDiscover() {
   const router = useRouter();
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [published, setPublished] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [publishedLoading, setPublishedLoading] = useState(true);
+  const [publishedError, setPublishedError] = useState(false);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "mine" | "samples">("all");
+  const [filter, setFilter] = useState<"all" | "published" | "mine" | "samples">("all");
   const [selected, setSelected] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
@@ -100,6 +111,21 @@ export function MarketplaceDiscover() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    listPublishedListings(50, controller.signal)
+      .then((records) => {
+        if (!controller.signal.aborted) setPublished(records);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setPublishedError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPublishedLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
+
   const mine = useMemo<ShelfItem[]>(() => characters.map((c) => ({
     id: c.id,
     name: c.profile.name,
@@ -108,11 +134,32 @@ export function MarketplaceDiscover() {
     kind: "mine",
   })), [characters]);
 
+  const publishedShelf = useMemo<ShelfItem[]>(() => published.map((listing) => ({
+    id: `published:${listing.listing_id}`,
+    name: listing.name,
+    description: listing.short_description,
+    image: listing.cover_image_url,
+    kind: "published",
+    creator: listing.creator_display_name,
+    tags: listing.tags,
+  })), [published]);
+
   const visible = useMemo(() => {
-    const all = [...(filter === "samples" ? [] : mine), ...(filter === "mine" ? [] : samples)];
+    const collection = filter === "published" ? publishedShelf
+      : filter === "mine" ? mine
+      : filter === "samples" ? samples
+      : [...publishedShelf, ...mine, ...samples];
     const term = query.trim().toLowerCase();
-    return term ? all.filter((item) => (item.name + " " + item.description).toLowerCase().includes(term)) : all;
-  }, [mine, filter, query]);
+    return term ? collection.filter((item) =>
+      [item.name, item.description, item.creator || "", ...(item.tags || [])]
+        .join(" ").toLowerCase().includes(term),
+    ) : collection;
+  }, [publishedShelf, mine, filter, query]);
+
+  const collectionLoading = filter === "mine" ? loading
+    : filter === "published" ? publishedLoading
+    : filter === "samples" ? false
+    : loading || publishedLoading;
 
   function toggle(id: string) {
     setError("");
@@ -164,23 +211,24 @@ export function MarketplaceDiscover() {
             <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters and stories" />
           </label>
           <div className="em-filters" role="group" aria-label="Character collection filter">
-            {([["all","All characters"],["mine","My characters"],["samples","Art previews"]] as const).map(([key,label]) => (
+            {([["all","All characters"],["published","Published"],["mine","My characters"],["samples","Art previews"]] as const).map(([key,label]) => (
               <button key={key} type="button" onClick={() => setFilter(key)} aria-pressed={filter === key} className={filter === key ? "em-filter active" : "em-filter"}>{label}</button>
             ))}
           </div>
-          <div className="em-shelf-header"><span>{filter === "mine" ? "YOUR PRIVATE CHARACTERS" : filter === "samples" ? "SAMPLE CHARACTERS & ARTWORK" : "CHARACTER COLLECTION"}</span><span>{loading ? "Loading…" : visible.length + " characters"}</span></div>
+          <div className="em-shelf-header"><span>{filter === "mine" ? "YOUR PRIVATE CHARACTERS" : filter === "published" ? "PUBLIC CREATOR LISTINGS" : filter === "samples" ? "SAMPLE CHARACTERS & ARTWORK" : "CHARACTER COLLECTION"}</span><span>{collectionLoading ? "Loading…" : visible.length + " characters"}</span></div>
           {visible.length ? (
             <div className="em-book-grid">
               {visible.map((item) => <Cover key={item.id} item={item} selected={selected.includes(item.id)} onSelect={() => toggle(item.id)}/>)}
             </div>
           ) : (
             <div className="em-empty">
-              <span aria-hidden="true">✶</span><h3>{loading ? "Opening the library…" : query ? "No matching characters" : "Your shelf is waiting"}</h3>
-              <p>{loading ? "Gathering the character collection." : query ? "Try another name or search term." : "Create your first character to start a new story."}</p>
-              {!query && !loading && <Link href="/characters/new">Create a character <Icon name="arrow" size={15}/></Link>}
+              <span aria-hidden="true">✶</span><h3>{collectionLoading ? "Opening the library…" : query ? "No matching characters" : filter === "published" ? "No published characters yet" : "Your shelf is waiting"}</h3>
+              <p>{collectionLoading ? "Gathering the character collection." : query ? "Try another name or search term." : filter === "published" ? "Creator listings will appear here once they are published." : "Create your first character to start a new story."}</p>
+              {!query && !collectionLoading && filter !== "published" && <Link href="/characters/new">Create a character <Icon name="arrow" size={15}/></Link>}
             </div>
           )}
-          {filter !== "samples" && <div className="em-note"><span>✧</span><p><strong>Prototype collection.</strong> Your characters are private. Public creator listings and Solana payments are coming in the next development stage.</p></div>}
+          {publishedError && filter !== "mine" && filter !== "samples" && <p className="em-error" role="alert">Could not load public listings. Check the FastAPI server and refresh.</p>}
+          {filter !== "samples" && <div className="em-note"><span>✧</span><p><strong>Marketplace preview.</strong> Published characters are browse-only for now. You can still use your private characters in story drafts. Wallet checkout and paid scenes are not yet connected.</p></div>}
         </section>
       </div>
 

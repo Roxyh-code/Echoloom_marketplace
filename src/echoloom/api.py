@@ -585,6 +585,10 @@ def create_app(
     from .rehearsal_service import register_rehearsal
 
     register_rehearsal(app, factory, locks, settings, serialize)
+    from .marketplace_routes import register_marketplace
+
+    register_marketplace(app, factory, settings)
+
     if chat_memory:
         from contextlib import asynccontextmanager
 

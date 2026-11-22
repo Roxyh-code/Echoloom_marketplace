@@ -2,6 +2,7 @@
 
 import hashlib
 import hmac
+import re
 import secrets
 import threading
 import time
@@ -79,8 +80,21 @@ def register_accounts(app, factory, locks, settings):
                     return JSONResponse(
                         {"detail": "Cross-site request rejected."}, status_code=403
                     )
+                        # Allow anonymous access to published Marketplace listings only.
+            public_listing_get = (
+                request.method == "GET"
+                and (
+                    path == "/api/marketplace/listings"
+                    or re.fullmatch(
+                        r"/api/marketplace/listings/[0-9a-fA-F-]{36}(?:/cover)?",
+                        path,
+                    ) is not None
+                )
+            )
+
             exempt = (
-                path.startswith("/api/account/")
+                public_listing_get
+                or path.startswith("/api/account/")
                 or path == "/api/health"
                 or path.endswith("/google-calendar/callback")
             )

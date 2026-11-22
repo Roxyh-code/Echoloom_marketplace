@@ -296,3 +296,6 @@ class RehearsalOperation(Base):
     status: Mapped[str] = mapped_column(String(24), default="completed")
     result: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[str] = mapped_column(default=now)
+
+# Register Marketplace tables with the shared SQLAlchemy metadata.
+from . import marketplace_models  # noqa: F401

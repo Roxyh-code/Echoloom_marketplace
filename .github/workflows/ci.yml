@@ -64,6 +64,15 @@ jobs:
         working-directory: web
         run: npm run test:e2e
 
+      - name: Upload one-off character demo video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: echoloom-character-demo-video
+          path: web/test-results/Echoloom_Character_Demo.webm
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload editorial mobile screenshots
         if: always()
         uses: actions/upload-artifact@v4

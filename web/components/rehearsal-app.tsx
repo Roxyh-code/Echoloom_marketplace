@@ -2094,7 +2094,7 @@ export function RehearsalApp() {
             onClick={() => navigate("list")}
           >
             <Glyph name="star" />
-            {tr("Create", "创作")}
+            {tr("My stories", "我的故事")}
           </button>
           <button
             className={page === "characters" ? "active" : ""}

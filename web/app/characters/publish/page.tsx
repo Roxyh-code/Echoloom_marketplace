@@ -13,7 +13,7 @@ import {
   type OwnedListingDetail,
 } from "@/components/marketplace-api";
 
-const accent = "#54408c";
+const accent = "#A78BFA";
 
 function parseLabels(text: string, label: string, maximum: number): string[] {
   const values = text.split(",").map((value) => value.trim()).filter(Boolean);
@@ -161,7 +161,7 @@ export default function PublishCharacterPage() {
   }
 
   return (
-    <main style={{ maxWidth: 700, margin: "0 auto", padding: "28px 20px 90px" }}>
+    <main className="el-listing-editor" style={{ maxWidth: 700, margin: "0 auto", padding: "28px 20px 90px" }}>
       <nav style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 24 }}>
         <Link href="/marketplace" style={{ color: accent, fontWeight: 650 }}>← Marketplace</Link>
         <Link href="/rehearsal?view=characters" style={{ color: accent }}>My characters</Link>

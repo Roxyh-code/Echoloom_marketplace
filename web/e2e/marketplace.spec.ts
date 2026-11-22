@@ -100,11 +100,17 @@ test("owned published character appears once, opens public detail and supports l
   await expect(page.getByRole("heading", { name: "Hazel" })).toBeVisible();
   await expect(page.getByText("A curious archivist.", { exact: true })).toBeVisible();
   await expect(page.getByText("Personality")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator(".em-detail-page")).toHaveCSS("background-color", "rgb(9, 10, 16)");
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.screenshot({ path: "test-results/editorial-public-listing.png", fullPage: true });
 
   await page.goto("/characters/publish?character=" + encodeURIComponent(character_id));
   await expect(page.getByRole("heading", { name: "Manage listing" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save listing changes" })).toBeVisible();
   await expect(page.getByLabel("Public description")).toHaveValue("A curious archivist.");
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: "test-results/editorial-listing-management.png", fullPage: true });
   page.once("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: "Unpublish listing" }).click();
   await expect(page.getByText(/Listing unpublished\. Your private character/)).toBeVisible();

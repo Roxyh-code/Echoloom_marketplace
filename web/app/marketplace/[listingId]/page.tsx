@@ -42,14 +42,14 @@ export default function PublicListingPage() {
   }, [listingId]);
 
   return (
-    <main className="em-app">
+    <main className="em-app em-detail-page">
       <div className="em-page">
         <header className="em-header">
           <Link className="em-brand" href="/marketplace" aria-label="Echoloom Discover home">
-            <span className="em-brand-mark">e.</span>
-            <span>echoloom<span className="em-brand-dot">.</span></span>
+            <img className="em-brand-icon" src="/echoloom-gothic-mark.svg" alt="" aria-hidden="true" />
+            <span>Echoloom<span className="em-brand-dot">.</span></span>
           </Link>
-          <Link href="/marketplace" style={{ color: "#54408c", fontSize: 13, fontWeight: 650 }}>
+          <Link href="/marketplace" style={{ color: "#CBB7FF", fontSize: 13, fontWeight: 650 }}>
             ← Discover
           </Link>
         </header>

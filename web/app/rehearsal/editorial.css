@@ -546,3 +546,37 @@
 .rehearsal-app input::placeholder,.rehearsal-app textarea::placeholder,.rh-sheet input::placeholder,.rh-sheet textarea::placeholder { color:#A6A6A6; }
 .rehearsal-app :is(input,textarea,select):focus-visible,.rh-sheet :is(input,textarea,select):focus-visible { outline-color:#A28CE0; }
 @media (min-width:650px){ .rehearsal-app { border:1px solid #E8E8E8; box-shadow:0 8px 40px #1212120B; } }
+
+
+/* Final visual audit from Chromium screenshots: eliminate remaining warm
+   alert, image-placeholder and Georgia styles missed by the legacy mapping. */
+.rehearsal-app .rh-alert,.rh-sheet .rh-alert {
+  background:#FAF9FD;
+  color:#525252;
+  border-bottom:1px solid #E8E8E8;
+}
+.rehearsal-app .rh-alert.error,.rh-sheet .rh-alert.error {
+  background:#FFF5F5;
+  color:#B33B41;
+  border-color:#F0D4D4;
+}
+.rehearsal-app .rh-scene-opening p {
+  color:#7A7A7A;
+  font:400 14px/1.8 Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+}
+.rehearsal-app .rh-reading-divider { color:#54408C; }
+.rehearsal-app .rh-segment > header { color:#7A7A7A; }
+.rehearsal-app .rh-segment > header small { color:#7A7A7A; }
+.rehearsal-app .rh-block.action p { color:#525252; font-style:normal; }
+.rehearsal-app .rh-portrait,
+.rehearsal-app .mc-portrait { background:#F5F5F5; color:#A6A6A6; }
+.rehearsal-app .mc-portrait > span {
+  color:#A6A6A6;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Open Sans",Roboto,sans-serif;
+  font-weight:500;
+}
+.rehearsal-app .mc-character-cover { background:#F5F5F5; }
+.rehearsal-app .mc-character-cover > .mc-portrait { background:#F5F5F5; }
+.rehearsal-app .mc-cover-shade { background:linear-gradient(0deg,rgba(18,18,18,.72) 0%,transparent 69%); }
+.rehearsal-app .mc-cover-title .rh-eyebrow { color:#FFFFFF; }
+.rehearsal-app .mc-cover-title h1,.rehearsal-app .mc-cover-title p { color:#FFFFFF; }

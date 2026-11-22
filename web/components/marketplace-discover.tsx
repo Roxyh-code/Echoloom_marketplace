@@ -6,48 +6,19 @@ import { useRouter } from "next/navigation";
 import type { Character, Scene } from "./rehearsal-api";
 import { blankSetup, operation, rehearsal } from "./rehearsal-api";
 import { listOwnedListings, listPublishedListings, type MarketplaceListing, type OwnedListingDetail } from "./marketplace-api";
+import { placeholderCharacters } from "./marketplace-placeholders";
 
 type ShelfItem = {
   id: string;
   name: string;
   description: string;
   image: string | null;
-  kind: "sample" | "mine" | "concept" | "published";
+  kind: "placeholder" | "mine" | "published";
   listingId?: string;
   creator?: string;
   tags?: string[];
 };
 
-const samples: ShelfItem[] = [
-  {
-    id: "sample-mira",
-    name: "Mira",
-    description: "A quiet archivist with a story left unfinished.",
-    image: "/portraits/mira.webp",
-    kind: "sample",
-  },
-  {
-    id: "sample-leo",
-    name: "Leo",
-    description: "A wanderer whose past won't stay buried.",
-    image: "/portraits/leo.webp",
-    kind: "sample",
-  },
-  {
-    id: "concept-vesper",
-    name: "Vesper",
-    description: "An enigmatic spirit drawn from a forgotten fairytale.",
-    image: "/portraits/red-horn.webp",
-    kind: "concept",
-  },
-  {
-    id: "concept-ren",
-    name: "Ren",
-    description: "A restless rival with a story yet to be written.",
-    image: "/portraits/red-boy.webp",
-    kind: "concept",
-  },
-];
 
 function Icon({ name, size = 20 }: { name: "search" | "book" | "pen" | "compass" | "arrow" | "check" | "plus" | "close"; size?: number }) {
   const paths: Record<string, React.ReactNode> = {
@@ -68,19 +39,15 @@ function Cover({ item, selected, onSelect }: { item: ShelfItem; selected: boolea
     <>
       <span className={"em-cover em-cover-" + item.kind}>
         {item.image ? <img src={item.image} alt={"Portrait of " + item.name} loading="lazy" /> : <span className="em-cover-monogram">{item.name.slice(0, 1)}</span>}
-        <span className="em-cover-edition">{item.kind === "sample" ? "STORY PREVIEW" : item.kind === "concept" ? "ART CONCEPT" : item.kind === "published" ? "PUBLISHED" : "YOUR CHARACTER"}</span>
         {selected && <span className="em-cover-selected"><Icon name="check" size={15} /></span>}
       </span>
       <span className="em-cover-title">{item.name}</span>
       <span className="em-cover-desc">{item.description}</span>
-      <span className="em-cover-caption">{item.kind === "sample" ? "Sample · View rehearsal" : item.kind === "concept" ? "Artwork only · coming later" : item.kind === "published" ? `By ${item.creator || "a creator"} · View public profile` : selected ? "Selected for your cast" : "Tap to add to your cast"}</span>
     </>
   );
-  if (item.kind === "sample") {
-    return <Link className="em-book-card" href="/rehearsal" aria-label={"Open the rehearsal demo featuring sample character " + item.name}>{inner}</Link>;
-  }
-  if (item.kind === "concept") {
-    return <div className="em-book-card em-book-concept" aria-label={"Artwork concept " + item.name + ", not yet playable"}>{inner}</div>;
+  if (item.kind === "placeholder") {
+    // A static frontend preview is not a real public Listing or castable Character.
+    return <Link className="em-book-card" href={"/marketplace/preview/" + encodeURIComponent(item.id)} aria-label={"View character " + item.name}>{inner}</Link>;
   }
   if (item.kind === "published") {
     // Link by public Listing ID. Never pass a private Character ID into public
@@ -100,7 +67,7 @@ export function MarketplaceDiscover() {
   const [publishedLoading, setPublishedLoading] = useState(true);
   const [publishedError, setPublishedError] = useState(false);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "published" | "mine" | "samples">("all");
+  const [filter, setFilter] = useState<"all" | "published" | "mine">("all");
   const [selected, setSelected] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
@@ -160,27 +127,32 @@ export function MarketplaceDiscover() {
   })), [published]);
 
   const visible = useMemo(() => {
-    // An owned published character appears once in All, as its public listing.
-    // My characters still shows the private source character for editing.
+    // Own published characters appear once in All; My characters still shows
+    // their private source for editing. The only public listings are API records.
     const publishedCharacterIds = new Set(
       ownedListings.filter((item) => item.status === "published").map((item) => item.character_id),
     );
     const unpublishedMine = mine.filter((item) => !publishedCharacterIds.has(item.id));
+    // Temporary cards stand in for a sparse public catalog and phase out as
+    // real creators publish. They are never inserted into the Published filter.
+    const fallbackCount = Math.max(0, 4 - publishedShelf.length);
+    const placeholders: ShelfItem[] = placeholderCharacters.slice(0, fallbackCount).map((item) => ({
+      ...item,
+      kind: "placeholder",
+    }));
     const collection = filter === "published" ? publishedShelf
       : filter === "mine" ? mine
-      : filter === "samples" ? samples
-      : ownedLoading ? samples
-      : [...publishedShelf, ...unpublishedMine, ...samples];
+      : ownedLoading || publishedLoading ? []
+      : [...publishedShelf, ...unpublishedMine, ...placeholders];
     const term = query.trim().toLowerCase();
     return term ? collection.filter((item) =>
       [item.name, item.description, item.creator || "", ...(item.tags || [])]
         .join(" ").toLowerCase().includes(term),
     ) : collection;
-  }, [publishedShelf, mine, ownedListings, ownedLoading, filter, query]);
+  }, [publishedShelf, mine, ownedListings, ownedLoading, publishedLoading, filter, query]);
 
   const collectionLoading = filter === "mine" ? loading
     : filter === "published" ? publishedLoading
-    : filter === "samples" ? false
     : loading || publishedLoading || ownedLoading;
 
   function toggle(id: string) {
@@ -229,10 +201,10 @@ export function MarketplaceDiscover() {
           <label className="em-search">
             <Icon name="search" size={18}/>
             <span className="em-sr-only">Search characters</span>
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters and stories" />
+            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search characters" />
           </label>
           <div className="em-filters" role="group" aria-label="Character collection filter">
-            {([["all","All characters"],["published","Published"],["mine","My characters"],["samples","Art previews"]] as const).map(([key,label]) => (
+            {([["all","All characters"],["published","Published"],["mine","My characters"]] as const).map(([key,label]) => (
               <button key={key} type="button" onClick={() => setFilter(key)} aria-pressed={filter === key} className={filter === key ? "em-filter active" : "em-filter"}>{label}</button>
             ))}
           </div>
@@ -248,7 +220,7 @@ export function MarketplaceDiscover() {
               {!query && !collectionLoading && filter !== "published" && <Link href="/characters/new">Create a character <Icon name="arrow" size={15}/></Link>}
             </div>
           )}
-          {publishedError && filter !== "mine" && filter !== "samples" && <p className="em-error" role="alert">Couldn’t load listings. Please refresh.</p>}
+          {publishedError && filter !== "mine" && <p className="em-error" role="alert">Couldn’t load listings. Please refresh.</p>}
         </section>
       </div>
 

@@ -50,7 +50,7 @@ test("story reader and intervention sheet use white Bazar surfaces", async ({ pa
   await page.locator(".rh-example").click();
   await page.getByRole("button", { name: /Start rehearsal/ }).click();
   await expect(page.locator(".rh-reading")).toBeVisible();
-  await expect(page.locator(".rh-reading")).toHaveCSS("background-color", "rgb(250, 250, 250)");
+  await expect(page.locator(".rh-reading")).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await page.screenshot({ path: "test-results/editorial-story-reader.png", fullPage: true });
   await page.getByRole("button", { name: "Intervene", exact: true }).click();
   await expect(page.locator(".rh-sheet")).toHaveCSS("background-color", "rgb(255, 255, 255)");

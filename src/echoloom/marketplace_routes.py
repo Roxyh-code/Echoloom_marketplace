@@ -1,8 +1,8 @@
-"""HTTP routes for published Marketplace character listings.
+"""Marketplace listing HTTP routes.
 
-Register with ``register_marketplace(app, factory, settings)`` in api.py.
-The existing account middleware must explicitly allow unauthenticated GETs to
-public listings (but not to /owner or any writes). See the following step.
+Public discovery and public listing covers require publication, not a verified
+payout wallet or creator monetization approval. Writes and owner data remain
+authenticated and ownership-checked in marketplace_service.py.
 """
 
 from pathlib import Path
@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import and_, select
 
 from .db import Portrait
-from .marketplace_models import CharacterListing, ListingRevision, MarketplaceCreator
+from .marketplace_models import CharacterListing, ListingRevision
 from .marketplace_schemas import (
     ListingOwnerResponse,
     ListingPublicResponse,
@@ -49,11 +49,11 @@ def register_marketplace(app: FastAPI, factory, settings) -> None:
 
     @app.get("/api/marketplace/listings/{listing_id}/cover")
     def listing_cover(listing_id: UUID):
-        """Serve only the current public revision's pinned portrait.
+        """Serve only the published revision's pinned portrait.
 
-        Do not reuse the private /api/characters/{id}/images route here.
-        Previously sold/unpublished scenes will need an entitlement-protected
-        snapshot asset endpoint later; this is public discovery only.
+        Unlike paid scenes, public discovery does not require payout-wallet
+        verification. Unpublishing immediately hides this public cover.
+        The private character image endpoint must not be used here.
         """
         with factory() as db:
             file_path = db.scalar(
@@ -66,14 +66,9 @@ def register_marketplace(app: FastAPI, factory, settings) -> None:
                         CharacterListing.latest_revision == ListingRevision.revision,
                     ),
                 )
-                .join(
-                    MarketplaceCreator,
-                    MarketplaceCreator.id == CharacterListing.creator_id,
-                )
                 .where(
                     CharacterListing.id == str(listing_id),
                     CharacterListing.status == "published",
-                    MarketplaceCreator.is_approved.is_(True),
                 )
             )
 

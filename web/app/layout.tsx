@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import "./globals.css";
+import "./editorial-global.css";
 import { AppChrome } from "@/components/app-chrome";
 export const metadata: Metadata = {
   title: "EchoLoom Marketplace · Interactive character stories",

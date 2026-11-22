@@ -452,6 +452,16 @@ export function MobileCharacterStudio({
           >
             ＋ Create character <span>→</span>
           </button>
+          {!picking && !archived && (
+            <button
+              type="button"
+              className="rh-secondary"
+              style={{ marginTop: 10, marginBottom: 12 }}
+              onClick={() => window.location.assign("/characters/publish")}
+            >
+              Publish a character →
+            </button>
+          )}
           {pending && (
             <button
               className="mc-pending"
@@ -804,6 +814,20 @@ export function MobileCharacterStudio({
                   : "Rehearse with " + person.profile.name}
               <span>→</span>
             </button>
+            {!picking && !person.archived && (
+              <button
+                type="button"
+                className="rh-secondary"
+                style={{ marginTop: 10 }}
+                onClick={() =>
+                  window.location.assign(
+                    "/characters/publish?character=" + encodeURIComponent(person.id),
+                  )
+                }
+              >
+                Publish to Marketplace →
+              </button>
+            )}
           </footer>
         </>
       )}

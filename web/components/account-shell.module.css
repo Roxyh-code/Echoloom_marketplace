@@ -1,0 +1,196 @@
+/* Authentication uses the exact Bazar / Echoloom design tokens that are
+   already loaded by web/app/layout.tsx (bazar-tokens.css). No new palette. */
+.canvas {
+  min-height: 100dvh;
+  width: min(100%, 520px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--bazar-white, #ffffff);
+  color: var(--bazar-text, #121212);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Open Sans", Roboto, "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.canvas *, .canvas *::before, .canvas *::after { box-sizing: border-box; }
+
+.topbar {
+  height: 74px;
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--bazar-surface-muted, #f5f5f5);
+}
+.brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  line-height: 1.2;
+  color: var(--bazar-text, #121212);
+  text-decoration: none;
+}
+.brandMark { font-size: 29px; color: var(--bazar-primary, #54408c); }
+.brandDot { color: var(--bazar-primary, #54408c); }
+.exploreLink {
+  color: var(--bazar-primary, #54408c);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 0 10px 12px;
+}
+.exploreLink:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+.content { flex: 1; padding: 30px 22px 35px; }
+.authSection { display: flex; flex-direction: column; }
+.intro {
+  padding: 24px 22px 25px;
+  background: var(--bazar-primary-pale, #faf9fd);
+  border-radius: 14px;
+}
+.eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--bazar-primary, #54408c);
+}
+.heading {
+  margin: 13px 0 10px;
+  color: var(--bazar-text, #121212);
+  font-size: 29px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.45px;
+}
+.description { margin: 0; color: #525252; font-size: 13px; line-height: 1.6; }
+
+.form { display: flex; flex-direction: column; gap: 0; margin: 30px 0 0; }
+.formHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+.formHeading h2 { font-size: 20px; line-height: 1.3; font-weight: 700; color: var(--bazar-text, #121212); margin: 0; }
+.formHeading > span { font-size: 10px; font-weight: 700; color: var(--bazar-text-secondary, #7a7a7a); letter-spacing: .7px; }
+
+.field { display: flex; flex-direction: column; gap: 9px; margin-bottom: 19px; color: var(--bazar-text, #121212); }
+.field > span:first-child, .fieldLabel { font-size: 13px; font-weight: 650; }
+.field input {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  background: var(--bazar-surface, #fafafa);
+  border: 1px solid var(--bazar-border, #e8e8e8);
+  border-radius: 10px;
+  color: var(--bazar-text, #121212);
+  font: inherit;
+  font-size: 14px;
+  padding: 0 14px;
+  box-shadow: none;
+  outline: none;
+}
+.field input::placeholder { color: #a6a6a6; }
+.field input:focus-visible, .passwordRow:focus-within input {
+  border-color: var(--bazar-primary, #54408c);
+  box-shadow: 0 0 0 2px #54408c20;
+}
+.field input:disabled { opacity: .65; cursor: wait; }
+.passwordRow { position: relative; display: block; }
+.passwordRow input { padding-right: 70px; }
+.passwordToggle {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  height: 50px;
+  padding: 0 11px;
+  border: 0;
+  background: transparent;
+  color: var(--bazar-primary, #54408c);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.passwordToggle:disabled { opacity: .5; }
+
+.primaryButton {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 17px;
+  margin: 9px 0 0;
+  background: var(--bazar-primary, #54408c);
+  border: 1px solid var(--bazar-primary, #54408c);
+  border-radius: 10px;
+  color: var(--bazar-white, #fff);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.primaryButton:hover:not(:disabled) { background: var(--bazar-primary-hover, #352368); }
+.primaryButton:disabled { opacity: .6; cursor: wait; }
+.primaryButton > span:last-child { margin-left: auto; }
+.primaryButton:has(> span:last-child) { padding-left: 34px; }
+.primaryButton:focus-visible, .passwordToggle:focus-visible, .exploreLink:focus-visible, .brand:focus-visible { outline: 2px solid var(--bazar-primary, #54408c); outline-offset: 3px; }
+
+.helper { margin: 12px 6px 0; font-size: 12px; line-height: 1.6; color: var(--bazar-text-secondary, #7a7a7a); text-align: center; }
+.note {
+  margin: 28px 0 0;
+  padding: 17px 0 0;
+  border-top: 1px solid var(--bazar-border, #e8e8e8);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--bazar-text-secondary, #7a7a7a);
+}
+.note > span { font-size: 19px; line-height: 1.1; color: var(--bazar-primary, #54408c); }
+.error {
+  margin: 1px 0 13px;
+  padding: 12px 14px;
+  border: 1px solid #ef5a5655;
+  border-radius: 10px;
+  background: #ef5a560d;
+  color: #b8423f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.statusSection { padding: 24px 0; }
+.statusSection .heading { font-size: 25px; margin: 16px 0 10px; }
+.statusSection .primaryButton { margin-top: 23px; }
+.footer {
+  min-height: 70px;
+  margin-top: auto;
+  padding: 22px;
+  border-top: 1px solid var(--bazar-border, #e8e8e8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--bazar-text-secondary, #7a7a7a);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .7px;
+}
+@media (min-width: 650px) {
+  .canvas { margin: 24px auto; min-height: calc(100dvh - 48px); border: 1px solid var(--bazar-border, #e8e8e8); box-shadow: 0 8px 40px #1212120b; }
+}
+@media (max-width: 360px) {
+  .topbar { padding: 0 17px; }
+  .content { padding-left: 17px; padding-right: 17px; }
+  .intro { padding: 22px 18px; }
+  .heading { font-size: 27px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas *, .canvas *::before, .canvas *::after { transition: none !important; }
+}

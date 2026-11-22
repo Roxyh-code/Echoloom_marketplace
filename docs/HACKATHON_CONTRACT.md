@@ -23,9 +23,18 @@ App/AI developer: safe public catalog, two-character casting, scene setup, quote
 - **Server-side quota and entitlement are required:** frontend counters are not authoritative. Exact identity/anti-abuse binding and rules for subsequent new scenes will be agreed in later decisions; a wallet-only first-use counter is not robust against multiple-wallet farming.
 - **Status:** selected by product owner on 2026-11-22; not yet reviewed or approved by Solana teammate. This decision **supersedes the previous paid-before-first-scene demo assumption**.
 
-### Decision 2 — creator/platform revenue split: **pending product owner choice and teammate approval**
+### Decision 2 — creator/platform revenue split: **Option A selected by product owner; teammate approval pending**
 
-For illustration only, one paid unlock priced at 1.00 test USDC could split 0.45 / 0.45 / 0.10 (creator A / creator B / platform); these are **not agreed rates or validated economics**. The backend must freeze all amounts and recipients. Merge payout lines when both roles have the same creator wallet. Never trust a browser-supplied price or `paid` flag. Authenticate buyer wallet with server challenge and signature; verify mint, payer, transaction success/finality, recipients, amounts, and a unique order reference before granting **additional paid directions**. Reject replayed signatures and duplicate orders.
+- **Fixed split for every paid unlock:** Creator A **45%**, Creator B **45%**, Echoloom platform **10%**. At the illustrative (not final) 1.00 test USDC charge, these shares are **0.45 / 0.45 / 0.10 USDC**.
+- If both characters belong to the same creator payout wallet, **merge the two creator payout lines** (90% to that wallet, 10% to platform). For other duplicate recipient wallets, aggregate exact amounts before constructing the transaction.
+- Free-trial generation and its one free direction have **no on-chain split payout**; this choice applies only to successful **paid** purchases.
+- Use backend-authoritative percentages, recipient wallet snapshots and integer token minor units. Record a fixed quote; do not accept browser-supplied prices, payout accounts or `paid` flags. Quote expiry, token mint, gas cost, platform cost coverage and paid pack scope remain to be jointly confirmed.
+- Verify payer, successful transaction and finality, mint, exact recipient totals and unique order reference server-side; reject replayed signatures. This is a **demo revenue model, not a claim that a 10% platform share covers inference cost**.
+- **Status:** Option A selected by product owner on 2026-11-22, awaiting Solana teammate approval. This does not itself approve the illustrative token price.
+
+### Decision 3 — free/paid quota, retries and new-scene pricing: **pending product owner selection and teammate approval**
+
+Decision 1 fixes the first free scene opening + one free direction, and five additional directions after a paid unlock of that free scene. Still to freeze: quota replenishment, how subsequent new scenes are purchased, whether a new-scene purchase includes an opening, and retry/failure/duplicate-request accounting.
 
 
 ## Milestones

@@ -1,0 +1,59 @@
+name: Import captured character demo
+on:
+  push:
+    branches: ["feat/marketplace-app"]
+    paths: [".github/workflows/import-demo-recording.yml"]
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  import-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download completed isolated browser recording
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/recording"
+          gh run download 45082455163 --repo "$GITHUB_REPOSITORY" \
+            --name echoloom-character-demo-video \
+            --dir "$RUNNER_TEMP/recording"
+          test -s "$RUNNER_TEMP/recording/Echoloom_Character_Demo.webm"
+      - name: Create self-contained MP4 with title cards
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/encode" demo
+          SRC="$RUNNER_TEMP/recording/Echoloom_Character_Demo.webm"
+          OUT="$RUNNER_TEMP/encode"
+          FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+          BOLD=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+          ffmpeg -hide_banner -loglevel error -y \
+            -f lavfi -i "color=c=0x090A10:s=780x1688:r=25:d=2.8" \
+            -vf "drawtext=fontfile=$BOLD:text='ECHOLOOM':fontcolor=white:fontsize=75:x=(w-text_w)/2:y=650,drawtext=fontfile=$FONT:text='Character to Marketplace':fontcolor=0xC9B6FF:fontsize=35:x=(w-text_w)/2:y=765,drawtext=fontfile=$FONT:text='Isolated demo environment':fontcolor=0xA99FB5:fontsize=23:x=(w-text_w)/2:y=880" \
+            -an -r 25 -c:v libx264 -crf 23 -pix_fmt yuv420p "$OUT/intro.mp4"
+          ffmpeg -hide_banner -loglevel error -y -i "$SRC" \
+            -vf "scale=780:1688:flags=lanczos,setsar=1" \
+            -an -r 25 -c:v libx264 -crf 23 -pix_fmt yuv420p "$OUT/recording.mp4"
+          ffmpeg -hide_banner -loglevel error -y \
+            -f lavfi -i "color=c=0x090A10:s=780x1688:r=25:d=2.8" \
+            -vf "drawtext=fontfile=$BOLD:text='NEXT CHAPTER':fontcolor=white:fontsize=60:x=(w-text_w)/2:y=665,drawtext=fontfile=$FONT:text='Two-character stories':fontcolor=0xC9B6FF:fontsize=35:x=(w-text_w)/2:y=770,drawtext=fontfile=$FONT:text='Marketplace casting is coming next':fontcolor=0xA99FB5:fontsize=21:x=(w-text_w)/2:y=885" \
+            -an -r 25 -c:v libx264 -crf 23 -pix_fmt yuv420p "$OUT/outro.mp4"
+          printf "file '%s/intro.mp4'\nfile '%s/recording.mp4'\nfile '%s/outro.mp4'\n" "$OUT" "$OUT" "$OUT" > "$OUT/list.txt"
+          ffmpeg -hide_banner -loglevel error -y -f concat -safe 0 -i "$OUT/list.txt" \
+            -c copy -movflags +faststart demo/Echoloom_Character_Marketplace_Demo.mp4
+          test -s demo/Echoloom_Character_Marketplace_Demo.mp4
+          ffprobe -v error -show_entries format=duration,size \
+            -of default=noprint_wrappers=1 demo/Echoloom_Character_Marketplace_Demo.mp4
+      - name: Commit demo MP4 to feature branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add demo/Echoloom_Character_Marketplace_Demo.mp4
+          git commit -m "docs(demo): add recorded Echoloom character walkthrough video"
+          git push origin HEAD:feat/marketplace-app

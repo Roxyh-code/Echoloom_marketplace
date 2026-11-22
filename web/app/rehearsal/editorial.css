@@ -355,7 +355,7 @@
 .rehearsal-app .mc-cover-title h1 { color: #fff9f2; font-size: 37px; text-shadow: 0 2px 8px #291c1b66; }
 .rehearsal-app .mc-cover-title .rh-eyebrow { color: #f2dcd0; }
 .rehearsal-app .mc-cover-title p { color: #faf1e6; }
-.rehearsal-app .mc-cover-edit { color: #fff5e9; border-color: #f4e6d1aa; background: #43303788; border-radius: 3px; }
+.rehearsal-app .mc-cover-edit { color: #65424c !important; border: 1px solid #fff9f0; background: #fffaf1; border-radius: 3px; padding: 9px 12px; font-size: 12px !important; box-shadow: 0 2px 8px #3e2d2c1b; }
 .rehearsal-app .mc-profile-body { background: #f8f5ee; padding-top: 22px; }
 .rehearsal-app .mc-edit-actions > button { border-radius: 4px; }
 .rehearsal-app .mc-facts > section { border-bottom: 1px solid #e9dfd4; padding-bottom: 18px; }

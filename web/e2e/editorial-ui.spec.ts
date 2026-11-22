@@ -31,6 +31,7 @@ test("character library, creation form, detail profile and edit sheet all match 
   await page.screenshot({ path: "test-results/editorial-character-library.png", fullPage: true });
   await page.locator(".mc-character-card").first().click();
   await expect(page.locator(".mc-character-cover")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Edit portrait/ })).toHaveCSS("color", "rgb(101, 66, 76)");
   await expect(page.locator(".mc-profile-body")).toBeVisible();
   await page.screenshot({ path: "test-results/editorial-character-detail.png", fullPage: true });
   await page.getByRole("button", { name: "Edit character", exact: true }).click();

@@ -16,6 +16,7 @@ from .companion_models import Account
 from .db import Character, Portrait, ProfileRevision, now, uid
 from .marketplace_models import CharacterListing, ListingRevision, MarketplaceCreator
 from .marketplace_schemas import (
+    ListingOwnerDetailResponse,
     ListingOwnerResponse,
     ListingPublicFields,
     ListingPublicResponse,
@@ -126,6 +127,44 @@ def get_public_listing(db: Session, listing_id: UUID) -> ListingPublicResponse:
     if row is None:
         raise HTTPException(status_code=404, detail="Listing not found.")
     return _public_view(*row)
+
+
+def list_owner_listings(
+    db: Session, *, account_id: str | None
+) -> list[ListingOwnerDetailResponse]:
+    """Return only this account's current listing snapshots for management.
+
+    Unlike public discovery, this includes unpublished listings. Each result
+    contains only previously approved public fields and the owner's rights
+    selection; private Character/profile fields are never serialized.
+    """
+    if not account_id:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    creator = db.scalar(
+        select(MarketplaceCreator).where(MarketplaceCreator.account_id == account_id)
+    )
+    if creator is None:
+        return []
+    rows = db.execute(
+        select(CharacterListing, ListingRevision)
+        .join(
+            ListingRevision,
+            and_(
+                ListingRevision.listing_id == CharacterListing.id,
+                ListingRevision.revision == CharacterListing.latest_revision,
+            ),
+        )
+        .where(CharacterListing.creator_id == creator.id)
+        .order_by(CharacterListing.updated_at.desc())
+    ).all()
+    return [
+        ListingOwnerDetailResponse(
+            **_owner_view(listing).model_dump(),
+            **ListingPublicFields.model_validate(revision.public_data).model_dump(),
+            rights_basis=revision.rights_basis,
+        )
+        for listing, revision in rows
+    ]
 
 
 def get_owner_listing(

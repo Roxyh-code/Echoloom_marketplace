@@ -55,3 +55,65 @@ test("select two private characters and carry them into an existing story draft"
   expect(scenes[0].document.cast).toHaveLength(2);
   expect(scenes[0].document.cast.map((c: {name:string}) => c.name).sort()).toEqual(["Hazel", "Rowan"]);
 });
+
+
+test("owned published character appears once, opens public detail and supports listing management", async ({ page }) => {
+  const backend = "http://127.0.0.1:8001";
+  const created = await page.request.post(backend + "/api/rehearsal/characters", {
+    data: {
+      operation_id: crypto.randomUUID(),
+      name: "Hazel",
+      description: "A curious archivist with a private story.",
+    },
+  });
+  expect(created.status()).toBe(201);
+  const { character_id } = await created.json() as { character_id: string };
+
+  // The first account claims pre-existing local characters.
+  const signup = await page.request.post(backend + "/api/account/register", {
+    data: { username: "hazelcreator", password: "test-password-12345" },
+  });
+  expect(signup.status()).toBe(200);
+  const published = await page.request.post(backend + "/api/marketplace/listings", {
+    data: {
+      character_id,
+      name: "Hazel",
+      short_description: "A curious archivist.",
+      tags: ["Mystery"],
+      public_personality: ["Curious"],
+      rights_basis: "original",
+      rights_confirmed: true,
+    },
+  });
+  expect(published.status()).toBe(200);
+  const { listing_id } = await published.json() as { listing_id: string };
+
+  await page.goto("/marketplace");
+  const publicCard = page.getByRole("link", { name: "View published character Hazel" });
+  await expect(publicCard).toBeVisible();
+  await expect(page.locator(".em-book-card").filter({ hasText: "Hazel" })).toHaveCount(1);
+  await publicCard.click();
+  await expect(page).toHaveURL(new RegExp("/marketplace/" + listing_id));
+  await expect(page.getByRole("heading", { name: "Hazel" })).toBeVisible();
+  await expect(page.getByText("A curious archivist.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Personality")).toBeVisible();
+
+  await page.goto("/characters/publish?character=" + encodeURIComponent(character_id));
+  await expect(page.getByRole("heading", { name: "Manage listing" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save listing changes" })).toBeVisible();
+  await expect(page.getByLabel("Public description")).toHaveValue("A curious archivist.");
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: "Unpublish listing" }).click();
+  await expect(page.getByText(/Listing unpublished\. Your private character/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Republish to Marketplace" })).toBeVisible();
+  const missing = await page.request.get(backend + "/api/marketplace/listings/" + listing_id);
+  expect(missing.status()).toBe(404);
+
+  await page.getByLabel("Public description").fill("A curious archivist returns.");
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Republish to Marketplace" }).click();
+  await expect(page.getByText("Listing saved successfully.")).toBeVisible();
+  const restored = await page.request.get(backend + "/api/marketplace/listings/" + listing_id);
+  expect(restored.status()).toBe(200);
+  expect((await restored.json()).short_description).toBe("A curious archivist returns.");
+});

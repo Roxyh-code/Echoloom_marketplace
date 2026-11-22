@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Character, Scene } from "./rehearsal-api";
 import { blankSetup, operation, rehearsal } from "./rehearsal-api";
-import { listPublishedListings, type MarketplaceListing } from "./marketplace-api";
+import { listOwnedListings, listPublishedListings, type MarketplaceListing, type OwnedListingDetail } from "./marketplace-api";
 
 type ShelfItem = {
   id: string;
@@ -13,6 +13,7 @@ type ShelfItem = {
   description: string;
   image: string | null;
   kind: "sample" | "mine" | "concept" | "published";
+  listingId?: string;
   creator?: string;
   tags?: string[];
 };
@@ -72,7 +73,7 @@ function Cover({ item, selected, onSelect }: { item: ShelfItem; selected: boolea
       </span>
       <span className="em-cover-title">{item.name}</span>
       <span className="em-cover-desc">{item.description}</span>
-      <span className="em-cover-caption">{item.kind === "sample" ? "Sample · View rehearsal" : item.kind === "concept" ? "Artwork only · coming later" : item.kind === "published" ? `By ${item.creator || "a creator"} · Story checkout coming soon` : selected ? "Selected for your cast" : "Tap to add to your cast"}</span>
+      <span className="em-cover-caption">{item.kind === "sample" ? "Sample · View rehearsal" : item.kind === "concept" ? "Artwork only · coming later" : item.kind === "published" ? `By ${item.creator || "a creator"} · View public profile` : selected ? "Selected for your cast" : "Tap to add to your cast"}</span>
     </>
   );
   if (item.kind === "sample") {
@@ -82,9 +83,9 @@ function Cover({ item, selected, onSelect }: { item: ShelfItem; selected: boolea
     return <div className="em-book-card em-book-concept" aria-label={"Artwork concept " + item.name + ", not yet playable"}>{inner}</div>;
   }
   if (item.kind === "published") {
-    // This is a public Listing ID, not a private Character ID: do not pass it
-    // to the legacy rehearsal Scene API or permit a free checkout bypass.
-    return <div className="em-book-card em-book-concept" aria-label={"Published character " + item.name + ", preview only"}>{inner}</div>;
+    // Link by public Listing ID. Never pass a private Character ID into public
+    // navigation or the legacy unpaid rehearsal Scene API.
+    return <Link className="em-book-card" href={"/marketplace/" + encodeURIComponent(item.listingId!)} aria-label={"View published character " + item.name}>{inner}</Link>;
   }
   return <button type="button" className="em-book-card em-selectable" onClick={onSelect} aria-pressed={selected} aria-label={(selected ? "Remove " : "Select ") + item.name + (selected ? " from" : " for") + " your cast"}>{inner}</button>;
 }
@@ -93,6 +94,8 @@ export function MarketplaceDiscover() {
   const router = useRouter();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [published, setPublished] = useState<MarketplaceListing[]>([]);
+  const [ownedListings, setOwnedListings] = useState<OwnedListingDetail[]>([]);
+  const [ownedLoading, setOwnedLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [publishedLoading, setPublishedLoading] = useState(true);
   const [publishedError, setPublishedError] = useState(false);
@@ -126,6 +129,17 @@ export function MarketplaceDiscover() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    listOwnedListings(controller.signal)
+      .then((records) => { if (!controller.signal.aborted) setOwnedListings(records); })
+      .catch(() => {
+        // Anonymous discovery must remain available; don't expose owner data.
+      })
+      .finally(() => { if (!controller.signal.aborted) setOwnedLoading(false); });
+    return () => controller.abort();
+  }, []);
+
   const mine = useMemo<ShelfItem[]>(() => characters.map((c) => ({
     id: c.id,
     name: c.profile.name,
@@ -136,6 +150,7 @@ export function MarketplaceDiscover() {
 
   const publishedShelf = useMemo<ShelfItem[]>(() => published.map((listing) => ({
     id: `published:${listing.listing_id}`,
+    listingId: listing.listing_id,
     name: listing.name,
     description: listing.short_description,
     image: listing.cover_image_url,
@@ -145,21 +160,28 @@ export function MarketplaceDiscover() {
   })), [published]);
 
   const visible = useMemo(() => {
+    // An owned published character appears once in All, as its public listing.
+    // My characters still shows the private source character for editing.
+    const publishedCharacterIds = new Set(
+      ownedListings.filter((item) => item.status === "published").map((item) => item.character_id),
+    );
+    const unpublishedMine = mine.filter((item) => !publishedCharacterIds.has(item.id));
     const collection = filter === "published" ? publishedShelf
       : filter === "mine" ? mine
       : filter === "samples" ? samples
-      : [...publishedShelf, ...mine, ...samples];
+      : ownedLoading ? samples
+      : [...publishedShelf, ...unpublishedMine, ...samples];
     const term = query.trim().toLowerCase();
     return term ? collection.filter((item) =>
       [item.name, item.description, item.creator || "", ...(item.tags || [])]
         .join(" ").toLowerCase().includes(term),
     ) : collection;
-  }, [publishedShelf, mine, filter, query]);
+  }, [publishedShelf, mine, ownedListings, ownedLoading, filter, query]);
 
   const collectionLoading = filter === "mine" ? loading
     : filter === "published" ? publishedLoading
     : filter === "samples" ? false
-    : loading || publishedLoading;
+    : loading || publishedLoading || ownedLoading;
 
   function toggle(id: string) {
     setError("");

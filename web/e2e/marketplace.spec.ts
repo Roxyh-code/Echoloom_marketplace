@@ -127,7 +127,7 @@ test("owned published character appears once, opens public detail and supports l
   await page.getByLabel("Public description").fill("A curious archivist returns.");
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Republish to Marketplace" }).click();
-  await expect(page.getByText("Listing saved successfully.")).toBeVisible();
+  await expect(page.getByText("Listing saved.")).toBeVisible();
   const restored = await page.request.get(backend + "/api/marketplace/listings/" + listing_id);
   expect(restored.status()).toBe(200);
   expect((await restored.json()).short_description).toBe("A curious archivist returns.");

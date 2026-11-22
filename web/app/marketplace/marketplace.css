@@ -232,8 +232,5 @@
 @media (min-width: 650px) { .em-app { border: 1px solid #E8E8E8; box-shadow: 0 8px 40px #1212120B; } }
 @media (max-width: 360px) { .em-hero h1 { font-size: 27px; } .em-cover-title { font-size: 15px; } }
 
-/* User-provided demo artwork: preserve cover crop, avoid fake click targets. */
-.em-book-concept { cursor: default; }
-.em-book-concept .em-cover-edition { color: #54408c; }
-.em-book-concept .em-cover-caption { color: #7a7a7a; }
+/* Apply the same portrait crop to every character, including placeholders. */
 .em-cover img { object-fit: cover; object-position: center 32%; }

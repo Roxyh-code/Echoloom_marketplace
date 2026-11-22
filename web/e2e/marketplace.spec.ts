@@ -4,7 +4,7 @@ test.beforeEach(async ({ request }) => {
   await request.post("http://127.0.0.1:8001/__test/reset");
 });
 
-test("bookshop-style discovery shows sample covers, search and filter", async ({ page }) => {
+test("Discovery shows unified placeholder character cards without separate artwork or story categories", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
   await expect(page).toHaveURL(/\/marketplace$/);
@@ -14,23 +14,33 @@ test("bookshop-style discovery shows sample covers, search and filter", async ({
   await expect(page.getByRole("link", { name: /Open story studio/ })).toBeVisible();
   await expect(page.locator(".em-app")).toHaveCSS("background-color", "rgb(9, 10, 16)");
   await expect(page.locator(".em-filter.active")).toHaveCSS("background-color", "rgb(110, 82, 200)");
-  await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: /sample character Leo/ })).toBeVisible();
-  await expect(page.getByRole("img", { name: "Portrait of Mira" })).toHaveAttribute("src", "/portraits/mira.webp");
-  await expect(page.getByRole("img", { name: "Portrait of Leo" })).toHaveAttribute("src", "/portraits/leo.webp");
-  await expect(page.getByLabel("Artwork concept Vesper, not yet playable")).toBeVisible();
-  await expect(page.getByLabel("Artwork concept Ren, not yet playable")).toBeVisible();
-  await expect(page.getByLabel("Artwork concept Vesper, not yet playable").locator("img")).toHaveAttribute("src", "/portraits/red-horn.webp");
-  await expect(page.getByLabel("Artwork concept Ren, not yet playable").locator("img")).toHaveAttribute("src", "/portraits/red-boy.webp");
+  await expect(page.getByRole("button", { name: "Art previews" })).toHaveCount(0);
+  await expect(page.locator(".em-filters button")).toHaveCount(3);
+  for (const [name, image] of [
+    ["Mira", "/portraits/mira.webp"],
+    ["Leo", "/portraits/leo.webp"],
+    ["Vesper", "/portraits/red-horn.webp"],
+    ["Ren", "/portraits/red-boy.webp"],
+  ]) {
+    const card = page.getByRole("link", { name: "View character " + name });
+    await expect(card).toBeVisible();
+    await expect(card.getByRole("img", { name: "Portrait of " + name })).toHaveAttribute("src", image);
+  }
+  await expect(page.locator(".em-cover-edition")).toHaveCount(0);
+  await expect(page.locator(".em-cover-caption")).toHaveCount(0);
   await expect.poll(async () => page.locator(".em-book-grid img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator(".em-hero h1")).toHaveCSS("font-family", /Pirata One/);
   await expect(page.locator(".em-cover-title").first()).toHaveCSS("font-family", /Grenze Gotisch/);
   await page.screenshot({ path: "test-results/editorial-marketplace.png", fullPage: true });
   await page.getByRole("searchbox", { name: "Search characters" }).fill("Mira");
-  await expect(page.getByRole("link", { name: /sample character Mira/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: /sample character Leo/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "View character Mira" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View character Leo" })).toHaveCount(0);
   await page.getByRole("searchbox", { name: "Search characters" }).fill("");
+  await page.getByRole("link", { name: "View character Vesper" }).click();
+  await expect(page).toHaveURL(/\/marketplace\/preview\/concept-vesper$/);
+  await expect(page.getByRole("heading", { name: "Vesper" })).toBeVisible();
+  await page.getByRole("link", { name: /Discover/ }).first().click();
   await page.getByRole("button", { name: "My characters" }).click();
   await expect(page.getByText("Your shelf is waiting")).toBeVisible();
   await expect(page.getByRole("link", { name: /Create a character/ })).toBeVisible();
@@ -98,6 +108,11 @@ test("owned published character appears once, opens public detail and supports l
   const publicCard = page.getByRole("link", { name: "View published character Hazel" });
   await expect(publicCard).toBeVisible();
   await expect(page.locator(".em-book-card").filter({ hasText: "Hazel" })).toHaveCount(1);
+  await expect(page.locator(".em-book-grid .em-book-card")).toHaveCount(4);
+  await expect(page.getByRole("link", { name: "View character Ren" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Published", exact: true }).click();
+  await expect(page.locator(".em-book-grid .em-book-card")).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "View character Mira" })).toHaveCount(0);
   await publicCard.click();
   await expect(page).toHaveURL(new RegExp("/marketplace/" + listing_id));
   await expect(page.getByRole("heading", { name: "Hazel" })).toBeVisible();

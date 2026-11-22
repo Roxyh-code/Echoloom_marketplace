@@ -1,0 +1,425 @@
+/*
+ * Echoloom Dark-Fantasy UI — black canvas, Moonlit Violet, restrained Gothic.
+ *
+ * Display: Grenze Gotisch (headings / character names)
+ * Signature: Pirata One (brand / dramatic chapter titles)
+ * Functional UI remains a legible system sans; reading remains readable serif.
+ * This sheet is imported last to tame the legacy white Bazar overrides.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@400;500;600;700;800&family=Pirata+One&display=swap");
+
+:root {
+  color-scheme: dark;
+  --el-bg: #090a10;
+  --el-surface: #12131d;
+  --el-surface-raised: #1b1928;
+  --el-surface-soft: #191525;
+  --el-ink: #f2effa;
+  --el-subtle: #b6aec8;
+  --el-muted: #978fa9;
+  --el-stroke: #322d46;
+  --el-primary: #6e52c8;
+  --el-primary-hover: #8063db;
+  --el-lilac: #a78bfa;
+  --el-display: "Grenze Gotisch", "Noto Serif SC", "Songti SC", Georgia, serif;
+  --el-brand: "Pirata One", "Grenze Gotisch", Georgia, serif;
+  --el-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --bg: var(--el-bg);
+  --ink: var(--el-ink);
+  --muted: var(--el-subtle);
+  --purple: var(--el-primary);
+  --purple-dark: #5135a8;
+  --lavender: var(--el-surface-soft);
+  --line: var(--el-stroke);
+  --bazar-surface: var(--el-surface);
+  --bazar-surface-muted: var(--el-surface-raised);
+  --bazar-border: var(--el-stroke);
+  --bazar-border-strong: #4b4268;
+  --bazar-text: var(--el-ink);
+  --bazar-text-secondary: var(--el-subtle);
+  --bazar-primary: var(--el-primary);
+  --bazar-primary-hover: var(--el-primary-hover);
+  --bazar-primary-pale: var(--el-surface-soft);
+}
+html, body { color-scheme: dark !important; background: var(--el-bg) !important; color: var(--el-ink) !important; }
+body, button, input, textarea, select { font-family: var(--el-ui); }
+body ::selection { background: #6748b8; color: white; }
+:where(button,a,input,textarea,select):focus-visible { outline-color: var(--el-lilac) !important; }
+:where(button,input,textarea,select):disabled { opacity: .65; }
+:where(input,textarea,select)::placeholder { color: var(--el-muted) !important; }
+:where(input,textarea,select) { color-scheme: dark; }
+
+/* Global page shells, older creator forms, and existing auth gates. */
+.em-app, .rehearsal-app, .rh-sheet, .account-gate, .el-listing-editor,
+[class*="account-shell_canvas__"] {
+  background: var(--el-bg) !important;
+  color: var(--el-ink) !important;
+  color-scheme: dark;
+}
+:where(.em-app, .rehearsal-app, .rh-sheet, .el-listing-editor, .account-gate) :is(h1,h2,h3,h4),
+[class*="account-shell_heading__"], [class*="account-shell_formHeading__"] h2 {
+  font-family: var(--el-display) !important;
+  color: var(--el-ink) !important;
+  letter-spacing: .015em;
+}
+.el-listing-editor :is(h1,h2), .em-app article :is(h1,h2) { font-family: var(--el-display) !important; }
+.panel, .account-gate .account-form, .el-listing-editor .panel {
+  background: var(--el-surface) !important;
+  border-color: var(--el-stroke) !important;
+  color: var(--el-ink) !important;
+}
+.notice, .el-listing-editor [role="status"]:not(.error), .account-status {
+  background: var(--el-surface-soft) !important;
+  color: var(--el-subtle) !important;
+  border-color: var(--el-stroke) !important;
+}
+.el-listing-editor :is(p, label, span, select, input, textarea) { color: var(--el-subtle); }
+.el-listing-editor :is(h1,h2,strong) { color: var(--el-ink) !important; }
+.el-listing-editor :is(input,textarea,select),
+.account-gate :is(input,textarea,select) {
+  background: var(--el-surface-raised) !important;
+  border-color: var(--el-stroke) !important;
+  color: var(--el-ink) !important;
+}
+.el-listing-editor a, .account-gate a { color: var(--el-lilac) !important; }
+.el-listing-editor .button.primary, .account-gate .button.primary,
+.el-listing-editor button.button.primary {
+  background: var(--el-primary) !important;
+  color: white !important;
+  border-color: var(--el-primary) !important;
+}
+.el-listing-editor .button:not(.primary) {
+  background: var(--el-surface-raised) !important;
+  border-color: var(--el-stroke) !important;
+  color: var(--el-lilac) !important;
+}
+.el-listing-editor section[aria-label="Listing preview"],
+.el-listing-editor div[role="status"] { background: var(--el-surface-soft) !important; border-color: var(--el-stroke) !important; }
+.el-listing-editor section[aria-label="Listing preview"] :is(p,h2) { color: var(--el-ink) !important; }
+
+/* A single restrained brand symbol across all entrance/navigation headers. */
+.em-app .em-brand, .rehearsal-app .rh-brand, [class*="account-shell_brand__"] {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--el-brand) !important;
+  color: var(--el-ink) !important;
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: .025em;
+  gap: 7px;
+}
+.em-brand-icon, .rh-brand-icon, .el-brand-icon {
+  display: inline-block;
+  width: 26px;
+  height: 30px;
+  object-fit: contain;
+  flex: none;
+}
+.em-app .em-brand-dot, .rehearsal-app .rh-brand-dot,
+[class*="account-shell_brandDot__"] { color: var(--el-lilac) !important; }
+
+/* Marketplace: Discover, public listing, selection tray. */
+.em-app {
+  --em-paper: var(--el-bg);
+  --em-ink: var(--el-ink);
+  --em-muted: var(--el-subtle);
+  --em-border: var(--el-stroke);
+  --em-plum: var(--el-primary);
+  --em-terracotta: var(--el-lilac);
+  box-shadow: none !important;
+  border-color: var(--el-stroke) !important;
+  font-family: var(--el-ui) !important;
+}
+.em-app .em-header { border-color: var(--el-stroke) !important; }
+.em-app .em-top-create, .em-app .em-filter, .em-app .em-search {
+  background: var(--el-surface) !important;
+  border-color: var(--el-stroke) !important;
+  color: var(--el-ink) !important;
+}
+.em-app .em-top-create { color: var(--el-lilac) !important; }
+.em-app .em-hero {
+  background: radial-gradient(ellipse at 94% 0%, #30204f 0%, #20172e 38%, #15121d 92%) !important;
+  border: 1px solid #392952 !important;
+  color: var(--el-ink) !important;
+}
+.em-app .em-hero::after {
+  display: block !important;
+  border: 1px solid #6e52c84d;
+  width: 145px; height: 145px; right: -49px; top: -74px;
+}
+.em-app .em-hero h1 {
+  color: #fffafc !important;
+  font-family: var(--el-brand) !important;
+  font-size: 35px;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: .01em;
+}
+.em-app .em-hero h1 em { color: #c9b6ff !important; font-weight: 400; }
+.em-app .em-hero p, .em-app .em-cover-desc, .em-app .em-note p,
+.em-app .em-empty p, .em-app .em-cover-caption { color: var(--el-subtle) !important; }
+.em-app .em-kicker, .em-app .em-cover-caption { color: #c1aeff !important; }
+.em-app .em-kicker-muted, .em-app .em-shelf-header { color: var(--el-muted) !important; }
+.em-app .em-hero-link, .em-app .em-cast-action {
+  background: var(--el-primary) !important;
+  border-color: var(--el-primary) !important;
+  color: #fff !important;
+}
+.em-app .em-filter.active {
+  background: var(--el-primary) !important;
+  border-color: var(--el-primary) !important;
+  color: #fff !important;
+}
+.em-app .em-search input { background: transparent !important; color: var(--el-ink) !important; }
+.em-app .em-section-title h2,
+.em-app .em-cover-title,
+.em-app .em-empty h3,
+.em-app .em-cast-copy p,
+.em-app .em-cover-monogram {
+  font-family: var(--el-display) !important;
+  color: var(--el-ink) !important;
+  font-weight: 700;
+}
+.em-app .em-section-title h2 { font-size: 25px; line-height: 1.12; }
+.em-app .em-cover-title { font-size: 20px; line-height: 1.12; }
+.em-app .em-cover { background: var(--el-surface-raised) !important; }
+.em-app .em-cover::after { border-color: #a78bfa28 !important; }
+.em-app .em-cover-edition {
+  background: #161323e8 !important;
+  color: #c8b5ff !important;
+}
+.em-app .em-empty {
+  background: var(--el-surface) !important;
+  border-color: var(--el-stroke) !important;
+}
+.em-app .em-empty a, .em-app article a { color: var(--el-lilac) !important; }
+.em-app .em-cast-tray, .em-app .em-bottom-nav {
+  background: #0e0f18f5 !important;
+  border-color: var(--el-stroke) !important;
+  box-shadow: 0 -8px 25px #0004 !important;
+}
+.em-app .em-bottom-nav a { color: var(--el-muted) !important; }
+.em-app .em-bottom-nav a[aria-current="page"] { color: var(--el-lilac) !important; }
+.em-app .em-note { border-color: var(--el-stroke) !important; }
+.em-app .em-note strong, .em-app .em-note span { color: var(--el-lilac) !important; }
+.em-app .em-cast-copy > span, .em-app .em-cast-instruction { color: var(--el-subtle) !important; }
+.em-app article :is(h1,h2) { color: var(--el-ink) !important; }
+.em-app article :is(p,span) { color: var(--el-subtle) !important; }
+.em-app article > div > div:first-child { background: var(--el-surface-raised) !important; }
+.em-app article section span {
+  border-color: var(--el-stroke) !important;
+  background: var(--el-surface) !important;
+}
+
+/* Character Studio, rehearsal setup, saved story library and reader. */
+.rehearsal-app, .rh-sheet {
+  --rh-bg: var(--el-bg);
+  --rh-top: var(--el-bg);
+  --rh-card: var(--el-surface);
+  --rh-raised: var(--el-surface-raised);
+  --rh-gold: var(--el-primary);
+  --rh-text: var(--el-ink);
+  --rh-muted: var(--el-subtle);
+  --rh-border: var(--el-stroke);
+  --ed-plum: var(--el-primary);
+  --ed-terracotta: var(--el-primary);
+  --ed-paper: var(--el-bg);
+  --ed-ivory: var(--el-surface);
+  --ed-rule: var(--el-stroke);
+  --ed-subtle: var(--el-subtle);
+  color: var(--el-ink) !important;
+  font-family: var(--el-ui) !important;
+  border-color: var(--el-stroke) !important;
+}
+.rehearsal-app :is(h1,h2,h3), .rh-sheet :is(h2,h3) {
+  font-family: var(--el-display) !important;
+  color: var(--el-ink) !important;
+  font-weight: 700;
+}
+.rehearsal-app :is(.rh-hero h1, .mc-create h1, .mc-library h1) {
+  font-family: var(--el-brand) !important;
+  font-weight: 400 !important;
+  letter-spacing: .02em;
+}
+.rehearsal-app .rh-top-title, .rh-sheet > header h2 {
+  color: var(--el-ink) !important;
+  font-family: var(--el-display) !important;
+  font-size: 22px;
+}
+.rehearsal-app :is(.rh-top, .rh-list .rh-top, .mc-top, .rh-pad,
+  .rh-library, .rh-scroll, .mc-library, .mc-create, .mc-detail,
+  .mc-profile-body, .rh-reading, .rh-characters),
+.rh-sheet :is(header, .rh-sheet-body) {
+  background: var(--el-bg) !important;
+  border-color: var(--el-stroke) !important;
+}
+.rehearsal-app .rh-hero {
+  background: radial-gradient(ellipse at 90% 8%, #302248, #171420 75%) !important;
+  border: 1px solid var(--el-stroke) !important;
+}
+.rehearsal-app .rh-hero p, .rehearsal-app .mc-intro,
+.rehearsal-app .rh-card-open p, .rehearsal-app .rh-card-open small,
+.rehearsal-app .mc-character-caption > small,
+.rehearsal-app .mc-facts p, .rehearsal-app .rh-top small,
+.rehearsal-app .rh-muted, .rh-sheet .rh-muted { color: var(--el-subtle) !important; }
+.rehearsal-app .rh-top > .rh-icon, .rehearsal-app .rh-icon, .rh-sheet .rh-icon {
+  color: var(--el-lilac) !important;
+  background: var(--el-surface) !important;
+  border-color: var(--el-stroke) !important;
+}
+.rehearsal-app :is(.rh-eyebrow, .rh-version-link, .rh-brand-dot,
+  .rh-text-button, .rh-slot-letter, .rh-add-circle,
+  .rh-example-star, .mc-character-caption > span),
+.rh-sheet :is(.rh-eyebrow, .rh-text-button) {
+  color: var(--el-lilac) !important;
+}
+.rehearsal-app :is(.rh-primary, .rh-send), .rh-sheet .rh-primary {
+  background: var(--el-primary) !important;
+  border-color: var(--el-primary) !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+.rehearsal-app .rh-primary:hover:not(:disabled), .rh-sheet .rh-primary:hover:not(:disabled) {
+  background: var(--el-primary-hover) !important;
+}
+.rehearsal-app .rh-secondary, .rh-sheet .rh-secondary {
+  background: var(--el-surface-raised) !important;
+  border-color: var(--el-stroke) !important;
+  color: #d4c7fb !important;
+}
+.rehearsal-app :is(.rh-search, .rh-scene-card, .rh-cast-slot,
+  .rh-character-list article, .rh-example, .rh-details, .rh-source,
+  .rh-review-summary, .rh-review-detail, .rh-empty, .rh-empty-cast,
+  .rh-empty-list, .rh-direction-card, .rh-warning,
+  .rh-actor-detail, .rh-export-preview,
+  .mc-pending, .mc-character-card, .mc-fact,
+  .mc-proposal, .mc-creation-progress),
+.rh-sheet :is(.rh-direction-card, .rh-details, .rh-extracted,
+  .rh-version-list > article, .rh-edit-type label,
+  .rh-interventions > button, .rh-actor-detail, .mc-portrait-grid section) {
+  background: var(--el-surface) !important;
+  border-color: var(--el-stroke) !important;
+  color: var(--el-ink) !important;
+  box-shadow: none !important;
+}
+.rehearsal-app .rh-search svg { color: var(--el-lilac) !important; }
+.rehearsal-app .rh-filters button, .rh-sheet .rh-filters button {
+  background: var(--el-surface) !important;
+  border-color: var(--el-stroke) !important;
+  color: var(--el-subtle) !important;
+}
+.rehearsal-app .rh-filters button.active, .rh-sheet .rh-filters button.active,
+.rehearsal-app .rh-cast-slot.selected {
+  background: #30234c !important;
+  border-color: var(--el-primary) !important;
+  color: #f6f0ff !important;
+}
+.rehearsal-app .rh-stage-art { background: #171221 !important; }
+.rehearsal-app .rh-stage-art::after { background: linear-gradient(0deg,#171221 0,transparent 65%) !important; }
+.rehearsal-app .rh-orbit { border-color: #7253ab !important; box-shadow: 0 0 0 17px #55368124,0 0 0 18px #8260c066 !important; }
+.rehearsal-app .rh-art-person { border-color: #55416e !important; background: #1c1927 !important; }
+.rehearsal-app .rh-art-caption { color: var(--el-subtle) !important; }
+.rehearsal-app :is(.rh-nav, .rh-form-footer, .rh-stage-footer, .rh-cast-strip,
+  .rh-stage-context, .rh-segment > header),
+.rh-sheet > header {
+  background: #0e0e17 !important;
+  border-color: var(--el-stroke) !important;
+  color: var(--el-subtle) !important;
+}
+.rehearsal-app .rh-nav > * { color: var(--el-muted) !important; }
+.rehearsal-app .rh-nav > *.active, .rehearsal-app .rh-nav .active { color: var(--el-lilac) !important; }
+.rehearsal-app :is(.rh-stage-context > button, .rh-segment > header, .rh-sync,
+  .rh-reading-divider, .rh-line-progress) { color: var(--el-subtle) !important; }
+.rehearsal-app .rh-reading { color: var(--el-ink) !important; }
+.rehearsal-app .rh-reading :is(.rh-scene-opening, .rh-segment, .rh-reader-end, .rh-block) {
+  background: transparent !important;
+  border-color: var(--el-stroke) !important;
+}
+.rehearsal-app .rh-scene-opening p {
+  font-family: Georgia, "Songti SC", serif !important;
+  font-size: 15px;
+  color: #c8bfd9 !important;
+  line-height: 1.85;
+}
+.rehearsal-app .rh-block p, .rehearsal-app .rh-review-summary p,
+.rehearsal-app .mc-facts p {
+  font-family: Georgia, "Songti SC", serif !important;
+  color: #e9e3f1 !important;
+  line-height: 1.86;
+}
+.rehearsal-app .rh-block.narration p { color: #cdbce3 !important; font-style: italic; }
+.rehearsal-app .rh-block.action p { color: #c4bbd2 !important; }
+.rehearsal-app .rh-speaker strong { font-family: var(--el-display) !important; color: #c5aeff !important; font-size: 20px; }
+.rehearsal-app .rh-block-menu, .rehearsal-app .rh-card-more,
+.rehearsal-app .rh-paragraph-menu, .rh-sheet .rh-more-menu {
+  background: var(--el-surface-raised) !important;
+  border-color: var(--el-stroke) !important;
+  color: var(--el-ink) !important;
+}
+.rehearsal-app .rh-alert, .rh-sheet .rh-alert {
+  background: #21192e !important;
+  border-color: #443256 !important;
+  color: var(--el-ink) !important;
+}
+.rehearsal-app .rh-alert.error, .rh-sheet .rh-alert.error { background: #311824 !important; color: #ffb7c3 !important; }
+.rehearsal-app .mc-portrait, .rehearsal-app .rh-avatar, .rehearsal-app .mc-character-card .mc-portrait {
+  background: var(--el-surface-raised) !important;
+  border-color: var(--el-stroke) !important;
+}
+.rehearsal-app .mc-character-caption > strong, .rehearsal-app .rh-character-pick strong,
+.rehearsal-app .rh-card-open h3, .rehearsal-app .rh-cast-slot strong {
+  font-family: var(--el-display) !important;
+  color: var(--el-ink) !important;
+  font-weight: 700;
+  font-size: 20px;
+}
+.rehearsal-app .mc-cover-title h1 { font-family: var(--el-brand) !important; color: white !important; font-weight: 400 !important; }
+.rehearsal-app .mc-cover-title p, .rehearsal-app .mc-cover-title .rh-eyebrow { color: #faf5ff !important; }
+.rehearsal-app .mc-cover-shade { background: linear-gradient(0deg,#080710e8 0%,transparent 72%) !important; }
+.rehearsal-app .mc-cover-edit { background: var(--el-surface) !important; color: var(--el-lilac) !important; border-color: var(--el-stroke) !important; }
+.rehearsal-app :is(input:not([type="radio"]):not([type="checkbox"]),textarea,select),
+.rh-sheet :is(input:not([type="radio"]):not([type="checkbox"]),textarea,select) {
+  color: var(--el-ink) !important;
+  background: var(--el-surface-raised) !important;
+  border-color: var(--el-stroke) !important;
+}
+.rehearsal-app .rh-search input { background: transparent !important; }
+.rh-sheet :is(button, label, p, article) { color: var(--el-subtle); }
+.rh-sheet :is(h2,h3,strong) { color: var(--el-ink) !important; }
+.rh-sheet .rh-direction-card h3 { color: var(--el-ink) !important; }
+.rh-sheet blockquote { background: #221b30 !important; color: #ded4ef !important; border-color: var(--el-primary) !important; }
+.rehearsal-app .rh-source, .rehearsal-app .rh-reading-divider { border-color: var(--el-stroke) !important; }
+
+/* Account module: CSS modules have generated hashes, so target their local prefixes. */
+[class*="account-shell_canvas__"] {
+  border-color: var(--el-stroke) !important;
+  box-shadow: none !important;
+  font-family: var(--el-ui) !important;
+}
+[class*="account-shell_topbar__"], [class*="account-shell_footer__"] { border-color: var(--el-stroke) !important; }
+[class*="account-shell_intro__"] { background: var(--el-surface-soft) !important; }
+[class*="account-shell_brand__"] { font-family: var(--el-brand) !important; }
+[class*="account-shell_brandMark__"], [class*="account-shell_eyebrow__"],
+[class*="account-shell_exploreLink__"], [class*="account-shell_passwordToggle__"] { color: var(--el-lilac) !important; }
+[class*="account-shell_heading__"], [class*="account-shell_formHeading__"] h2 { font-size: 28px; }
+[class*="account-shell_description__"], [class*="account-shell_helper__"], [class*="account-shell_note__"],
+[class*="account-shell_footer__"], [class*="account-shell_field__"] { color: var(--el-subtle) !important; }
+[class*="account-shell_field__"] input {
+  background: var(--el-surface-raised) !important;
+  border-color: var(--el-stroke) !important;
+  color: var(--el-ink) !important;
+}
+[class*="account-shell_primaryButton__"] {
+  background: var(--el-primary) !important;
+  border-color: var(--el-primary) !important;
+  color: white !important;
+}
+
+/* Reduced-motion accessibility and intentionally subdued selected contrast. */
+@media (max-width: 360px) {
+  .em-app .em-hero h1 { font-size: 31px; }
+  .em-app .em-cover-title { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .em-app *, .rehearsal-app *, .rh-sheet * { text-shadow: none !important; }
+}

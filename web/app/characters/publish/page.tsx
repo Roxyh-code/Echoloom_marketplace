@@ -258,7 +258,7 @@ export default function PublishCharacterPage() {
             <span>I confirm I have the rights to publicly share this character and its artwork. Publishing makes the preview details and current portrait visible to anyone who opens the Marketplace.</span>
           </label>
 
-          <div style={{ padding: "13px 14px", background: "#f7f5fb", borderRadius: 10, margin: "18px 0 20px", fontSize: 13 }}>
+          <div className="el-listing-monetization-note" style={{ margin: "18px 0 20px" }}>
             <strong>Listing:</strong> Free to publish; public browsing only for now.<br />
             <strong>Monetization:</strong> Disabled until you verify a Solana payout wallet.<br />
             <strong>Future paid packs:</strong> Platform-set at 1 test USDC; 45% to each creator and 10% to the platform.

@@ -457,3 +457,136 @@ body ::selection { background: #6e52c8; color: #fff; }
   .rehearsal-app :is(.rh-primary,.rh-secondary,.rh-nav > *) { font-size: 15px !important; }
   .em-app .em-filter { font-size: 15px !important; }
 }
+
+/* Contrast and mixed-mode audit: override later legacy editorial selectors.
+   Use deliberate higher specificity instead of relying on route CSS order. */
+.rehearsal-app.rehearsal-app h1 em,
+.rehearsal-app.rehearsal-app .rh-hero h1 em {
+  color: #c6afff !important;
+  font-weight: inherit;
+}
+.rehearsal-app.rehearsal-app .rh-secondary,
+.rehearsal-app.rehearsal-app .rh-text-button,
+.rehearsal-app.rehearsal-app .rh-pause-role,
+.rh-sheet.rh-sheet .rh-secondary,
+.rh-sheet.rh-sheet .rh-text-button {
+  color: #d4c3ff !important;
+}
+.rehearsal-app.rehearsal-app .mc-cover-edit {
+  color: #cfbaff !important;
+  background: #171522 !important;
+  border-color: #554468 !important;
+}
+.rehearsal-app.rehearsal-app .rh-add-circle {
+  background: #281f3b !important;
+  color: #ccb5ff !important;
+  border-color: #8065ab !important;
+  box-shadow: none !important;
+}
+.rehearsal-app.rehearsal-app .rh-cast-slot > .rh-add-circle {
+  background: #281f3b !important;
+}
+.rehearsal-app.rehearsal-app .rh-format :is(label,button),
+.rh-sheet.rh-sheet .rh-format :is(label,button) {
+  background: #1b1928 !important;
+  border-color: #493954 !important;
+  color: #e9dff6 !important;
+}
+.rehearsal-app.rehearsal-app .rh-format .selected,
+.rh-sheet.rh-sheet .rh-format .selected {
+  background: #382652 !important;
+  border-color: #9b7ee8 !important;
+  color: #efe7ff !important;
+}
+.rehearsal-app.rehearsal-app label,
+.rehearsal-app.rehearsal-app legend,
+.rh-sheet.rh-sheet label,
+.rh-sheet.rh-sheet legend {
+  color: #cec2db !important;
+}
+.rehearsal-app.rehearsal-app label > small,
+.rh-sheet.rh-sheet label > small {
+  color: #a89dbb !important;
+}
+.rehearsal-app.rehearsal-app .rh-stage-actions > button:not(.rh-primary) {
+  color: #c9b5ff !important;
+}
+.rehearsal-app.rehearsal-app .rh-stage-actions > button:not(.rh-primary) svg {
+  color: #c9b5ff !important;
+}
+.rehearsal-app.rehearsal-app .rh-stage-actions .rh-primary {
+  color: #ffffff !important;
+}
+.rehearsal-app.rehearsal-app .rh-stage-actions > button:not(.rh-primary):disabled {
+  opacity: .5;
+}
+.rehearsal-app.rehearsal-app .rh-review-version button {
+  background: #251d34 !important;
+  border: 1px solid #54416d !important;
+  color: #e1d5ff !important;
+}
+.rehearsal-app.rehearsal-app .rh-review-version {
+  border-color: #40324d !important;
+}
+.rehearsal-app.rehearsal-app .rh-review-version :is(span,small) { color: #b9aeca !important; }
+.rehearsal-app.rehearsal-app .rh-top-title { font-size: 20px !important; }
+.rehearsal-app.rehearsal-app :is(.rh-details summary,.rh-optional,.rh-badge,.rh-demo) {
+  color: #bea9ef !important;
+}
+.rh-sheet.rh-sheet .rh-direction-card {
+  background: #171521 !important;
+  border-color: #443851 !important;
+}
+.rh-sheet.rh-sheet .rh-direction-card :is(p,small) {
+  color: #c6b9d5 !important;
+  line-height: 1.55;
+}
+.rh-sheet.rh-sheet .rh-direction-card > strong,
+.rh-sheet.rh-sheet .rh-direction-card > span {
+  color: #c7aeff !important;
+}
+.rh-sheet.rh-sheet .rh-direction-card h3 {
+  font-family: var(--el-display) !important;
+  color: #f7f0ff !important;
+}
+.rh-sheet.rh-sheet .rh-interventions strong {
+  color: #f3eafe !important;
+  font-family: var(--el-display) !important;
+  font-size: 18px;
+}
+.rh-sheet.rh-sheet .rh-interventions small,
+.rh-sheet.rh-sheet .rh-actor-detail > p,
+.rh-sheet.rh-sheet .rh-actor-detail > small {
+  color: #bfb1d1 !important;
+}
+.rh-sheet.rh-sheet .rh-interventions > button > svg {
+  color: #c2a5ff !important;
+}
+.rh-sheet.rh-sheet :is(.rh-active-direction p,.rh-extracted p,.rh-version-list small) {
+  color: #d6c9e6 !important;
+}
+.rh-sheet.rh-sheet :is(.rh-direction-card > strong,.rh-version-tags) {
+  color: #c7aeff !important;
+}
+.rh-sheet.rh-sheet :is(.rh-interventions > button,.rh-takeover-picks button) {
+  background: #171521 !important;
+  border-color: #443851 !important;
+}
+.el-listing-editor.el-listing-editor .el-listing-monetization-note {
+  padding: 13px 14px;
+  background: #241e33 !important;
+  border: 1px solid #443656 !important;
+  border-radius: 10px;
+  color: #d1c4e2 !important;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.el-listing-editor.el-listing-editor .el-listing-monetization-note strong { color: #f4ecff !important; }
+.el-listing-editor.el-listing-editor [role="status"] span { color: #bfb3cf !important; }
+.el-listing-editor.el-listing-editor .button.primary:disabled {
+  background: #4f3d83 !important;
+  color: #f3eaff !important;
+}
+.em-detail-page.em-detail-page article > div > div:first-child > span {
+  color: #ad8af6 !important;
+}

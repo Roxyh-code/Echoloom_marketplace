@@ -60,8 +60,8 @@ export function AccountForm({
         {!compact && (
           <p className={styles.description}>
             {setup
-              ? "Create your Echoloom account to save your characters, shape new stories, and share your creations."
-              : "Sign in to return to your characters and continue your story."}
+              ? "Save your characters and stories."
+              : "Pick up where you left off."}
           </p>
         )}
       </div>
@@ -147,17 +147,10 @@ export function AccountForm({
           {busy ? "Please wait…" : setup ? "Create account" : "Sign in"}
           {!busy && <span aria-hidden="true">→</span>}
         </button>
-        <p className={styles.helper}>
-          {setup
-            ? "This is a local demo account. You can publish characters without connecting a wallet."
-            : "Your characters and publishing permissions are linked to this local account."}
-        </p>
       </form>
 
       <p className={styles.note}>
-        <span aria-hidden="true">✧</span>
-        This prototype uses a local username and password, not a hosted identity provider.
-        There is no email password recovery. Use a unique password and keep this installation private.
+        Local demo account: no password recovery. Use a unique password and keep this installation private.
       </p>
     </section>
   );

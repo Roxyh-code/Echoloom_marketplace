@@ -169,17 +169,9 @@ export default function PublishCharacterPage() {
 
       <p style={{ color: accent, fontSize: 12, fontWeight: 700, letterSpacing: 1.8 }}>CREATOR STUDIO</p>
       <h1 style={{ margin: "7px 0 8px" }}>{currentListing ? "Manage listing" : "Publish a character"}</h1>
-      <p style={{ color: "#6b6473", marginBottom: 22 }}>
-        Choose one of your characters and review exactly what other people will see.
-        Private backstory, prompts and memories are never included in this form.
+      <p style={{ color: "#bcb2ce", marginBottom: 22 }}>
+        Only the public details you approve will be shared.
       </p>
-
-      <div className="notice" role="note" style={{ marginBottom: 22 }}>
-        <strong>No wallet needed to publish.</strong> Your character will appear in the public
-        Marketplace after you confirm your publishing rights. Monetization is separate:
-        connecting and verifying a Solana payout wallet will be required before your
-        character can earn revenue from paid scenes.
-      </div>
 
       {loadError && <p className="error" role="alert">{loadError}</p>}
       {loading ? (
@@ -211,7 +203,7 @@ export default function PublishCharacterPage() {
             <div role="status" style={{ marginBottom: 20, padding: "13px 15px", background: "#faf8fd", borderRadius: 10, border: "1px solid #e6dff5" }}>
               <strong>Listing status: {currentListing.status === "published" ? "Published" : "Unpublished"}</strong>
               <span style={{ display: "block", marginTop: 5, fontSize: 12, color: "#6b6473" }}>
-                Revision {currentListing.latest_revision}. Editing the public details creates a new saved revision.
+                Revision {currentListing.latest_revision}
               </span>
               {currentListing.status === "published" && (
                 <Link href={"/marketplace/" + encodeURIComponent(currentListing.listing_id)} style={{ display: "inline-block", marginTop: 9, textDecoration: "underline", color: accent }}>View public listing →</Link>
@@ -258,18 +250,19 @@ export default function PublishCharacterPage() {
             <span>I confirm I have the rights to publicly share this character and its artwork. Publishing makes the preview details and current portrait visible to anyone who opens the Marketplace.</span>
           </label>
 
-          <div className="el-listing-monetization-note" style={{ margin: "18px 0 20px" }}>
-            <strong>Listing:</strong> Free to publish; public browsing only for now.<br />
-            <strong>Monetization:</strong> Disabled until you verify a Solana payout wallet.<br />
-            <strong>Future paid packs:</strong> Platform-set at 1 test USDC; 45% to each creator and 10% to the platform.
-          </div>
+          <p className="el-listing-monetization-note" style={{ margin: "18px 0 20px" }}>
+            Free to publish. Paid scenes require wallet verification.
+          </p>
+          <details className="el-listing-payout-details">
+            <summary>Future creator payouts</summary>
+            <p>Planned test pack: 1 USDC. Each creator receives 45%; Echoloom receives 10%. Paid scenes are not available yet.</p>
+          </details>
 
           {error && <p className="error" role="alert">{error}</p>}
           {notice && <p role="status" style={{ color: accent, marginBottom: 15 }}>{notice}</p>}
           {result && (
             <div role="status" style={{ padding: 14, border: "1px solid #b7d8bb", background: "#f1faf3", borderRadius: 10, marginBottom: 18 }}>
-              <strong>{result.latest_revision > 1 ? "Listing saved successfully." : "Published successfully."}</strong> Your listing is public (revision {result.latest_revision}).<br />
-              <span style={{ display: "block", marginTop: 5, fontSize: 12 }}>Paid scenes are not enabled until you complete wallet verification later.</span>
+              <strong>{result.latest_revision > 1 ? "Listing saved." : "Published."}</strong> Revision {result.latest_revision}.
               <Link href={"/marketplace/" + encodeURIComponent(result.listing_id)} style={{ display: "inline-block", marginTop: 10, color: accent, textDecoration: "underline" }}>View public listing →</Link>
             </div>
           )}
@@ -281,7 +274,6 @@ export default function PublishCharacterPage() {
               Unpublish listing
             </button>
           )}
-          <p className="form-note">The server verifies your signed-in account and ownership of this character. No wallet or creator approval is needed to publish.</p>
         </form>
       )}
     </main>

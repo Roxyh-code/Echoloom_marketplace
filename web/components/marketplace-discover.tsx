@@ -218,13 +218,12 @@ export function MarketplaceDiscover() {
           <div className="em-hero-ornament" aria-hidden="true">✳</div>
           <span className="em-kicker">DISCOVER <span>·</span> CHARACTERS</span>
           <h1 id="em-hero-heading">A new chapter<br/>begins with <em>you.</em></h1>
-          <p>Choose two characters. Imagine what happens when their worlds collide.</p>
-          <Link className="em-hero-link" href="/rehearsal">Explore the story studio <Icon name="arrow" size={16}/></Link>
+          <Link className="em-hero-link" href="/rehearsal">Open story studio <Icon name="arrow" size={16}/></Link>
         </section>
 
         <section className="em-discover" aria-labelledby="em-discover-heading">
           <div className="em-section-title">
-            <div><span className="em-kicker em-kicker-muted">EXPLORE</span><h2 id="em-discover-heading">Discover characters</h2></div>
+            <div><h2 id="em-discover-heading">Discover characters</h2></div>
             <span className="em-section-star" aria-hidden="true">✷</span>
           </div>
           <label className="em-search">
@@ -237,7 +236,7 @@ export function MarketplaceDiscover() {
               <button key={key} type="button" onClick={() => setFilter(key)} aria-pressed={filter === key} className={filter === key ? "em-filter active" : "em-filter"}>{label}</button>
             ))}
           </div>
-          <div className="em-shelf-header"><span>{filter === "mine" ? "YOUR PRIVATE CHARACTERS" : filter === "published" ? "PUBLIC CREATOR LISTINGS" : filter === "samples" ? "SAMPLE CHARACTERS & ARTWORK" : "CHARACTER COLLECTION"}</span><span>{collectionLoading ? "Loading…" : visible.length + " characters"}</span></div>
+          <div className="em-shelf-header" role="status"><span>{collectionLoading ? "Loading…" : `${visible.length} characters`}</span></div>
           {visible.length ? (
             <div className="em-book-grid">
               {visible.map((item) => <Cover key={item.id} item={item} selected={selected.includes(item.id)} onSelect={() => toggle(item.id)}/>)}
@@ -245,12 +244,11 @@ export function MarketplaceDiscover() {
           ) : (
             <div className="em-empty">
               <span aria-hidden="true">✶</span><h3>{collectionLoading ? "Opening the library…" : query ? "No matching characters" : filter === "published" ? "No published characters yet" : "Your shelf is waiting"}</h3>
-              <p>{collectionLoading ? "Gathering the character collection." : query ? "Try another name or search term." : filter === "published" ? "Creator listings will appear here once they are published." : "Create your first character to start a new story."}</p>
+              {query && !collectionLoading && <p>Try another search.</p>}
               {!query && !collectionLoading && filter !== "published" && <Link href="/characters/new">Create a character <Icon name="arrow" size={15}/></Link>}
             </div>
           )}
-          {publishedError && filter !== "mine" && filter !== "samples" && <p className="em-error" role="alert">Could not load public listings. Check the FastAPI server and refresh.</p>}
-          {filter !== "samples" && <div className="em-note"><span>✧</span><p><strong>Marketplace preview.</strong> Published characters are browse-only for now. You can still use your private characters in story drafts. Wallet checkout and paid scenes are not yet connected.</p></div>}
+          {publishedError && filter !== "mine" && filter !== "samples" && <p className="em-error" role="alert">Couldn’t load listings. Please refresh.</p>}
         </section>
       </div>
 

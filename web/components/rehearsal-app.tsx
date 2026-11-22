@@ -1256,14 +1256,6 @@ export function RehearsalApp() {
                   <br />
                   <em>{tr("play it out.", "把故事演出来。")}</em>
                 </h1>
-                <p>
-                  {tr("Two characters. One situation.", "两个人物，一个局面。")}
-                  <br />
-                  {tr(
-                    "See what happens when they meet.",
-                    "看看相遇之后，故事会往哪里走。",
-                  )}
-                </p>
                 <button
                   className="rh-primary"
                   disabled={busy || !online}
@@ -1418,12 +1410,6 @@ export function RehearsalApp() {
                     <Glyph name="pen" />
                     <p>
                       {tr("Let two characters meet.", "让两个角色相遇。")}
-                      <small>
-                        {tr(
-                          "A moment you have in mind can become a scene.",
-                          "一个心里的片段，也可以成为一场戏。",
-                        )}
-                      </small>
                     </p>
                   </div>
                 )}
@@ -2034,8 +2020,8 @@ export function RehearsalApp() {
                 </details>
                 <p className="rh-review-note">
                   {tr(
-                    "Autosave keeps your drafts. Saving a scene chooses the version you want to carry forward.",
-                    "自动保存留住草稿；保存本场，是选择你认可的结果。",
+                    "Drafts autosave. Save the result to keep this version.",
+                    "草稿自动保存；保存结果可保留当前版本。",
                   )}
                 </p>
                 {doc?.result?.version_id === version.id &&
@@ -2310,8 +2296,8 @@ export function RehearsalApp() {
             <>
               <p className="rh-muted">
                 {tr(
-                  "Choose one role. AI will perform only the other character and the environment.",
-                  "选择一个角色，AI 只演对方和必要的环境。",
+                  "Play one character; AI plays the other.",
+                  "你扮演一个角色，AI 扮演另一个。",
                 )}
               </p>
               <div className="rh-takeover-picks">
@@ -2549,8 +2535,8 @@ export function RehearsalApp() {
             <>
               <p className="rh-muted">
                 {tr(
-                  "Different choices, not just different words. Nothing changes until you choose.",
-                  "不同的决定，而不只是不同的措辞。选择后才开始演出。",
+                  "Choose a direction to continue.",
+                  "选择一个方向继续。",
                 )}
               </p>
               {busy && !choices.length && (
@@ -2676,8 +2662,8 @@ export function RehearsalApp() {
             >
               <p className="rh-muted">
                 {tr(
-                  "A new version is created. Your original stays intact.",
-                  "将创建新版本，原版本保留。",
+                  "Your original version is kept.",
+                  "原版本会保留。",
                 )}
               </p>
               <label>
@@ -2736,8 +2722,8 @@ export function RehearsalApp() {
             <>
               <p className="rh-muted">
                 {tr(
-                  "Only your explicit inputs, kept separate from assumptions. Nothing is added automatically.",
-                  "这里只整理你明确输入的内容，不自动添加推测。",
+                  "Only your inputs are shown.",
+                  "仅显示你输入的内容。",
                 )}
               </p>
               {Object.entries(form)
@@ -2815,8 +2801,8 @@ export function RehearsalApp() {
               </label>
               <p className="rh-muted">
                 {tr(
-                  "Current version only. No hidden notes or director instructions.",
-                  "仅导出当前版本，不包含隐藏设定和内部导演指令。",
+                  "Exports the current version only.",
+                  "仅导出当前版本。",
                 )}
               </p>
               {exportText && (
@@ -2997,8 +2983,8 @@ export function RehearsalApp() {
               </button>
               <p className="rh-muted">
                 {tr(
-                  "Private by default. Rehearsals use character snapshots, never private chats.",
-                  "默认私有。排戏使用人物快照，不读取私人聊天。",
+                  "Private rehearsal. Your chats aren't used.",
+                  "排戏为私有内容，不会读取私人聊天。",
                 )}
               </p>
             </div>

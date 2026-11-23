@@ -201,3 +201,21 @@ def test_same_operation_id_not_charged_twice(setup):
     assert again.status_code == 200
     assert one.json()["job_id"] == again.json()["job_id"]
     assert access(client, scene)["generated_sentences"] == 2
+
+def test_prepared_demo_cannot_be_used_to_bypass_paid_casts(setup):
+    client, *_ = setup
+    a, b = quick(client, "Rin"), quick(client, "Tao")
+    example = request_scene(client, demo=True)
+    assert command(client, example, "cast", character_ids=[a, b]).status_code == 409
+    forged = client.post("/api/rehearsal/scenes", json={
+        "operation_id": str(uuid4()),
+        "demo": True,
+        "character_ids": [a, b],
+    })
+    assert forged.status_code == 422
+    forged_source = client.post("/api/rehearsal/scenes", json={
+        "operation_id": str(uuid4()),
+        "demo": True,
+        "source_scene_id": example["id"],
+    })
+    assert forged_source.status_code == 422

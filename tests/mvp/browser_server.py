@@ -13,6 +13,7 @@ from conftest import FakeImages, FakeText
 from io import BytesIO
 from PIL import Image
 from echoloom.schemas import Profile
+from echoloom.rehearsal_schema import Performance, Block
 from sqlalchemy import delete
 
 from echoloom.api import create_app
@@ -46,6 +47,20 @@ class ShowcaseText(FakeText):
         })
 
 
+class BrowserText(FakeText):
+    """Can produce an oversized reply to test the server's 40-line clamp."""
+
+    long_story = False
+
+    def rehearsal(self, context):
+        if self.long_story:
+            return Performance(blocks=[
+                Block(type="narration", character_id=None,
+                      text=" ".join(f"QA sentence {i}." for i in range(1, 47)))
+            ])
+        return super().rehearsal(context)
+
+
 class ShowcaseImages(FakeImages):
     """Demo art comes from an existing licensed-to-this-repo static sample."""
 
@@ -77,7 +92,7 @@ if __name__ == "__main__":
         demo_mode = os.environ.get("ECHOLOOM_RECORD_DEMO") == "1"
         app = create_app(
             settings,
-            ShowcaseText() if demo_mode else FakeText(),
+            ShowcaseText() if demo_mode else BrowserText(),
             ShowcaseImages() if demo_mode else FakeImages(),
             engine,
         )
@@ -91,7 +106,15 @@ if __name__ == "__main__":
                 for table in reversed(Base.metadata.sorted_tables):
                     conn.execute(delete(table))
             app.state.images.fail = False
+            if hasattr(app.state.text, "long_story"):
+                app.state.text.long_story = False
             return {"reset": True}
+
+        @app.post("/__test/long-story/{enabled}")
+        def long_story(enabled: bool):
+            if hasattr(app.state.text, "long_story"):
+                app.state.text.long_story = enabled
+            return {"long_story": enabled}
 
         @app.post("/__test/image-failure/{failed}")
         def image_failure(failed: bool):

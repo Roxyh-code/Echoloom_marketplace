@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readCurrentSegment } from "./rehearsal-reader";
 
 test.beforeEach(async ({ request }) => {
   await request.post("http://127.0.0.1:8001/__test/reset");
@@ -314,4 +315,170 @@ test("mixed published + private character casting uses two distinct authorized s
   const status = await page.request.get(backend + "/api/rehearsal/scenes/" + scenes[0].id + "/access");
   expect(status.status()).toBe(200);
   expect((await status.json()).mode).toBe("marketplace");
+});
+
+
+test("Marketplace → opening → free direction → locked AI → save and reopen", async ({ page }) => {
+  const backend = "http://127.0.0.1:8001";
+  const names = ["Mira", "Rowan"];
+  const chars: string[] = [];
+  for (const name of names) {
+    const created = await page.request.post(backend + "/api/rehearsal/characters", {
+      data: {
+        operation_id: crypto.randomUUID(),
+        name,
+        description: name + " has a past they cannot easily discuss.",
+      },
+    });
+    expect(created.status()).toBe(201);
+    chars.push((await created.json()).character_id);
+  }
+  const account = await page.request.post(backend + "/api/account/register", {
+    data: { username: "marketplacereader", password: "test-password-12345" },
+  });
+  expect(account.status()).toBe(200);
+  const listingIds: string[] = [];
+  for (const [index, name] of names.entries()) {
+    const published = await page.request.post(backend + "/api/marketplace/listings", {
+      data: {
+        character_id: chars[index],
+        name,
+        short_description: name + " has a publicly told story.",
+        tags: ["Drama"],
+        public_personality: ["Determined"],
+        rights_basis: "original",
+        rights_confirmed: true,
+      },
+    });
+    expect(published.status()).toBe(200);
+    listingIds.push((await published.json()).listing_id);
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/marketplace");
+  for (const name of names) {
+    await page.getByRole("button", { name: "Select " + name + " for your cast" }).click();
+  }
+  await page.getByRole("button", { name: /Set the scene/ }).click();
+  await expect(page).toHaveURL(/\/rehearsal\?view=setup&scene=/);
+  const scenesResponse = await page.request.get(backend + "/api/rehearsal/scenes");
+  const scenes = await scenesResponse.json();
+  expect(scenes).toHaveLength(1);
+  const sid: string = scenes[0].id;
+  expect(scenes[0].document.cast.map((a: { source_listing_id: string }) => a.source_listing_id)).toEqual(listingIds);
+  const sceneAccessUrl = backend + "/api/rehearsal/scenes/" + sid + "/access";
+  const accessBefore = await (await page.request.get(sceneAccessUrl)).json();
+  expect(accessBefore.trial_eligible).toBe(true);
+  await expect(page.getByRole("status", { name: "Story access" })).toContainText("Your free first story");
+  await page.getByLabel("What situation are they in?", { exact: false })
+    .fill("Mira and Rowan meet at the abandoned railway station after many years.");
+  await page.getByRole("button", { name: /Start rehearsal/ }).click();
+  await expect(page).toHaveURL(/\/rehearsal\?view=stage&scene=/);
+  await readCurrentSegment(page);
+  await expect(page.locator(".rh-segment").first()).toBeVisible();
+  await expect(page.getByRole("status", { name: "Story access" })).toContainText("1 AI direction remaining");
+  const afterOpening = await (await page.request.get(sceneAccessUrl)).json();
+  expect(afterOpening.opening_consumed).toBe(true);
+  expect(afterOpening.directions_available).toBe(1);
+
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await readCurrentSegment(page);
+  const afterDirection = await (await page.request.get(sceneAccessUrl)).json();
+  expect(afterDirection.directions_available).toBe(0);
+  expect(afterDirection.payment_required).toBe(true);
+  const banner = page.getByRole("status", { name: "Story access" });
+  await expect(banner).toContainText("Unlock required");
+  await expect(banner).toContainText("Payments are not available");
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeDisabled();
+
+  // Existing content remains readable after refresh and is never regenerated.
+  const persisted = await (await page.request.get(backend + "/api/rehearsal/scenes/" + sid)).json();
+  const existingNodeCount = Object.keys(persisted.document.nodes).length;
+  expect(existingNodeCount).toBeGreaterThanOrEqual(2);
+  await page.reload();
+  await expect(page.locator(".rh-segment").first()).toBeVisible();
+  await expect(page.getByRole("status", { name: "Story access" })).toContainText("Unlock required");
+  const reopened = await (await page.request.get(backend + "/api/rehearsal/scenes/" + sid)).json();
+  expect(Object.keys(reopened.document.nodes)).toHaveLength(existingNodeCount);
+
+  // Reading and saving are always free, even after all AI directions are used.
+  await page.getByRole("button", { name: "More options", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "End scene & review", exact: false }).click();
+  await expect(page.getByRole("heading", { name: /A scene worth/ })).toBeVisible();
+  await page.getByRole("button", { name: /Save this scene/ }).click();
+  await expect(page.getByText("Saved as this scene’s result", { exact: false }).first()).toBeVisible();
+  const saved = await (await page.request.get(backend + "/api/rehearsal/scenes/" + sid)).json();
+  expect(saved.document.status).toBe("saved");
+  expect(saved.document.result.head).toBeTruthy();
+  await page.goto("/rehearsal");
+  const card = page.locator(".rh-scene-card").filter({ hasText: "Mira & Rowan" });
+  await expect(card).toBeVisible();
+  await card.locator(".rh-card-open").click();
+  await expect(page.getByRole("heading", { name: /A scene worth/ })).toBeVisible();
+  await expect(page.getByText("Saved as this scene’s result", { exact: false }).first()).toBeVisible();
+});
+
+test("a second Marketplace Scene clearly requires a future unlock before AI generation", async ({ page }) => {
+  const backend = "http://127.0.0.1:8001";
+  const ids: string[] = [];
+  for (const name of ["Rin", "Tao"]) {
+    const created = await page.request.post(backend + "/api/rehearsal/characters", {
+      data: { operation_id: crypto.randomUUID(), name, description: name + " remembers the station." },
+    });
+    expect(created.status()).toBe(201);
+    ids.push((await created.json()).character_id);
+  }
+  expect((await page.request.post(backend + "/api/account/register", {
+    data: { username: "secondreader", password: "test-password-12345" },
+  })).status()).toBe(200);
+  const listings = [];
+  for (const [index, name] of ["Rin", "Tao"].entries()) {
+    const result = await page.request.post(backend + "/api/marketplace/listings", {
+      data: {
+        character_id: ids[index], name, short_description: "Public role " + name,
+        tags: [], public_personality: ["Calm"], rights_basis: "original", rights_confirmed: true,
+      },
+    });
+    expect(result.status()).toBe(200);
+    listings.push(await result.json());
+  }
+  const makeScene = async () => {
+    const r = await page.request.post(backend + "/api/rehearsal/scenes", {
+      data: {
+        operation_id: crypto.randomUUID(),
+        cast_sources: listings.map((l) => ({
+          source: "listing", listing_id: l.listing_id, expected_revision: l.latest_revision,
+        })),
+        setup: { premise: "Two travelers meet at an unfamiliar station." },
+      },
+    });
+    expect(r.status()).toBe(201);
+    return r.json();
+  };
+  const first = await makeScene();
+  const started = await page.request.post(backend + "/api/rehearsal/scenes/" + first.id + "/commands", {
+    data: {
+      operation_id: crypto.randomUUID(), expected_revision: first.revision, kind: "continue",
+    },
+  });
+  expect(started.status()).toBe(200);
+  const jid: string = (await started.json()).job_id;
+  await expect.poll(async () => {
+    const j = await page.request.get(backend + "/api/rehearsal/jobs/" + jid);
+    return (await j.json()).status;
+  }).toBe("completed");
+  const second = await makeScene();
+  await page.goto("/rehearsal?view=setup&scene=" + second.id);
+  const banner = page.getByRole("status", { name: "Story access" });
+  await expect(banner).toContainText("Unlock required");
+  await expect(banner).toContainText("Payments are not available");
+  await page.getByLabel("What situation are they in?", { exact: false })
+    .fill("Another meeting at the station in the middle of a winter storm.");
+  await expect(page.getByRole("button", { name: /Unlock required/ })).toBeDisabled();
+  // A forged direct API request cannot bypass the front-end lock.
+  const loaded = await (await page.request.get(backend + "/api/rehearsal/scenes/" + second.id)).json();
+  const denied = await page.request.post(backend + "/api/rehearsal/scenes/" + second.id + "/commands", {
+    data: { operation_id: crypto.randomUUID(), expected_revision: loaded.revision, kind: "continue" },
+  });
+  expect(denied.status()).toBe(402);
 });

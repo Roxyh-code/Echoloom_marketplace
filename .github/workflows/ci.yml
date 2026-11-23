@@ -60,9 +60,20 @@ jobs:
       - name: Install Playwright Chromium
         working-directory: web
         run: npx playwright install --with-deps chromium
-      - name: Test original mobile character and rehearsal flows
+      - name: Record character workflow in isolated showcase mode
         working-directory: web
-        run: npm run test:e2e
+        env:
+          ECHOLOOM_RECORD_DEMO: '1'
+        run: npx playwright test e2e/demo-video.spec.ts --reporter=line
+
+      - name: Upload one-off character demo video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: echoloom-character-demo-video
+          path: web/test-results/Echoloom_Character_Demo.webm
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload editorial mobile screenshots
         if: always()

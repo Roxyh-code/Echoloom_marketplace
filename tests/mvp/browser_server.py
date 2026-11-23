@@ -10,11 +10,52 @@ from pathlib import Path
 
 import uvicorn
 from conftest import FakeImages, FakeText
+from io import BytesIO
+from PIL import Image
+from echoloom.schemas import Profile
 from sqlalchemy import delete
 
 from echoloom.api import create_app
 from echoloom.config import Settings
 from echoloom.db import Base, make_engine
+
+class ShowcaseText(FakeText):
+    """Deterministic scripted profile for one demo recording, never production AI."""
+
+    def generate(self, description):
+        self.calls.append(("generate", description))
+        return Profile.model_validate({
+            "name": "Kael Ashford",
+            "short_description": "A silver-haired strategist who leads the city's underground network.",
+            "appearance": {
+                "age_description": "A man in his late twenties",
+                "hair": "Silver-white, swept back",
+                "eyes": "Gray-violet",
+                "clothing": "Tailored black suit and a dark burgundy coat"
+            },
+            "personality": {
+                "core_traits": ["Composed", "Calculating", "Protective"],
+                "values": ["Loyalty", "Duty", "Keeping his promises"]
+            },
+            "wants": "Keep his people safe without exposing the underground network.",
+            "why_it_matters": "One wrong decision could endanger everyone he protects.",
+            "fear": "Betraying the trust of the people who depend on him.",
+            "backstory": "Once a royal intelligence officer, Kael now leads a clandestine network beneath a moonlit city.",
+            "speech_style": {"tone": "Quiet, deliberate, dry wit"},
+            "visual_style": "Anime",
+        })
+
+
+class ShowcaseImages(FakeImages):
+    """Demo art comes from an existing licensed-to-this-repo static sample."""
+
+    def render(self, prompt, source=None):
+        self.sources.append(source)
+        image = Image.open("web/public/portraits/leo.webp").convert("RGB")
+        output = BytesIO()
+        image.resize((400, 600)).save(output, format="PNG")
+        return output.getvalue()
+
 
 if __name__ == "__main__":
     if os.environ.get("ECHOLOOM_TEST_SERVER") != "1":
@@ -33,8 +74,16 @@ if __name__ == "__main__":
         )
         engine = make_engine(settings.database_url)
         Base.metadata.create_all(engine)
-        app = create_app(settings, FakeText(), FakeImages(), engine)
+        demo_mode = os.environ.get("ECHOLOOM_RECORD_DEMO") == "1"
+        app = create_app(
+            settings,
+            ShowcaseText() if demo_mode else FakeText(),
+            ShowcaseImages() if demo_mode else FakeImages(),
+            engine,
+        )
         print("TEST ONLY: mocked AI providers; temporary database.", flush=True)
+        if demo_mode:
+            print("SHOWCASE MODE: scripted profile + repository portrait asset.", flush=True)
 
         @app.post("/__test/reset")
         def reset():

@@ -176,9 +176,22 @@ export function MobileCharacterStudio({
   useEffect(() => {
     alive.current = true;
     const q = new URLSearchParams(location.search);
-    setDescription(localGet("character-description", ""));
     const job = localGet<Creation | null>("character-creation", null);
-    setPending(job);
+    // Opening "Create" from another screen mounts a FRESH Studio instance,
+    // so startCreate() is not called. Discard a completed Profile's lingering
+    // portrait-only job from the new form; its image still completes server-side.
+    // Retain an unfinished Profile (no character_id) for explicit recovery.
+    const newCharacter = initialCreate || q.has("create");
+    if (newCharacter && job?.character_id) {
+      creationEpoch.current++;
+      setDescription("");
+      localPut("character-description", "");
+      setPending(null);
+      localPut("character-creation", null);
+    } else {
+      setDescription(localGet("character-description", ""));
+      setPending(job);
+    }
     api<Health>("/health")
       .then(setHealth)
       .catch(() => {});

@@ -532,27 +532,29 @@ def test_sentence_boundaries_are_lossless_for_english_chinese_and_quotes():
         assert len(parts) == count
 
 
-def test_first_sentence_and_read_cursor_do_not_generate_or_duplicate_content(setup):
+def test_first_complete_paragraph_and_read_cursor_do_not_generate_or_duplicate_content(setup):
     c, text, *_ = setup
     s = create(c)
     j = wait(c, command(c, s, "continue"))
     s = j["scene"]
     d = s["document"]
     v = d["versions"][d["active_version"]]
-    assert v["revealed"] == 1
-    assert line_count(d, v["head"]) > 1
+    first = d["nodes"][v["head"]]["blocks"][0]
+    first_passage_sentences = len(sentences(first["text"]))
+    assert v["revealed"] == first_passage_sentences
+    assert line_count(d, v["head"]) > first_passage_sentences
     head = v["head"]
     count = len(d["nodes"])
     calls = len(text.calls)
-    s = command(c, s, "read", revealed=2)
-    assert s["document"]["versions"][v["id"]]["revealed"] == 2
+    s = command(c, s, "read", revealed=first_passage_sentences + 1)
+    assert s["document"]["versions"][v["id"]]["revealed"] == first_passage_sentences + 1
     assert s["document"]["versions"][v["id"]]["head"] == head
     assert len(s["document"]["nodes"]) == count and len(text.calls) == calls
     assert (
         c.get("/api/rehearsal/scenes/" + s["id"]).json()["document"]["versions"][
             v["id"]
         ]["revealed"]
-        == 2
+        == first_passage_sentences + 1
     )
     r = c.post(
         "/api/rehearsal/scenes/" + s["id"] + "/commands",
@@ -566,7 +568,46 @@ def test_first_sentence_and_read_cursor_do_not_generate_or_duplicate_content(set
     assert r.status_code == 422
 
 
-def test_intervention_at_sentence_prefix_excludes_unseen_text_and_state(setup):
+
+def test_complete_character_turn_spans_adjacent_dialogue_blocks(setup):
+    """Consecutive dialogue blocks from the same speaker count as ONE reveal.
+
+    The cursor remains sentence based for 40-sentence billing and can still
+    be used to fork a legacy story at its explicitly saved read position.
+    """
+    from echoloom.rehearsal_schema import Performance, Block
+
+    client, text, *_ = setup
+    a, b = quick(client, "Mira"), quick(client, "Tao")
+    text.rehearsal = lambda ctx: Performance(blocks=[
+        Block(type="dialogue", character_id=a,
+              text="We were friends. I missed you. Can you forgive me?"),
+        Block(type="dialogue", character_id=a,
+              text="I wanted to explain. I really did."),
+        Block(type="narration", character_id=None,
+              text="The station falls silent. A train pulls away."),
+        Block(type="dialogue", character_id=b,
+              text="I need some time to think. Please understand."),
+    ])
+    scene = create(client, False, character_ids=[a, b])
+    scene = wait(client, command(client, scene, "continue"))["scene"]
+    doc = scene["document"]
+    active = doc["versions"][doc["active_version"]]
+    blocks = history(doc, active["head"])[-1]["blocks"]
+    assert len(blocks) == 4
+    assert active["revealed"] == 5
+    from echoloom.rehearsal_domain import reading_view
+    visible, view = reading_view(doc, active)
+    seen = history(visible, view["head"])[-1]["blocks"]
+    assert len(seen) == 2
+    assert all(block["character_id"] == a for block in seen)
+    assert sum(len(sentences(block["text"])) for block in seen) == 5
+    # The next narration/other actor remains hidden; user must press Next.
+    assert "station falls silent" not in "".join(block["text"] for block in seen)
+    assert line_count(doc, active["head"]) == 9
+
+
+def test_intervention_after_complete_turn_excludes_unseen_future_and_state(setup):
     from echoloom.rehearsal_schema import Performance
 
     c, text, *_ = setup
@@ -576,7 +617,12 @@ def test_intervention_at_sentence_prefix_excludes_unseen_text_and_state(setup):
             {
                 "type": "dialogue",
                 "character_id": b,
-                "text": "I came back. I told them your secret.",
+                "text": "I came back. I missed your voice.",
+            },
+            {
+                "type": "narration",
+                "character_id": None,
+                "text": "Xu admits that he told them her secret.",
             },
             {
                 "type": "narration",
@@ -586,7 +632,7 @@ def test_intervention_at_sentence_prefix_excludes_unseen_text_and_state(setup):
         ],
         changes=[
             {
-                "after_block": 0,
+                "after_block": 1,
                 "kind": "fact",
                 "text": "Xu disclosed the secret.",
                 "known_by": [a, b],
@@ -625,21 +671,21 @@ def test_intervention_at_sentence_prefix_excludes_unseen_text_and_state(setup):
         json={"operation_id": str(uuid4())},
     )
     assert r.status_code == 200
-    assert "I told them your secret" not in json.dumps(captured[0])
+    assert "Xu admits" not in json.dumps(captured[0])
     assert not captured[0]["state"]["world_facts"]
     assert c.get("/api/rehearsal/scenes/" + s["id"]).json()["revision"] == s["revision"]
-    # A takeover pins only the sentence read, preserving the untouched full original.
+    # A takeover preserves the entire read turn and hides later disclosures.
     s = command(c, s, "takeover", target_id=a)
     current = s["document"]["active_version"]
     assert current != original
-    assert texts(s) == "I came back."
+    assert texts(s) == "I came back. I missed your voice."
     assert texts(s, original) == original_text
     head = s["document"]["versions"][current]["head"]
     assert not s["document"]["nodes"][head]["state"]["world_facts"]
     assert s["document"]["versions"][current]["takeover"] == a
 
 
-def test_mid_sentence_review_result_and_export_keep_only_read_prefix(setup):
+def test_review_result_and_export_keep_only_first_full_paragraph(setup):
     c, *_ = setup
     s = wait(c, command(c, create(c), "continue"))["scene"]
     vid = s["document"]["active_version"]
@@ -648,12 +694,12 @@ def test_mid_sentence_review_result_and_export_keep_only_read_prefix(setup):
     ).text
     assert (
         "Rain softens" in exported
-        and "Two cups" not in exported
+        and "Two cups" in exported
         and "I remembered" not in exported
     )
     s = command(c, s, "settle")
     assert s["document"]["active_version"] != vid
-    assert texts(s) == "Rain softens the station lights."
+    assert texts(s) == "Rain softens the station lights. Two cups of coffee wait on the bench."
     s = command(c, s, "result")
     child = create(
         c,

@@ -341,6 +341,10 @@ def context(doc, v, event, settings, memories=None):
         + json.dumps(Performance.model_json_schema())
         + ". Write one short segment, 3-6 exchanges with necessary action, "
         "200-500 Chinese characters or 100-220 English words. Use setup.language. Use only the exact character IDs. "
+        "One dialogue block should contain one speaker's complete uninterrupted utterance, "
+        "including multiple connected sentences if natural. One narration block should contain "
+        "a complete descriptive paragraph. Do not split a single speaker's thought into one block "
+        "per sentence. Switch blocks for a new speaker, meaningful action, description, or beat. "
         "Narration character_id is null. Environmental or unattributed action must be narration with null character_id; "
         "action blocks must name an exact cast character_id. Respect each character's own knowledge, beliefs, motives and directed relationships. "
         "Author notes and another character's knowledge do not imply shared knowledge. Never import private chats. "

@@ -359,7 +359,7 @@ export function RehearsalApp() {
   }, [page, scene?.id, version?.id, visibleText]);
   const actors = doc?.cast || [];
   const marketplaceCast = actors.some((a) => Boolean(a.source_listing_id));
-  const access = accessSnapshot?.sceneId === scene?.id ? accessSnapshot.value : null;
+  const access = accessSnapshot && accessSnapshot.sceneId === scene?.id ? accessSnapshot.value : null;
   const accessUnavailable = marketplaceCast && (!access || !!accessError);
   const paymentRequired = marketplaceCast && access?.payment_required === true;
   const generationBlocked = accessUnavailable || paymentRequired;

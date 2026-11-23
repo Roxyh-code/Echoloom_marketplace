@@ -431,7 +431,7 @@ test("a second Marketplace Scene clearly requires a future unlock before AI gene
   expect((await page.request.post(backend + "/api/account/register", {
     data: { username: "secondreader", password: "test-password-12345" },
   })).status()).toBe(200);
-  const listings = [];
+  const listings: { listing_id: string; latest_revision: number }[] = [];
   for (const [index, name] of ["Rin", "Tao"].entries()) {
     const result = await page.request.post(backend + "/api/marketplace/listings", {
       data: {

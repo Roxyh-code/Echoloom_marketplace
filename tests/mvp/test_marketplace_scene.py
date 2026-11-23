@@ -88,7 +88,7 @@ def test_published_two_creator_cast_uses_only_allowlisted_data_and_pinned_portra
     assert len(client.get("/api/rehearsal/scenes").json()) == 1
 
     cover = client.get(actors[1]["avatar"])
-    assert cover.status_code == 200 and cover.content.startswith(b"\\x89PNG")
+    assert cover.status_code == 200 and cover.content.startswith(b"\x89PNG")
     # A scene owner may use the pinned image after unpublishing; anonymous
     # catalog access still obeys the live publication status.
     login(client, "bob")
@@ -127,10 +127,11 @@ def test_mixed_cast_private_ownership_duplicate_and_revision_guards(setup):
     assert cast[0]["id"] == private_cid
     assert cast[1]["id"] != public_cid
 
-    dup = request_scene(client, [private_ref(public_cid), listing_ref(listing)])
-    # Private test seed includes extra private-only fields; duplicate sources
-    # must still fail before they can be used together.
-    assert dup.status_code in (422, 409)
+    # Publish a fully valid private character to exercise cross-source
+    # identity de-duplication without relying on the privacy test's seed.
+    private_listing = publish(client, private_cid, name="Jun")
+    dup = request_scene(client, [private_ref(private_cid), listing_ref(private_listing)])
+    assert dup.status_code == 422
     assert request_scene(client, [listing_ref(listing), listing_ref(listing)]).status_code == 422
     assert request_scene(client, [private_ref(private_cid), listing_ref(listing, revision=2)]).status_code == 409
     assert request_scene(client, [private_ref(private_cid), {

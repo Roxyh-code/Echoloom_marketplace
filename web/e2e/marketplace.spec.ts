@@ -194,3 +194,124 @@ test("bottom navigation keeps the same order and column across pages, even on ho
   await expect(page).toHaveURL(/\/marketplace\/preview\/sample-mira/);
   await expectStableNavigation("Discover");
 });
+
+
+test("two published characters can be cast from Discover and detail, replaced, and loaded in Setup", async ({ page }) => {
+  const backend = "http://127.0.0.1:8001";
+  const characters: Record<string, string> = {};
+  for (const [name, description] of [
+    ["Hazel", "A curious archivist keeping a private notebook."],
+    ["Rowan", "A navigator with a forgotten promise."],
+    ["Vesper", "A traveler who knows a secret."],
+  ]) {
+    const created = await page.request.post(backend + "/api/rehearsal/characters", {
+      data: { operation_id: crypto.randomUUID(), name, description },
+    });
+    expect(created.status()).toBe(201);
+    characters[name] = (await created.json()).character_id;
+  }
+  const account = await page.request.post(backend + "/api/account/register", {
+    data: { username: "castcreator", password: "test-password-12345" },
+  });
+  expect(account.status()).toBe(200);
+  const listings: Record<string, string> = {};
+  for (const name of ["Hazel", "Rowan", "Vesper"]) {
+    const result = await page.request.post(backend + "/api/marketplace/listings", {
+      data: {
+        character_id: characters[name],
+        name,
+        short_description: "Published story persona of " + name,
+        tags: ["Story"],
+        public_personality: ["Curious"],
+        rights_basis: "original",
+        rights_confirmed: true,
+      },
+    });
+    expect(result.status()).toBe(200);
+    listings[name] = (await result.json()).listing_id;
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/marketplace");
+  await page.getByRole("button", { name: "Select Hazel for your cast" }).click();
+  await page.getByRole("link", { name: "View published character Rowan" }).click();
+  await expect(page).toHaveURL(new RegExp("/marketplace/" + listings.Rowan));
+  await page.getByRole("button", { name: "Add to story" }).click();
+  await expect(page).toHaveURL(/\/marketplace$/);
+  const tray = page.getByRole("complementary", { name: "Selected story cast" });
+  await expect(tray).toContainText("Hazel");
+  await expect(tray).toContainText("Rowan");
+
+  // Replace slot A with a third published character, leaving slot B unchanged.
+  await tray.getByRole("button", { name: "Replace Hazel" }).click();
+  await page.getByRole("button", { name: "Select Vesper for your cast" }).click();
+  await expect(tray).toContainText("Vesper");
+  await expect(tray).not.toContainText("Hazel");
+  await expect(tray).toContainText("Rowan");
+  await page.reload();
+  await expect(tray).toContainText("Vesper");
+
+  await tray.getByRole("button", { name: /Set the scene/ }).click();
+  await expect(page).toHaveURL(/\/rehearsal\?view=setup&scene=/);
+  await expect(page.getByLabel("What situation are they in?", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Vesper" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rowan" })).toBeVisible();
+
+  const scenes = await (await page.request.get(backend + "/api/rehearsal/scenes")).json();
+  expect(scenes).toHaveLength(1);
+  const scene = scenes[0];
+  expect(scene.document.cast.map((actor: { name: string }) => actor.name)).toEqual(["Vesper", "Rowan"]);
+  expect(scene.document.cast.map((actor: { source_listing_id: string }) => actor.source_listing_id)).toEqual([listings.Vesper, listings.Rowan]);
+  expect(scene.document.cast.every((actor: { source_character_id: string | null }) => actor.source_character_id === null)).toBe(true);
+  expect(scene.document.cast.every((actor: { profile: { backstory: string } }) => actor.profile.backstory === "")).toBe(true);
+
+  // Scene API snapshots are authoritative even on a fresh page load.
+  await page.goto("/rehearsal?view=cast&scene=" + encodeURIComponent(scene.id));
+  await expect(page.getByText("Published characters are pinned to this scene.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Vesper", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Continue to scene setup/ }).click();
+  await expect(page.getByLabel("What situation are they in?", { exact: false })).toBeVisible();
+});
+
+test("mixed published + private character casting uses two distinct authorized sources", async ({ page }) => {
+  const backend = "http://127.0.0.1:8001";
+  const seeds: Record<string, string> = {};
+  for (const name of ["Published Hazel", "Private Jun"]) {
+    const result = await page.request.post(backend + "/api/rehearsal/characters", {
+      data: { operation_id: crypto.randomUUID(), name, description: "A character with a hidden history." },
+    });
+    expect(result.status()).toBe(201);
+    seeds[name] = (await result.json()).character_id;
+  }
+  const registered = await page.request.post(backend + "/api/account/register", {
+    data: { username: "mixedcast", password: "test-password-12345" },
+  });
+  expect(registered.status()).toBe(200);
+  const listingResponse = await page.request.post(backend + "/api/marketplace/listings", {
+    data: {
+      character_id: seeds["Published Hazel"],
+      name: "Published Hazel",
+      short_description: "Public persona only.",
+      tags: [],
+      public_personality: ["Thoughtful"],
+      rights_basis: "original",
+      rights_confirmed: true,
+    },
+  });
+  expect(listingResponse.status()).toBe(200);
+  const listing = await listingResponse.json();
+  await page.goto("/marketplace");
+  await page.getByRole("button", { name: "Select Published Hazel for your cast" }).click();
+  await page.getByRole("button", { name: "Select Private Jun for your cast" }).click();
+  await page.getByRole("button", { name: /Set the scene/ }).click();
+  await expect(page).toHaveURL(/\/rehearsal\?view=setup&scene=/);
+  const scenes = await (await page.request.get(backend + "/api/rehearsal/scenes")).json();
+  const actors = scenes[0].document.cast;
+  expect(actors).toHaveLength(2);
+  expect(actors[0].source_listing_id).toBe(listing.listing_id);
+  expect(actors[0].source_character_id).toBeNull();
+  expect(actors[1].source_character_id).toBe(seeds["Private Jun"]);
+  const status = await page.request.get(backend + "/api/rehearsal/scenes/" + scenes[0].id + "/access");
+  expect(status.status()).toBe(200);
+  expect((await status.json()).mode).toBe("marketplace");
+});

@@ -119,6 +119,7 @@ export function MobileCharacterStudio({
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const guard = useRef(false);
   const creationGuard = useRef(false);
+  const creationEpoch = useRef(0);
   const alive = useRef(true);
   const modeRef = useRef(mode);
   modeRef.current = mode;
@@ -232,6 +233,8 @@ export function MobileCharacterStudio({
     return c;
   }
   function startCreate() {
+    // Invalidate any prior asynchronous job poll before a new creation.
+    creationEpoch.current++;
     // Create New must always start with an EMPTY form. A previous request
     // may still be pending for Profile/portrait recovery; this explicit user
     // action detaches the local form from that job but never cancels the
@@ -296,6 +299,7 @@ export function MobileCharacterStudio({
   // Recover a profile/portrait even after refresh or a dropped POST response. Never regenerate the profile.
   useEffect(() => {
     if (!pending) return;
+    const token = creationEpoch.current;
     let active = true;
     let polling = false;
     const tick = async () => {
@@ -310,10 +314,10 @@ export function MobileCharacterStudio({
             detail?: string;
           };
         }>("/jobs/" + pending.request_id);
-        if (!active) return;
+        if (!active || token !== creationEpoch.current) return;
         if (j.result?.character_id) {
           const c = await api<Person>("/characters/" + j.result.character_id);
-          if (!active) return;
+          if (!active || token !== creationEpoch.current) return;
           if (modeRef.current === "create" || personRef.current?.id === c.id)
             setPerson(c);
           if (j.status === "pending") {

@@ -5,7 +5,7 @@ import logging
 import time
 from contextlib import ExitStack
 from copy import deepcopy
-from threading import Lock, Thread
+from threading import Event, Lock, Thread
 from uuid import UUID
 
 from fastapi import HTTPException, Request
@@ -59,7 +59,7 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
     # Single-process prototype worker. Creation requests return as soon as the
     # profile is saved; a daemon worker finishes the expensive image API call.
     # A durable queue is required before deploying this with multiple workers.
-    active_portraits = set()
+    active_portraits = {}
     active_portraits_guard = Lock()
 
     def owner(request):
@@ -178,11 +178,51 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                 )
             ]
 
-    def complete_initial_portrait(rid, user):
+    def complete_initial_portrait(rid, user, description, profile_ready):
         started = time.monotonic()
         try:
-            # Use a NEW DB session; never hold a FastAPI request/session open
-            # while OpenAI renders the image. Retry/recovery is idempotent by rid.
+            # Start the image request from the ORIGINAL user description while
+            # the text model is independently producing a structured Profile.
+            # An image prompt requiring generated Profile fields would force
+            # the two expensive calls to remain sequential.
+            prompt = (
+                "Create one original fictional character portrait. No text or "
+                "watermark. Use the physical features, clothing, age and visual "
+                "style explicitly described here; invent unspecified visual "
+                "details tastefully and keep a coherent character design. "
+                "User's original character description: " + description
+            )
+            data = None
+            image_error = None
+            # Recovery: if the same request was completed and the portrait
+            # already saved, never pay for another image API call.
+            with factory() as check_db:
+                existing_job = check_db.get(CreatorRequest, rid)
+                if not existing_job or existing_job.status != "pending":
+                    return
+                existing_cid = (existing_job.result or {}).get("character_id")
+                existing_image = (
+                    check_db.scalar(
+                        select(Portrait.id)
+                        .where(Portrait.character_id == existing_cid)
+                        .order_by(Portrait.version.asc())
+                    )
+                    if existing_cid else None
+                )
+            if not existing_image:
+                try:
+                    data = app.state.images.render(prompt)
+                except (ProviderError, HTTPException) as exc:
+                    image_error = exc.detail if isinstance(exc, HTTPException) else str(exc)
+                except Exception as exc:
+                    logger.warning(
+                        "creator parallel image request failed type=%s", type(exc).__name__
+                    )
+                    image_error = "Portrait generation failed. Your character is saved."
+            # Synchronize on the PROFILE COMMIT, not on the user's HTTP request.
+            # If images finish first, the worker waits; if the Profile finishes
+            # first, the HTTP client can immediately navigate to Character detail.
+            profile_ready.wait()
             with locks.hold("creator-portrait-job:" + rid), factory() as db:
                 request_job = db.get(CreatorRequest, rid)
                 if (not request_job or request_job.owner_id != user
@@ -197,13 +237,14 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                     .where(Portrait.character_id == cid)
                     .order_by(Portrait.version.asc())
                 )
-                image_error = None
                 try:
-                    if not image:
+                    if not image and not image_error:
                         result = image_render(
                             UUID(cid),
                             ImageInput(expected_image_id=c.current_image_id),
                             False, db,
+                            prepared_data=data,
+                            prepared_prompt=prompt,
                         )
                         image = db.get(Portrait, result["id"])
                     if image:
@@ -294,27 +335,27 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                                type(saving_error).__name__)
         finally:
             with active_portraits_guard:
-                active_portraits.discard(rid)
+                active_portraits.pop(rid, None)
 
-    def start_initial_portrait(rid, user):
-        # Prevent simultaneous duplicate paid image calls on repeated requests.
-        # After a process restart, retrying the same request_id resumes safely
-        # and detects an already-persisted portrait before calling OpenAI.
+    def start_initial_portrait(rid, user, description):
+        # Only one paid image request may be in flight for this request_id.
         with active_portraits_guard:
             if rid in active_portraits:
-                return
-            active_portraits.add(rid)
+                return active_portraits[rid]
+            ready = Event()
+            active_portraits[rid] = ready
         try:
             Thread(
                 target=complete_initial_portrait,
-                args=(rid, user),
+                args=(rid, user, description, ready),
                 name="creator-portrait-" + rid[:8],
                 daemon=True,
             ).start()
         except Exception:
             with active_portraits_guard:
-                active_portraits.discard(rid)
+                active_portraits.pop(rid, None)
             raise
+        return ready
 
     @app.post("/api/creator/characters", status_code=201)
     def create_character(body: CreatorCharacterInput, request: Request):
@@ -330,43 +371,56 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             if row.status == "succeeded":
                 return row.result
             cid = (row.result or {}).get("character_id")
-            if not cid:
-                try:
-                    profile = Profile.model_validate(
-                        app.state.text.generate(body.description)
-                    )
-                except ProviderError as exc:
-                    fail(db, rid, str(exc))
-                    raise
-                with locks.hold("account-bootstrap"):
-                    from .companion_models import Account
+            if not cid and user is None:
+                from .companion_models import Account
 
-                    if user is None and db.scalar(select(Account.id).limit(1)):
+                with locks.hold("account-bootstrap"):
+                    if db.scalar(select(Account.id).limit(1)):
                         raise HTTPException(
                             401, "Please sign in before saving your character."
                         )
-                    c = Character(owner_id=user, original_description=body.description)
-                    db.add(c)
-                    db.flush()
-                    db.add(
-                        ProfileRevision(
-                            character_id=c.id,
-                            version=1,
-                            profile_json=profile.model_dump(),
-                            change_summary="Create character; portrait generated asynchronously",
+            # Launch before the Profile LLM call: truly parallel AI requests.
+            ready = start_initial_portrait(rid, user, body.description)
+            try:
+                if not cid:
+                    try:
+                        profile = Profile.model_validate(
+                            app.state.text.generate(body.description)
                         )
-                    )
-                    db.add(Conversation(character_id=c.id))
-                    row.result = {"character_id": c.id, "phase": "portrait_pending"}
-                    db.commit()
-                    cid = c.id
-            # Return the profile immediately, without blocking on image API.
-            start_initial_portrait(rid, user)
-            logger.info(
-                "creator stage=profile response_seconds=%.2f portrait=background",
-                time.monotonic() - started,
-            )
-            return {"character_id": cid, "phase": "portrait_pending"}
+                    except ProviderError as exc:
+                        fail(db, rid, str(exc))
+                        raise
+                    with locks.hold("account-bootstrap"):
+                        from .companion_models import Account
+
+                        if user is None and db.scalar(select(Account.id).limit(1)):
+                            raise HTTPException(
+                                401, "Please sign in before saving your character."
+                            )
+                        c = Character(owner_id=user, original_description=body.description)
+                        db.add(c)
+                        db.flush()
+                        db.add(
+                            ProfileRevision(
+                                character_id=c.id,
+                                version=1,
+                                profile_json=profile.model_dump(),
+                                change_summary="Parallel profile and portrait creation",
+                            )
+                        )
+                        db.add(Conversation(character_id=c.id))
+                        row.result = {"character_id": c.id, "phase": "portrait_pending"}
+                        db.commit()
+                        cid = c.id
+                logger.info(
+                    "creator stage=profile response_seconds=%.2f portrait=parallel",
+                    time.monotonic() - started,
+                )
+                return {"character_id": cid, "phase": "portrait_pending"}
+            finally:
+                # Wake the image worker whether Profile succeeded or failed.
+                # A failed profile leaves no character for image attachment.
+                ready.set()
 
     @app.get("/api/creator/jobs/{rid}")
     def job(rid: UUID, request: Request):

@@ -416,8 +416,12 @@ def create_app(
             "url": f"/api/characters/{item.character_id}/images/{item.id}/file",
         }
 
-    def render(cid, body, editing, db):
+    def render(cid, body, editing, db, *, prepared_data=None, prepared_prompt=None):
         with locks.hold(str(cid)):
+            if (prepared_data is not None or prepared_prompt is not None) and (
+                editing or prepared_data is None or not prepared_prompt
+            ):
+                raise HTTPException(422, "Invalid prepared portrait.")
             c = character(db, cid)
             if c.current_image_id != (
                 str(body.expected_image_id) if body.expected_image_id else None
@@ -462,7 +466,13 @@ def create_app(
             )
             db.add(ImageRequest(character_id=c.id))
             db.commit()  # Failed requests also count toward the paid-call budget.
-            data = app.state.images.render(prompt, source)
+            if prepared_data is not None:
+                # The image model already ran concurrently with Profile AI.
+                # Persist the exact prompt/bytes used; do not call the model twice.
+                prompt = prepared_prompt
+                data = prepared_data
+            else:
+                data = app.state.images.render(prompt, source)
             if len(data) > settings.max_image_bytes:
                 raise ProviderError("The image exceeds the size limit.")
             try:

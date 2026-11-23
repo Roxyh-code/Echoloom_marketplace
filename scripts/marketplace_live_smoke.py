@@ -198,9 +198,11 @@ def run_acceptance(config, *, text_provider=None, timeout_seconds=240):
                     "/api/rehearsal/scenes/" + scene_id + "/access"
                 )
                 check(allowance.status_code == 200
-                      and allowance.json()["trial_eligible"],
-                      "First-story trial not available.")
-                report["checks"]["initial_trial_available"] = True
+                      and allowance.json()["mode"] == "metered"
+                      and allowance.json()["free_sentence_limit"] == 40
+                      and allowance.json()["generated_sentences"] == 0,
+                      "The 40-sentence story preview is not available.")
+                report["checks"]["40_sentence_preview_available"] = True
 
                 for kind, values in (
                     ("continue", {}),

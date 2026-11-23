@@ -40,17 +40,24 @@ def ensure_access(db, row):
 def _legacy_used(doc):
     # Count unique AI-created text even if a version was forked, so forks
     # cannot recycle a 40-sentence free allocation.
-    return sum(
-        len(sentences(block["text"]))
-        for node in doc.get("nodes", {}).values()
-        if node.get("source") in ("ai", "demo")
-        for block in node["blocks"]
-        if not block.get("user_edited")
-    )
+    seen = set()
+    count = 0
+    for node in doc.get("nodes", {}).values():
+        if node.get("source") not in ("ai", "demo"):
+            continue
+        for block in node["blocks"]:
+            if not block.get("user_edited") and block["id"] not in seen:
+                seen.add(block["id"])
+                count += len(sentences(block["text"]))
+    return count
 
 
 def generated(doc):
-    return max(doc.get("free_generated_sentences", 0), _legacy_used(doc))
+    # Once a Scene starts the new persistent counter, forked read-prefix
+    # copies and manual edits cannot change or reset its spent allowance.
+    if "free_generated_sentences" in doc:
+        return doc["free_generated_sentences"]
+    return _legacy_used(doc)
 
 
 def remaining(doc):

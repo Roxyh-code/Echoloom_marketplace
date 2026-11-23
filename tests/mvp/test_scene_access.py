@@ -179,6 +179,7 @@ def test_demo_is_exempt_and_failure_does_not_use_free_sentences(setup):
     assert failed["status"] == "failed"
     assert access(client, scene)["free_sentences_remaining"] == 40
     fake.fail = False
+    scene = client.get(f"/api/rehearsal/scenes/{scene['id']}").json()
     successful = generate(client, scene)
     assert successful["status"] == "completed"
     assert access(client, successful["scene"])["generated_sentences"] == 2

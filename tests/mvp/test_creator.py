@@ -1,6 +1,8 @@
 """Creator graph integrity, ownership, partial creation and recoverable saves."""
 
 import json
+import time
+from threading import Event
 from copy import deepcopy
 from uuid import uuid4
 
@@ -207,6 +209,19 @@ def test_new_scene_and_manual_opening(setup):
     assert len(d["scenes"]) == 2
 
 
+def await_portrait_job(client, request_id, *, timeout=5):
+    """Wait for a real background worker, never trigger another image call."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        response = client.get("/api/creator/jobs/" + request_id)
+        assert response.status_code == 200, response.text
+        data = response.json()
+        if data["status"] in ("succeeded", "failed"):
+            return data
+        time.sleep(0.02)
+    raise AssertionError("Timed out waiting for initial portrait worker.")
+
+
 def test_partial_character_generation_and_image_only_retry(setup):
     client, text, images, _settings, _engine = setup
     images.fail = True
@@ -216,8 +231,10 @@ def test_partial_character_generation_and_image_only_retry(setup):
     }
     result = client.post("/api/creator/characters", json=body)
     assert result.status_code == 201, result.text
-    assert result.json()["phase"] == "portrait_failed"
+    assert result.json()["phase"] == "portrait_pending"
     cid = result.json()["character_id"]
+    final = await_portrait_job(client, body["request_id"])
+    assert final["result"]["phase"] == "portrait_failed"
     assert client.get(f"/api/characters/{cid}").status_code == 200
     assert client.post("/api/creator/characters", json=body).json() == result.json()
     assert sum(k == "generate" for k, _ in text.calls) == 1
@@ -238,11 +255,83 @@ def test_one_step_character_selects_initial_portrait_and_idempotent(setup):
     }
     r = client.post("/api/creator/characters", json=body)
     assert r.status_code == 201, r.text
-    assert r.json()["phase"] == "ready"
+    assert r.json()["phase"] == "portrait_pending"
+    final = await_portrait_job(client, body["request_id"])
+    assert final["result"]["phase"] == "ready"
     c = client.get("/api/characters/" + r.json()["character_id"]).json()
     assert c["current_image_id"]
     again = client.post("/api/creator/characters", json=body)
-    assert again.json() == r.json() and len(images.sources) == 1
+    assert again.json() == final["result"] and len(images.sources) == 1
+
+
+
+def test_image_provider_delay_does_not_block_profile_or_duplicate_calls(setup, monkeypatch):
+    client, text, images, _settings, _engine = setup
+    entered, release = Event(), Event()
+    original_render = images.render
+    calls = []
+
+    def slow_render(prompt, source=None):
+        calls.append(source)
+        entered.set()
+        assert release.wait(timeout=4), "Background portrait was never released"
+        return original_render(prompt, source)
+
+    monkeypatch.setattr(images, "render", slow_render)
+    body = {
+        "request_id": str(uuid4()),
+        "description": "A kind, silver-haired astronomer.",
+    }
+    try:
+        started = time.monotonic()
+        response = client.post("/api/creator/characters", json=body)
+        elapsed = time.monotonic() - started
+        assert response.status_code == 201
+        assert elapsed < 1.5, "Create endpoint waited for the slow image API"
+        assert response.json()["phase"] == "portrait_pending"
+        cid = response.json()["character_id"]
+        assert entered.wait(timeout=2), "Portrait worker never started"
+        saved = client.get("/api/characters/" + cid)
+        assert saved.status_code == 200
+        assert saved.json()["profile"]["name"] == "Evelyn"
+        assert saved.json()["current_image_id"] is None
+        status = client.get("/api/creator/jobs/" + body["request_id"]).json()
+        assert status["status"] == "pending"
+        assert status["result"]["phase"] == "portrait_pending"
+        # A repeated submit cannot call the image provider a second time.
+        repeated = client.post("/api/creator/characters", json=body)
+        assert repeated.status_code == 201
+        assert repeated.json()["character_id"] == cid
+        assert len(calls) == 1
+        assert len([entry for entry in text.calls if entry[0] == "generate"]) == 1
+    finally:
+        release.set()
+
+    done = await_portrait_job(client, body["request_id"])
+    assert done["result"]["phase"] == "ready"
+    final = client.get("/api/characters/" + cid).json()
+    assert final["current_image_id"]
+    assert len(calls) == 1
+
+
+def test_failed_portrait_is_recoverable_without_recreating_profile(setup):
+    client, text, images, *_ = setup
+    images.fail = True
+    body = {"request_id": str(uuid4()), "description": "A patient librarian."}
+    response = client.post("/api/creator/characters", json=body)
+    assert response.status_code == 201
+    final = await_portrait_job(client, body["request_id"])
+    assert final["result"]["phase"] == "portrait_failed"
+    cid = final["result"]["character_id"]
+    assert client.get("/api/characters/" + cid).json()["current_image_id"] is None
+    images.fail = False
+    recovered = client.post(
+        "/api/creator/characters/" + cid + "/portrait",
+        json={"request_id": str(uuid4()), "editing": False, "expected_image_id": None},
+    )
+    assert recovered.status_code == 200
+    assert client.get("/api/characters/" + cid).json()["current_image_id"]
+    assert len([entry for entry in text.calls if entry[0] == "generate"]) == 1
 
 
 def test_live_context_is_scoped_snapshot_and_assets_pinned(setup):

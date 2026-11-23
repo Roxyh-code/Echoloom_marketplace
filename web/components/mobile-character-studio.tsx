@@ -274,10 +274,15 @@ export function MobileCharacterStudio({
       localPut("character-creation", portraitPending ? tracked : null);
       localPut("character-description", "");
       setDescription("");
-      await changed();
-      // No need to wait for the slow Image API: open the saved profile now.
+      // The new Profile should be interactive IMMEDIATELY. Do not await
+      // library/Scene refresh before navigating: those unrelated network
+      // calls can be slower or fail while the Character itself is saved.
       if (modeRef.current === "create") url("detail", c.id);
       else setNotice(c.profile.name + " is saved in your characters.");
+      void changed().catch(() => {
+        if (alive.current)
+          setNotice("Character saved. Refresh to update the library.");
+      });
     } catch (e) {
       if (alive.current) setError((e as Error).message);
     } finally {
@@ -322,9 +327,12 @@ export function MobileCharacterStudio({
             localPut("character-creation", null);
             localPut("character-description", "");
             setDescription("");
-            await changed();
             if (alive.current && modeRef.current === "create")
               url("detail", c.id, true);
+            void changed().catch(() => {
+              if (alive.current)
+                setNotice("Character saved. Refresh to update the library.");
+            });
           }
         } else if (j.status === "failed") {
           setError(

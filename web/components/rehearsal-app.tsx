@@ -953,6 +953,10 @@ export function RehearsalApp() {
     }
   }
   async function showDirections() {
+    if (paymentRequired) {
+      setPanel("unlock");
+      return;
+    }
     setPanel("directions");
     setChoices([]);
     await task(async () => {

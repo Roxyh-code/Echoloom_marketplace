@@ -1224,6 +1224,8 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             factory() as db,
         ):
             row = own(db, sid, owner)
+            if kind == "directions":
+                scene_access.check_generation(row.document)
             op, exists = record(
                 db, body.operation_id, owner, kind, body.model_dump(mode="json"), row.id
             )

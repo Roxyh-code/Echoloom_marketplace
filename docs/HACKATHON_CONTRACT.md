@@ -67,3 +67,14 @@ Still to confirm: cluster (Devnet/Testnet/Mainnet), exact payment token mint, de
 - G4: end-to-end demo plus negative payment and access tests.
 
 Do not let optional NFT minting, per-minute billing or resale royalties block G0–G4.
+
+
+## Phase 2 Step 3 — server-side scene access (implemented in prototype)
+
+- Marketplace-cast scenes (one or two Listing sources) are metered; existing private-only and prepared demo Rehearsal scenes remain unmetered.
+- Creating a draft does not spend anything. The first *successful AI opening* across this local account's Marketplace scenes claims one free opening and **one** free AI direction. The entitlement is bound to that Scene.
+- Each subsequent successful AI continuation, direction, branch, replay or AI-generating plot edit costs one direction. Manual edits, read, rename, setup, review and export do not spend direction quota. The source of truth is `marketplace_scene_access` and `marketplace_scene_usage`, not browser state.
+- One `operation_id` reserves an allowance transactionally. The first durably stored generated block commits its charge. Failures with **zero** saved generated blocks refund it, including the trial claim when no opening was created; retries of the same logical job share the original usage root, even after partial failures. Scene deletion never renews a completed trial.
+- Existing scenes with Marketplace actors from before this migration are initialized lazily. `GET /api/rehearsal/scenes/{id}/access` reports status (owner only); exhausted generations fail with HTTP 402. No endpoint accepts prices, wallet IDs, or client-declared access grants.
+- Phase 4 must add trusted, receipt-verified pack grants (five directions for refills; one opening plus five directions for subsequent scenes). No fake paid unlock exists in this phase.
+- **Security boundary:** the current local login is *not verified identity* or a Sybil-resistant public authentication system. The one-free-scene rule is enforceable only per local account and is unsuitable for a public launch until identity/anti-abuse design is completed.

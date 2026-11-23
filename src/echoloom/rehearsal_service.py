@@ -59,6 +59,7 @@ from .scene_casting import (
     resolve_cast_sources,
     snapshot_private_character,
 )
+from . import scene_access
 
 ACTIVE = ("queued", "running", "stopping")
 TERMINAL = ("completed", "cancelled", "failed")
@@ -144,6 +145,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
         for j in jobs:
             if j.id not in running:
                 j.status = "failed"
+                scene_access.finish(db, db.get(RehearsalScene, sid), j)
                 event(
                     j,
                     "failed",
@@ -209,6 +211,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     j = db.get(RehearsalOperation, jid)
                     if j and j.status in ACTIVE:
                         j.status = "failed"
+                        scene_access.finish(db, db.get(RehearsalScene, sid), j)
                         event(
                             j,
                             "failed",
@@ -397,6 +400,9 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                         d["nodes"][node_id]["blocks"].append(b)
                         d["nodes"][node_id]["state"] = deepcopy(state)
                     save(row, d)
+                    # The first persisted generated block commits the allowance.
+                    # A crash after this commit cannot restore the credit.
+                    scene_access.finish(db, row, job, produced=True)
                     event(job, "block", block_id=b["id"], node_id=node_id, block=b)
                     db.commit()
                 if memory is not None and not doc["demo"]:
@@ -405,6 +411,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                 job = db.get(RehearsalOperation, jid)
                 if job and job.status in ACTIVE:
                     job.status = "completed"
+                    scene_access.finish(db, db.get(RehearsalScene, sid), job)
                     event(job, "completed", ending=output.ending)
                     db.commit()
         except Exception as exc:  # noqa: BLE001 - durable worker boundary must record terminal failure
@@ -424,6 +431,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     j = db.get(RehearsalOperation, jid)
                     if j and j.status in ACTIVE:
                         j.status = "failed"
+                        scene_access.finish(db, db.get(RehearsalScene, sid), j)
                         event(j, "failed", error=detail)
                         db.commit()
         finally:
@@ -638,6 +646,8 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             row = RehearsalScene(id=scene_id, owner_id=owner, document=doc)
             db.add(row)
             db.flush()
+            # A draft is free to create, but its right to generate is NOT.
+            scene_access.ensure_access(db, row)
             op.result = {"scene_id": row.id}
             db.commit()
             return view(db, row)
@@ -654,6 +664,14 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     or (parent.document.get("result") or {}).get("stamp")
                     != row.document["source"]["stamp"]
                 )
+            return result
+
+    @app.get("/api/rehearsal/scenes/{sid}/access")
+    def scene_access_status(sid: UUID, request: Request):
+        with locks.hold("rehearsal:" + str(sid)), factory() as db:
+            row = own(db, sid, request.state.user_id)
+            result = scene_access.status(db, row)
+            db.commit()
             return result
 
     @app.get("/api/rehearsal/scenes/{sid}/cast/{slot}/portrait")
@@ -997,9 +1015,15 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     )
                 if kind == "speak":
                     v["revealed"] = line_count(d, v["head"])
+                # Reserve after validating the command, before ANY scene/job
+                # write. This same transaction also persists the queued job.
+                if scene_access.is_marketplace(d):
+                    with locks.hold("scene-access-account:" + str(owner)):
+                        scene_access.reserve(db, row, op.id)
                 d["status"] = "saved" if d.get("result") else "rehearsing"
                 op.status = "queued"
                 op.result = {
+                    **({"usage_root": op.id} if scene_access.is_marketplace(d) else {}),
                     "version_id": v["id"],
                     "base_node_id": v["head"],
                     "events": [],
@@ -1061,6 +1085,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             j = op_owned(db, oid, request.state.user_id)
             if j.status in ACTIVE:
                 j.status = "cancelled"
+                scene_access.finish(db, db.get(RehearsalScene, sid), j)
                 event(j, "cancelled", message="Stopped at the last complete paragraph.")
                 db.commit()
             return {"status": j.status}
@@ -1121,6 +1146,13 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     "kind": "continue",
                     "text": "Continue after the last committed block; do not repeat it.",
                 }
+            # A retry shares the original logical allowance. If the first
+            # attempt produced nothing, it re-reserves a refunded unit; if a
+            # partial block was saved, the root was already charged once.
+            if scene_access.is_marketplace(d):
+                with locks.hold("scene-access-account:" + str(request.state.user_id)):
+                    scene_access.reserve(db, row, result.get("usage_root", j.id))
+                result["usage_root"] = result.get("usage_root", j.id)
             retry_job = RehearsalOperation(
                 id=uid(),
                 owner_id=j.owner_id,
@@ -1335,5 +1367,6 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     op.payload = {}
                     op.result = {"deleted": True}
                     op.status = "deleted"
+            # Historical trial claims intentionally survive Scene deletion.
             db.delete(row)
             db.commit()

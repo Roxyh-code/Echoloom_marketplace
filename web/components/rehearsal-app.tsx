@@ -5,6 +5,8 @@ import { countLines, visibleLines, readState } from "./rehearsal-reading";
 import { useEffect, useRef, useState } from "react";
 import {
   Actor,
+  CastSource,
+  CreateSceneInput,
   Block,
   Character,
   Choice,
@@ -352,6 +354,7 @@ export function RehearsalApp() {
     else setUnread(true);
   }, [page, scene?.id, version?.id, visibleText]);
   const actors = doc?.cast || [];
+  const marketplaceCast = actors.some((a) => Boolean(a.source_listing_id));
   const taken = actors.find((a) => a.id === version?.takeover);
   const state =
     readState(nodes, revealed, new Set(Object.keys(doc?.nodes || {}))) ||
@@ -1172,11 +1175,25 @@ export function RehearsalApp() {
               <button
                 onClick={() =>
                   task(async () => {
-                    const s = await rehearsal<Scene>("/scenes", {
+                    const request: CreateSceneInput = {
                       operation_id: operation(),
-                      character_ids: cast,
                       setup: form,
-                    });
+                    };
+                    if (marketplaceCast) {
+                      if (actors.length !== 2) throw new Error("A new story requires two characters.");
+                      const sources: CastSource[] = actors.map((a) => {
+                        if (a.source_listing_id) {
+                          if (!a.source_listing_revision) throw new Error("Missing published character revision.");
+                          return { source: "listing", listing_id: a.source_listing_id, expected_revision: a.source_listing_revision };
+                        }
+                        if (!a.source_character_id) throw new Error("Missing private character source.");
+                        return { source: "private", character_id: a.source_character_id };
+                      });
+                      request.cast_sources = sources as [CastSource, CastSource];
+                    } else {
+                      request.character_ids = cast;
+                    }
+                    const s = await rehearsal<Scene>("/scenes", request);
                     accept(s);
                     setConflict(false);
                     navigate("setup", s.id);
@@ -1438,6 +1455,38 @@ export function RehearsalApp() {
             </div>
           )}
           {page === "cast" && (
+            marketplaceCast ? (
+              <>
+                <div className="rh-scroll rh-pad">
+                  <span className="rh-eyebrow">{tr("01 / 02 · PUBLISHED CAST", "01 / 02 · 已发布角色")}</span>
+                  <h1>{tr("Your story cast", "本场人物")}</h1>
+                  <p className="rh-source">
+                    {tr("Published characters are pinned to this scene. To change either character, create a new scene from Discover.",
+                        "已发布人物版本固定在本场故事里。如需更换人物，请从发现页创建新场景。")}
+                  </p>
+                  <div className="rh-cast-slots">
+                    {actors.map((a, index) => (
+                      <div className="rh-cast-slot" key={a.id}>
+                        <div>
+                          <span className="rh-slot-letter">{index === 0 ? "A" : "B"}</span>
+                          <Avatar actor={a} size="large" />
+                          <strong>{a.name}</strong>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <a className="rh-secondary" href="/marketplace">
+                    {tr("Choose a different cast in Discover", "到发现页重新选择角色")} →
+                  </a>
+                </div>
+                <footer className="rh-form-footer">
+                  <small className="rh-sync">{syncLabel}</small>
+                  <button className="rh-primary" onClick={() => navigate("setup")}>
+                    {tr("Continue to scene setup", "继续设置开场")} →
+                  </button>
+                </footer>
+              </>
+            ) : (
             <>
               <div className="rh-scroll rh-pad">
                 <span className="rh-eyebrow">
@@ -1617,6 +1666,7 @@ export function RehearsalApp() {
                 </button>
               </footer>
             </>
+            )
           )}
           {page === "setup" && (
             <>

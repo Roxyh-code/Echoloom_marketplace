@@ -9,13 +9,14 @@ from threading import Thread, Timer
 from uuid import UUID
 
 from fastapi import HTTPException, Request
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from langgraph.checkpoint.sqlite import SqliteSaver
 from sqlalchemy import select
 
 from .db import (
     Character,
     Conversation,
+    Portrait,
     ProfileRevision,
     RehearsalOperation,
     RehearsalScene,
@@ -53,6 +54,11 @@ from .rehearsal_schema import (
     StateChange,
 )
 from .schemas import Profile
+from .scene_casting import (
+    rebind_marketplace_avatars,
+    resolve_cast_sources,
+    snapshot_private_character,
+)
 
 ACTIVE = ("queued", "running", "stopping")
 TERMINAL = ("completed", "cancelled", "failed")
@@ -188,27 +194,8 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             raise HTTPException(401, "Please sign in before saving.")
 
     def snapshot(db, cid, owner):
-        c = db.get(Character, str(cid))
-        if not c or c.owner_id != owner:
-            raise HTTPException(404, "Character not found. Choose another actor.")
-        p = db.scalar(
-            select(ProfileRevision).where(
-                ProfileRevision.character_id == c.id,
-                ProfileRevision.version == c.current_profile_version,
-            )
-        )
-        profile = Profile.model_validate(p.profile_json)
-        return {
-            "id": c.id,
-            "source_character_id": c.id,
-            "name": profile.name,
-            "profile": profile.model_dump(),
-            "description": c.original_description,
-            "snapshot_revision": c.current_profile_version,
-            "avatar": f"/api/characters/{c.id}/images/{c.current_image_id}/file"
-            if c.current_image_id
-            else None,
-        }
+        # Legacy private-character casting remains owner-only.
+        return snapshot_private_character(db, cid, owner)
 
     def perform(jid):
         timer = None
@@ -626,10 +613,16 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                         "snapshot_revision": 1,
                     },
                 ]
+            elif body.cast_sources:
+                cast = resolve_cast_sources(db, body.cast_sources, owner)
             else:
                 if len(set(body.character_ids)) != len(body.character_ids):
                     raise HTTPException(422, "Choose two different characters.")
                 cast = [snapshot(db, cid, owner) for cid in body.character_ids]
+            # The scene owns its own actor snapshots and stable, authorized
+            # portrait endpoints. Later listing edits/unpublishing do not rewrite them.
+            scene_id = uid()
+            rebind_marketplace_avatars(cast, scene_id)
             setup = body.setup.model_dump()
             doc = new_document(
                 setup,
@@ -642,7 +635,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                 for i, key in enumerate(("knowledge_a", "knowledge_b")):
                     if setup[key]:
                         state["knowledge"][cast[i]["id"]] = setup[key]
-            row = RehearsalScene(owner_id=owner, document=doc)
+            row = RehearsalScene(id=scene_id, owner_id=owner, document=doc)
             db.add(row)
             db.flush()
             op.result = {"scene_id": row.id}
@@ -662,6 +655,43 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     != row.document["source"]["stamp"]
                 )
             return result
+
+    @app.get("/api/rehearsal/scenes/{sid}/cast/{slot}/portrait")
+    def scene_cast_portrait(sid: UUID, slot: int, request: Request):
+        """Serve a scene-owner-only portrait pinned to a ListingRevision.
+
+        A public /cover URL intentionally disappears on unpublish, but a
+        previously authorized scene retains its immutable portrait reference.
+        This endpoint never authorizes access to the source private character.
+        """
+        from .marketplace_models import ListingRevision
+
+        with factory() as db:
+            row = own(db, sid, request.state.user_id)
+            cast = row.document.get("cast", [])
+            if slot < 0 or slot >= len(cast):
+                raise HTTPException(404, "Portrait not found.")
+            actor = cast[slot]
+            listing_id = actor.get("source_listing_id")
+            revision = actor.get("source_listing_revision")
+            if not listing_id or not revision or not actor.get("avatar"):
+                raise HTTPException(404, "Portrait not found.")
+            pinned = db.scalar(
+                select(ListingRevision).where(
+                    ListingRevision.listing_id == listing_id,
+                    ListingRevision.revision == revision,
+                )
+            )
+            portrait = db.get(Portrait, pinned.portrait_id) if pinned and pinned.portrait_id else None
+            if not portrait:
+                raise HTTPException(404, "Portrait not found.")
+            file_path = portrait.file_path
+
+        root = Path(settings.image_directory).resolve()
+        target = (root / file_path).resolve()
+        if not target.is_relative_to(root) or not target.is_file():
+            raise HTTPException(404, "Portrait not found.")
+        return FileResponse(target)
 
     @app.post("/api/rehearsal/scenes/{sid}/commands")
     def command(sid: UUID, body: Command, request: Request):
@@ -723,6 +753,11 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     raise HTTPException(422, "This line has not been generated yet.")
                 v["revealed"] = body.revealed
             elif kind == "cast":
+                # Marketplace actor provenance is fixed for a scene; changing
+                # either published role must create a new independently checked
+                # scene, not silently convert it to an unpaid private cast.
+                if any(actor.get("source_listing_id") for actor in d["cast"]):
+                    raise HTTPException(409, "Marketplace cast is fixed. Create a new scene to change characters.")
                 if v["head"] or d.get("source"):
                     raise HTTPException(
                         409, "This cast has already been snapshotted for a performance."

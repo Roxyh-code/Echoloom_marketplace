@@ -27,12 +27,41 @@ class Setup(Model):
         return self
 
 
+class CastSource(Model):
+    """The browser selects a *source*, never another user's private Character ID."""
+
+    source: Literal["private", "listing"]
+    character_id: UUID | None = None
+    listing_id: UUID | None = None
+    expected_revision: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def one_source(self):
+        if self.source == "private":
+            if self.character_id is None or self.listing_id is not None or self.expected_revision is not None:
+                raise ValueError("Private casting requires only character_id.")
+        elif self.listing_id is None or self.character_id is not None or self.expected_revision is None:
+            raise ValueError("Marketplace casting requires listing_id and expected_revision.")
+        return self
+
+
 class CreateScene(Model):
     operation_id: UUID
+    # Keep legacy private-character clients working unchanged.
     character_ids: list[UUID] = Field(default_factory=list, max_length=2)
+    cast_sources: list[CastSource] = Field(default_factory=list, max_length=2)
     setup: Setup = Field(default_factory=Setup)
     demo: bool = False
     source_scene_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def source_selection(self):
+        if self.cast_sources:
+            if len(self.cast_sources) != 2:
+                raise ValueError("Select exactly two cast sources.")
+            if self.character_ids or self.demo or self.source_scene_id:
+                raise ValueError("cast_sources cannot be combined with legacy or demo scene sources.")
+        return self
 
 
 class QuickCharacter(Model):

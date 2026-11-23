@@ -3,6 +3,9 @@ export type Actor = {
   slot?: number;
   id: string;
   source_character_id: string | null;
+  /** Only present for characters cast from a publicly published Listing. */
+  source_listing_id?: string;
+  source_listing_revision?: number;
   name: string;
   avatar: string | null;
   description: string;
@@ -21,6 +24,22 @@ export type Setup = {
   rules: string[];
   language: "en" | "zh";
 };
+/** Server resolves ownership/publication; never send somebody else's private Character ID. */
+export type CastSource =
+  | { source: "private"; character_id: string; listing_id?: never; expected_revision?: never }
+  | { source: "listing"; listing_id: string; expected_revision: number; character_id?: never };
+
+export type CreateSceneInput = {
+  operation_id: string;
+  setup?: Setup;
+  /** Legacy private-only scene creation. */
+  character_ids?: string[];
+  /** New mixed/private/public casting contract. Exactly two when present. */
+  cast_sources?: [CastSource, CastSource];
+  demo?: boolean;
+  source_scene_id?: string;
+};
+
 export const blankSetup: Setup = {
   premise: "",
   goal: "",

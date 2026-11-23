@@ -85,6 +85,35 @@ test("mobile character entry → profile + portrait → edit → refine → port
   expect(errors).toEqual([]);
 });
 
+
+test("a slow portrait provider does not hold up the saved character profile", async ({ page, request }) => {
+  const backend = "http://127.0.0.1:8001";
+  await request.post(backend + "/__test/image-delay/true");
+  try {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/characters/new");
+    await page.getByLabel("Describe your character")
+      .fill("A gentle astronomer with long silver hair, clear blue eyes, and a warm smile.");
+    await page.getByRole("button", { name: /^Create character/ }).last().click();
+
+    // The image API is deliberately still blocked here.
+    await expect(page.getByRole("heading", { name: "Evelyn" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("status")).toContainText("Portrait generating in the background");
+    const characters = await (await request.get(backend + "/api/creator/characters")).json();
+    expect(characters).toHaveLength(1);
+    expect(characters[0].profile.name).toBe("Evelyn");
+    expect(characters[0].current_image_id).toBeNull();
+
+    await request.post(backend + "/__test/image-delay/false");
+    await expect(page.getByAltText("Portrait of Evelyn")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Portrait generating in the background")).toHaveCount(0);
+    const saved = await (await request.get(backend + "/api/creator/characters")).json();
+    expect(saved[0].current_image_id).toBeTruthy();
+  } finally {
+    await request.post(backend + "/__test/image-delay/false");
+  }
+});
+
 test("portrait failure retains character; retry only the portrait", async ({
   page,
   request,

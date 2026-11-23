@@ -6,6 +6,7 @@ wallets or local user databases and only runs when ECHOLOOM_TEST_SERVER=1.
 
 import os
 import tempfile
+from threading import Event
 from pathlib import Path
 
 import uvicorn
@@ -96,12 +97,25 @@ if __name__ == "__main__":
             ShowcaseImages() if demo_mode else FakeImages(),
             engine,
         )
+        # Delay image output on demand to prove character profiles return
+        # without waiting for a slow provider. Never used outside test server.
+        image_gate = Event()
+        image_gate.set()
+        original_image_render = app.state.images.render
+
+        def gated_image_render(prompt, source=None):
+            if not image_gate.wait(timeout=20):
+                raise RuntimeError("Timed out waiting for E2E image release")
+            return original_image_render(prompt, source)
+
+        app.state.images.render = gated_image_render
         print("TEST ONLY: mocked AI providers; temporary database.", flush=True)
         if demo_mode:
             print("SHOWCASE MODE: scripted profile + repository portrait asset.", flush=True)
 
         @app.post("/__test/reset")
         def reset():
+            image_gate.set()
             with engine.begin() as conn:
                 for table in reversed(Base.metadata.sorted_tables):
                     conn.execute(delete(table))
@@ -120,6 +134,14 @@ if __name__ == "__main__":
         def image_failure(failed: bool):
             app.state.images.fail = failed
             return {"image_failure": failed}
+
+        @app.post("/__test/image-delay/{enabled}")
+        def image_delay(enabled: bool):
+            if enabled:
+                image_gate.clear()
+            else:
+                image_gate.set()
+            return {"image_delay": enabled}
 
         uvicorn.run(app, host="127.0.0.1", port=8001)
         engine.dispose()

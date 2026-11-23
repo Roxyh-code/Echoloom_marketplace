@@ -164,9 +164,19 @@ test("in-scene creation includes portraits, preserves cast and setup at 320px", 
     }, { timeout: 15_000 }).toBe(index + 1);
     // The Profile is usable immediately. Do not require the portrait
     // to finish before editing or adding this Character to a Scene.
-    await expect(page.getByRole("heading", { name: "Evelyn" })).toBeVisible({
-      timeout: 15_000,
-    });
+    try {
+      await expect(page.getByRole("heading", { name: "Evelyn" })).toBeVisible({
+        timeout: 15_000,
+      });
+    } catch (error) {
+      // Test-only diagnostics: no private users or live model credentials.
+      console.log("in-scene creation navigation", {
+        index,
+        url: page.url(),
+        visibleText: (await page.locator("body").innerText()).slice(0, 1000),
+      });
+      throw error;
+    }
     await page
       .getByRole("button", { name: "Edit character", exact: true })
       .click();

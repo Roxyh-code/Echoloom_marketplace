@@ -6,7 +6,6 @@ wallets or local user databases and only runs when ECHOLOOM_TEST_SERVER=1.
 
 import os
 import tempfile
-import time
 from threading import Event
 from pathlib import Path
 
@@ -63,17 +62,6 @@ class BrowserText(FakeText):
         return super().rehearsal(context)
 
 
-class BrowserImages(FakeImages):
-    """Test-only delayed portrait provider to prove Profile-first navigation."""
-
-    delay_seconds = 0.0
-
-    def render(self, prompt, source=None):
-        if self.delay_seconds:
-            time.sleep(self.delay_seconds)
-        return super().render(prompt, source)
-
-
 class ShowcaseImages(FakeImages):
     """Demo art comes from an existing licensed-to-this-repo static sample."""
 
@@ -106,7 +94,7 @@ if __name__ == "__main__":
         app = create_app(
             settings,
             ShowcaseText() if demo_mode else BrowserText(),
-            ShowcaseImages() if demo_mode else BrowserImages(),
+            ShowcaseImages() if demo_mode else FakeImages(),
             engine,
         )
         # Delay image output on demand to prove character profiles return
@@ -132,8 +120,6 @@ if __name__ == "__main__":
                 for table in reversed(Base.metadata.sorted_tables):
                     conn.execute(delete(table))
             app.state.images.fail = False
-            if hasattr(app.state.images, "delay_seconds"):
-                app.state.images.delay_seconds = 0.0
             if hasattr(app.state.text, "long_story"):
                 app.state.text.long_story = False
             return {"reset": True}
@@ -143,14 +129,6 @@ if __name__ == "__main__":
             if hasattr(app.state.text, "long_story"):
                 app.state.text.long_story = enabled
             return {"long_story": enabled}
-
-        @app.post("/__test/image-delay/{seconds}")
-        def image_delay(seconds: int):
-            if seconds < 0 or seconds > 10:
-                raise ValueError("Invalid test image delay")
-            if hasattr(app.state.images, "delay_seconds"):
-                app.state.images.delay_seconds = float(seconds)
-            return {"image_delay_seconds": seconds}
 
         @app.post("/__test/image-failure/{failed}")
         def image_failure(failed: bool):

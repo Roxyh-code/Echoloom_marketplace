@@ -232,6 +232,13 @@ export function MobileCharacterStudio({
     return c;
   }
   function startCreate() {
+    // An earlier Character's initial portrait may still be rendering. The
+    // Profile has already been saved: its background job remains on the
+    // server and must not lock or prefill the next Character creation form.
+    if (pending?.character_id) {
+      setPending(null);
+      localPut("character-creation", null);
+    }
     setPerson(null);
     setImageError("");
     url("create");

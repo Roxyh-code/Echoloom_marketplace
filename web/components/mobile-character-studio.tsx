@@ -232,13 +232,16 @@ export function MobileCharacterStudio({
     return c;
   }
   function startCreate() {
-    // An earlier Character's initial portrait may still be rendering. The
-    // Profile has already been saved: its background job remains on the
-    // server and must not lock or prefill the next Character creation form.
-    if (pending?.character_id) {
+    // Create New must always start with an EMPTY form. A previous request
+    // may still be pending for Profile/portrait recovery; this explicit user
+    // action detaches the local form from that job but never cancels the
+    // server worker. "Resume character creation" remains a separate action.
+    if (pending) {
       setPending(null);
       localPut("character-creation", null);
     }
+    setDescription("");
+    localPut("character-description", "");
     setPerson(null);
     setImageError("");
     url("create");

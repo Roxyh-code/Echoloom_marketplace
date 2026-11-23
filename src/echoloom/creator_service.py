@@ -254,8 +254,10 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                                 pinned.document = CreatorDocument.model_validate(
                                     doc
                                 ).model_dump()
-                                pinned.revision += 1
-                                pinned.updated_at = now()
+                                # The arrival of an asynchronous portrait is
+                                # presentation-only. Do NOT bump the creative
+                                # revision or invalidate an in-flight scene
+                                # edit holding the previously fetched revision.
                                 db.commit()
                 request_job = db.get(CreatorRequest, rid, populate_existing=True)
                 if request_job and request_job.status == "pending":

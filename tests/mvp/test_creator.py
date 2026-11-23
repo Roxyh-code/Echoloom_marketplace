@@ -236,7 +236,7 @@ def test_partial_character_generation_and_image_only_retry(setup):
     final = await_portrait_job(client, body["request_id"])
     assert final["result"]["phase"] == "portrait_failed"
     assert client.get(f"/api/characters/{cid}").status_code == 200
-    assert client.post("/api/creator/characters", json=body).json() == result.json()
+    assert client.post("/api/creator/characters", json=body).json() == final["result"]
     assert sum(k == "generate" for k, _ in text.calls) == 1
     images.fail = False
     image = client.post(
@@ -330,20 +330,28 @@ def test_failed_portrait_is_recoverable_without_recreating_profile(setup):
         json={"request_id": str(uuid4()), "editing": False, "expected_image_id": None},
     )
     assert recovered.status_code == 200
+    assert recovered.json()["id"]
+    assert client.get("/api/characters/" + cid).json()["current_image_id"] is None
+    selected = client.post(
+        f"/api/characters/{cid}/images/{recovered.json()['id']}/select", json={}
+    )
+    assert selected.status_code == 200
     assert client.get("/api/characters/" + cid).json()["current_image_id"]
     assert len([entry for entry in text.calls if entry[0] == "generate"]) == 1
 
 
 def test_live_context_is_scoped_snapshot_and_assets_pinned(setup):
     client, text, _images, *_ = setup
+    profile_request_id = str(uuid4())
     c = client.post(
         "/api/creator/characters",
         json={
-            "request_id": str(uuid4()),
+            "request_id": profile_request_id,
             "description": "An observant librarian who values honesty.",
         },
     ).json()
     cid = c["character_id"]
+    await_portrait_job(client, profile_request_id)
     profile = client.get(f"/api/characters/{cid}").json()
     w = client.post(
         "/api/creator/works",
@@ -512,13 +520,15 @@ def test_player_dialogue_is_verbatim_and_model_cannot_write_player(setup):
 
 def test_duplicate_character_and_snapshot_refresh_keep_old_saved_setup(setup):
     client, *_ = setup
+    profile_request_id = str(uuid4())
     c = client.post(
         "/api/creator/characters",
         json={
-            "request_id": str(uuid4()),
+            "request_id": profile_request_id,
             "description": "A determined librarian who loves the night sky.",
         },
     ).json()
+    await_portrait_job(client, profile_request_id)
     original = client.get("/api/characters/" + c["character_id"]).json()
     copied = client.post(
         f"/api/creator/characters/{original['id']}/duplicate",

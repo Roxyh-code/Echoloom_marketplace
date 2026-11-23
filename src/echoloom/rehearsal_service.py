@@ -1079,14 +1079,31 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             row = own(db, sid, request.state.user_id)
             recover(db, sid)
             j = op_owned(db, oid, request.state.user_id)
+            safe_scene = pack(row)
+            # Historical job records may predate the paywall and contain
+            # plaintext beyond sentence 40. Never return those raw events.
+            allowed_blocks = {
+                block["id"]: block
+                for node in safe_scene["document"]["nodes"].values()
+                for block in node["blocks"]
+            }
+            visible_events = []
+            for original in j.result.get("events", []):
+                if original["sequence"] <= after:
+                    continue
+                if scene_access.is_metered(row.document) and original.get("type") == "block":
+                    allowed = allowed_blocks.get(original.get("block_id"))
+                    if not allowed:
+                        continue
+                    visible_events.append({**original, "block": deepcopy(allowed)})
+                else:
+                    visible_events.append(original)
             return {
                 "id": j.id,
                 "status": j.status,
                 "version_id": j.result.get("version_id"),
-                "events": [
-                    e for e in j.result.get("events", []) if e["sequence"] > after
-                ],
-                "scene": pack(row),
+                "events": visible_events,
+                "scene": safe_scene,
                 "memory": j.result.get("memory", {"status": "disabled", "items": []}),
             }
 

@@ -59,6 +59,30 @@ export function countLines(nodes: Node[]): number {
     0,
   );
 }
+/** 
+ * UI reading step: complete narration/action paragraph or uninterrupted 
+ * same-speaker dialogue turn, even when the model split it into blocks.
+ * The stored cursor and billing remain SENTENCE-based.
+ */
+export function nextPassageEnd(nodes: Node[], revealed: number): number {
+  let sentenceCursor = 0;
+  const passages: { end: number; actor: string | null; kind: string; node: string }[] = [];
+  for (const node of nodes) {
+    for (const block of node.blocks) {
+      sentenceCursor += sentences(block.text).length;
+      const previous = passages.at(-1);
+      if (previous && block.type === "dialogue" && previous.kind === "dialogue"
+          && previous.actor === block.character_id && previous.node === node.id) {
+        previous.end = sentenceCursor;
+      } else {
+        passages.push({
+          end: sentenceCursor, actor: block.character_id, kind: block.type, node: node.id,
+        });
+      }
+    }
+  }
+  return passages.find((part) => part.end > revealed)?.end ?? sentenceCursor;
+}
 export function visibleLines(nodes: Node[], limit: number): Node[] {
   const result: Node[] = [];
   let remaining = limit;

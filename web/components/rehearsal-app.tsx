@@ -1,7 +1,7 @@
 "use client";
 import { MobileCharacterStudio } from "./mobile-character-studio";
 import { MobileBottomNav } from "./mobile-bottom-nav";
-import { countLines, visibleLines, readState } from "./rehearsal-reading";
+import { countLines, nextPassageEnd, visibleLines, readState } from "./rehearsal-reading";
 import { useEffect, useRef, useState } from "react";
 import {
   Actor,
@@ -333,6 +333,12 @@ export function RehearsalApp() {
   const revealed = Math.min(version?.revealed ?? totalLines, totalLines);
   const visibleNodes = visibleLines(nodes, revealed);
   const waitingLines = totalLines - revealed;
+  // The server still counts individual sentences for the 40-sentence preview.
+  const nextPassage = Math.min(
+    nextPassageEnd(nodes, revealed),
+    doc?.demo ? Infinity : 40,
+    totalLines,
+  );
   const visibleText = visibleNodes
     .map((n) => n.blocks.map((b) => b.text).join(""))
     .join("");
@@ -783,8 +789,8 @@ export function RehearsalApp() {
           if (j.status === "completed" && !localGet("tip-seen", false)) {
             setNotice(
               tr(
-                "Take your time. Next line reveals one sentence; step in whenever you like.",
-                "随时暂停，改变一句话或亲自演一个角色。",
+                "Next reveals a full dialogue turn or description. You can intervene at any time.",
+                "每次阅读一整段台词或场景描写，你仍可以随时介入。",
               ),
             );
             localPut("tip-seen", true);
@@ -1951,16 +1957,16 @@ export function RehearsalApp() {
                 {taken && waitingLines > 0 && !job && (
                   <button
                     className="rh-secondary rh-takeover-next"
-                    aria-label="Next line"
+                    aria-label="Next paragraph"
                     disabled={busy || !online}
                     onClick={() => readingLocked
                       ? setPanel("unlock")
                       : task(async () => {
-                          await send({ kind: "read", revealed: revealed + 1 });
+                          await send({ kind: "read", revealed: nextPassage });
                         })
                     }
                   >
-                    {tr("Next line", "下一句")} ↓
+                    {tr("Next paragraph", "下一段")} ↓
                   </button>
                 )}
                 {taken ? (
@@ -2058,7 +2064,7 @@ export function RehearsalApp() {
                       aria-label={
                         job ? "Pause"
                         : (readingLocked || (!waitingLines && paymentRequired)) ? "Unlock story"
-                        : waitingLines ? "Next line" : "Continue"
+                        : waitingLines ? "Next paragraph" : "Continue"
                       }
                       className="rh-primary"
                       disabled={busy || !online || (!job && !waitingLines && accessUnavailable)}
@@ -2069,7 +2075,7 @@ export function RehearsalApp() {
                         }
                         void task(async () => {
                           if (job) await rehearsal("/jobs/" + job + "/pause", {});
-                          else if (waitingLines) await send({ kind: "read", revealed: revealed + 1 });
+                          else if (waitingLines) await send({ kind: "read", revealed: nextPassage });
                           else await send({ kind: "continue" });
                         });
                       }}
@@ -2083,7 +2089,7 @@ export function RehearsalApp() {
                         <>
                           {(readingLocked || (!waitingLines && paymentRequired))
                             ? tr("Unlock story", "解锁故事")
-                            : waitingLines ? tr("Next line", "下一句")
+                            : waitingLines ? tr("Next paragraph", "下一段")
                             : tr("Continue", "继续演")}
                           <span>→</span>
                         </>

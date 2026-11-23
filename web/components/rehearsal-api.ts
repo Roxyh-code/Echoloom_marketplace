@@ -29,6 +29,15 @@ export type CastSource =
   | { source: "private"; character_id: string; listing_id?: never; expected_revision?: never }
   | { source: "listing"; listing_id: string; expected_revision: number; character_id?: never };
 
+export type SceneAccess = {
+  mode: "private" | "marketplace";
+  opening_available: number | null;
+  directions_available: number | null;
+  opening_consumed: boolean;
+  trial_eligible: boolean;
+  payment_required: boolean;
+};
+
 export type CreateSceneInput = {
   operation_id: string;
   setup?: Setup;

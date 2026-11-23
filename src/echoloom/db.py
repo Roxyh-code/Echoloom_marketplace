@@ -297,5 +297,6 @@ class RehearsalOperation(Base):
     result: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[str] = mapped_column(default=now)
 
-# Register Marketplace tables with the shared SQLAlchemy metadata.
+# Register Marketplace and Scene Access tables with the shared SQLAlchemy metadata.
 from . import marketplace_models  # noqa: F401
+from . import scene_access_models  # noqa: F401

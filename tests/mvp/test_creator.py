@@ -2,7 +2,7 @@
 
 import json
 import time
-from threading import Event
+from threading import Event, Thread
 from copy import deepcopy
 from uuid import uuid4
 
@@ -312,6 +312,112 @@ def test_image_provider_delay_does_not_block_profile_or_duplicate_calls(setup, m
     final = client.get("/api/characters/" + cid).json()
     assert final["current_image_id"]
     assert len(calls) == 1
+
+
+def test_profile_and_portrait_calls_begin_in_parallel_and_profile_is_usable_first(setup, monkeypatch):
+    client, text, images, *_ = setup
+    text_started, image_started = Event(), Event()
+    release_text, release_image = Event(), Event()
+    original_text, original_image = text.generate, images.render
+    responses = []
+
+    def delayed_text(description):
+        text_started.set()
+        assert release_text.wait(timeout=5), "Text model was never released."
+        return original_text(description)
+
+    def delayed_image(prompt, source=None):
+        assert "A gentle historian with long auburn hair" in prompt
+        image_started.set()
+        assert release_image.wait(timeout=5), "Image model was never released."
+        return original_image(prompt, source)
+
+    monkeypatch.setattr(text, "generate", delayed_text)
+    monkeypatch.setattr(images, "render", delayed_image)
+    body = {
+        "request_id": str(uuid4()),
+        "description": "A gentle historian with long auburn hair and green eyes.",
+    }
+    creator = Thread(
+        target=lambda: responses.append(
+            client.post("/api/creator/characters", json=body)
+        ),
+        daemon=True,
+    )
+    creator.start()
+    try:
+        # Both external requests must have started before either finishes.
+        assert text_started.wait(timeout=3), "Profile model did not start"
+        assert image_started.wait(timeout=3), "Image model did not start alongside Profile"
+        release_text.set()
+        creator.join(timeout=3)
+        assert not creator.is_alive(), "HTTP response waited for image completion"
+        assert len(responses) == 1
+        assert responses[0].status_code == 201, responses[0].text
+        cid = responses[0].json()["character_id"]
+        assert responses[0].json()["phase"] == "portrait_pending"
+        saved = client.get(f"/api/characters/{cid}")
+        assert saved.status_code == 200
+        assert saved.json()["profile"]["name"] == "Evelyn"
+        assert saved.json()["current_image_id"] is None
+        # Until the image finishes, the idempotent request never starts
+        # another expensive profile or image call.
+        second = client.post("/api/creator/characters", json=body)
+        assert second.status_code == 201
+        assert second.json()["character_id"] == cid
+        assert client.get(f"/api/creator/jobs/{body['request_id']}").json()["status"] == "pending"
+    finally:
+        release_text.set()
+        release_image.set()
+        creator.join(timeout=3)
+
+    final = await_portrait_job(client, body["request_id"])
+    assert final["result"]["phase"] == "ready"
+    assert client.get(f"/api/characters/{cid}").json()["current_image_id"]
+    assert sum(call[0] == "generate" for call in text.calls) == 1
+    assert len(images.sources) == 1
+
+
+def test_image_finishes_before_profile_without_losing_portrait(setup, monkeypatch):
+    client, text, images, *_ = setup
+    profile_started, permit_profile = Event(), Event()
+    original_text = text.generate
+    requests = []
+
+    def delayed_profile(description):
+        profile_started.set()
+        assert permit_profile.wait(timeout=5)
+        return original_text(description)
+
+    monkeypatch.setattr(text, "generate", delayed_profile)
+    payload = {"request_id": str(uuid4()), "description": "A scholarly knight with gray eyes."}
+    thread = Thread(
+        target=lambda: requests.append(
+            client.post("/api/creator/characters", json=payload)
+        ), daemon=True,
+    )
+    thread.start()
+    try:
+        assert profile_started.wait(timeout=3)
+        # Image generation should complete BEFORE the Profile is allowed to
+        # finish; the worker must wait for the DB Profile commit.
+        deadline = time.monotonic() + 3
+        while not images.sources and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert len(images.sources) == 1
+        assert client.get(f"/api/creator/jobs/{payload['request_id']}").json()["status"] == "pending"
+        permit_profile.set()
+        thread.join(timeout=3)
+        assert requests[0].status_code == 201, requests[0].text
+        assert requests[0].json()["phase"] == "portrait_pending"
+    finally:
+        permit_profile.set()
+        thread.join(timeout=3)
+    final = await_portrait_job(client, payload["request_id"])
+    assert final["result"]["phase"] == "ready"
+    cid = requests[0].json()["character_id"]
+    assert client.get(f"/api/characters/{cid}").json()["current_image_id"]
+    assert len(images.sources) == 1
 
 
 def test_failed_portrait_is_recoverable_without_recreating_profile(setup):

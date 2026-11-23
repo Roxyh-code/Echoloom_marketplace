@@ -37,5 +37,5 @@ def test_offline_qa_records_both_separate_generation_segments():
     ]
     assert all(item["saved_block_count"] > 0 for item in result["generated"])
     assert all(item["text"] for item in result["generated"])
-    assert result["checks"]["third_generation_blocked"]
+    assert result["checks"]["41st_sentence_requires_unlock"]
     assert result["checks"]["saved_story_reopens_unchanged"]

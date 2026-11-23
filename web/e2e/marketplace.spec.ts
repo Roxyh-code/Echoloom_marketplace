@@ -314,7 +314,7 @@ test("mixed published + private character casting uses two distinct authorized s
   expect(actors[1].source_character_id).toBe(seeds["Private Jun"]);
   const status = await page.request.get(backend + "/api/rehearsal/scenes/" + scenes[0].id + "/access");
   expect(status.status()).toBe(200);
-  expect((await status.json()).mode).toBe("marketplace");
+  expect((await status.json()).mode).toBe("metered");
 });
 
 

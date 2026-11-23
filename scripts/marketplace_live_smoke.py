@@ -235,20 +235,22 @@ def run_acceptance(config, *, text_provider=None, timeout_seconds=240):
                 quota = client.get(
                     "/api/rehearsal/scenes/" + scene_id + "/access"
                 ).json()
-                check(quota["opening_consumed"]
-                      and quota["directions_available"] == 0
-                      and quota["payment_required"],
-                      "Expected one free Opening and one free Direction.")
-                report["checks"]["allowance_consumed_once"] = True
-                blocked = client.post(
+                check(quota["mode"] == "metered"
+                      and quota["free_sentence_limit"] == 40
+                      and 0 < quota["generated_sentences"] <= 40,
+                      "Expected a 40-sentence free Scene allowance.")
+                report["checks"]["40_sentence_allowance_active"] = True
+                # The Reader cannot reveal a sentence beyond the free cap,
+                # even if one AI segment produced more than 40 sentences.
+                forbidden_read = client.post(
                     "/api/rehearsal/scenes/" + scene_id + "/commands",
                     json={"operation_id": str(uuid4()),
                           "expected_revision": scene["revision"],
-                          "kind": "continue"},
+                          "kind": "read", "revealed": 41},
                 )
-                check(blocked.status_code == 402,
-                      "Unpaid third generation was not blocked.")
-                report["checks"]["third_generation_blocked"] = True
+                check(forbidden_read.status_code == 402,
+                      "Reader permitted the 41st unpaid sentence.")
+                report["checks"]["41st_sentence_requires_unlock"] = True
 
                 saved = run_command(client, scene, "result")
                 check(saved["document"]["status"] == "saved",

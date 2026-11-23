@@ -46,6 +46,7 @@ type Panel =
   | "more"
   | "organize"
   | "rename"
+  | "unlock"
   | null;
 const example =
   "Years after a betrayal, Lin and Xu meet at a railway station. Lin knows what Xu did, but Xu believes the secret is still safe.";
@@ -359,9 +360,11 @@ export function RehearsalApp() {
   }, [page, scene?.id, version?.id, visibleText]);
   const actors = doc?.cast || [];
   const marketplaceCast = actors.some((a) => Boolean(a.source_listing_id));
+  const meteredScene = Boolean(scene && !doc?.demo);
   const access = accessSnapshot && accessSnapshot.sceneId === scene?.id ? accessSnapshot.value : null;
-  const accessUnavailable = marketplaceCast && (!access || !!accessError);
-  const paymentRequired = marketplaceCast && access?.payment_required === true;
+  const accessUnavailable = meteredScene && (!access || !!accessError);
+  const paymentRequired = meteredScene && access?.payment_required === true;
+  const readingLocked = meteredScene && revealed >= (access?.free_sentence_limit ?? 40);
   const generationBlocked = accessUnavailable || paymentRequired;
   const taken = actors.find((a) => a.id === version?.takeover);
   const state =
@@ -381,7 +384,7 @@ export function RehearsalApp() {
     }
   }
   useEffect(() => {
-    if (!scene?.id || !marketplaceCast) {
+    if (!scene?.id || !meteredScene) {
       setAccessSnapshot(null);
       setAccessError("");
       return;
@@ -390,7 +393,7 @@ export function RehearsalApp() {
     setAccessSnapshot(null);
     setAccessError("");
     void refreshSceneAccess(scene.id);
-  }, [scene?.id, marketplaceCast]);
+  }, [scene?.id, meteredScene]);
 
   function accept(s: Scene) {
     if (current.current?.id === s.id && current.current.revision > s.revision)
@@ -534,8 +537,8 @@ export function RehearsalApp() {
         // the final direction in another tab.
         if (current.current?.id) void refreshSceneAccess(current.current.id);
         setError(tr(
-          "This story needs an unlock before more AI generation. Payments are not available in this build; you can still read and save the story.",
-          "继续生成需要解锁。当前版本尚未接入支付，但仍可阅读和保存故事。",
+          "The free 40-sentence story has ended. A verified wallet unlock will be needed to continue.",
+          "本场 40 句免费额度已用完。继续需要绑定钱包并付款解锁。",
         ));
         return;
       }
@@ -891,10 +894,10 @@ export function RehearsalApp() {
       if (conflict)
         throw new Error("Resolve the newer revision before starting.");
       if (generationBlocked) {
-        if (paymentRequired) throw new Error(tr(
-          "An unlock is required to generate this scene. Payments are not available yet.",
-          "生成这一场需要解锁，当前版本尚未接入支付。",
-        ));
+        if (paymentRequired) {
+          setPanel("unlock");
+          return;
+        }
         throw new Error(tr("Checking story allowance. Retry the access check.", "正在检查故事额度，请重试。"));
       }
       await saveQueue.current;
@@ -1027,6 +1030,7 @@ export function RehearsalApp() {
     more: tr("Your creative space", "创作空间"),
     organize: tr("Review your setup", "整理设定"),
     rename: tr("Give this scene a name", "重命名本场"),
+    unlock: tr("Continue your story", "继续你的故事"),
   };
   const syncLabel = !online
     ? tr("Offline · device draft", "离线 · 本机草稿")
@@ -1037,49 +1041,41 @@ export function RehearsalApp() {
         : pendingDraft.current
           ? tr("Device draft · waiting to sync", "本机草稿 · 等待同步")
           : tr("Saved automatically", "已自动保存");
-  function marketplaceAllowance() {
-    if (!marketplaceCast) return null;
+  function storyAllowance() {
+    if (!meteredScene) return null;
+    const count = access?.generated_sentences ?? 0;
+    const limit = access?.free_sentence_limit ?? 40;
     const title = accessError
       ? tr("Unable to check access", "无法查询使用额度")
       : !access
-        ? tr("Checking story access…", "正在检查故事额度…")
+        ? tr("Checking story allowance…", "正在检查故事额度…")
         : access.payment_required
-          ? tr("Unlock required", "需要解锁")
-          : !access.opening_consumed
-            ? tr("Your free first story", "你的首次免费故事")
-            : tr(
-                `${access.directions_available ?? 0} AI direction${access.directions_available === 1 ? "" : "s"} remaining`,
-                `剩余 ${access.directions_available ?? 0} 次 AI 剧情指导`,
-              );
+          ? tr("40 free sentences reached", "免费 40 句已用完")
+          : tr(`Free story · ${count} / ${limit} sentences`, `免费故事 · ${count} / ${limit} 句`);
     const explanation = accessError
-      ? tr("Your saved story remains readable. Try checking your allowance again.", "已保存的故事仍可阅读。请重试额度查询。")
+      ? tr("Try checking your allowance again.", "请重试额度查询。")
       : !access
-        ? tr("The server decides which AI actions are available.", "可用的 AI 操作由服务器决定。")
+        ? tr("All private and published characters use the same story limit.", "所有私人和公开角色使用相同的故事额度。")
         : access.payment_required
-          ? tr(
-              "Additional AI generation is locked. Payments are not available in this build; you can still read, edit existing text, and save this story.",
-              "后续 AI 生成已锁定。此版本尚未接入支付，但仍可阅读、编辑已有文字及保存故事。",
-            )
-          : !access.opening_consumed
-            ? tr(
-                "Your first AI opening and one subsequent AI direction are free.",
-                "首次 AI 开场与随后一次 AI 剧情指导免费。",
-              )
-            : tr(
-                "Reading, reviewing, and saving do not use AI directions.",
-                "阅读、回顾和保存不会消耗 AI 指导次数。",
-              );
+          ? tr("Connect a wallet to unlock more story. Wallet checkout is coming soon.",
+               "继续阅读或生成需要绑定钱包付费解锁，支付功能尚待接入。")
+          : tr("Your first 40 AI story sentences are free.", "本场前 40 句 AI 剧情免费。");
     return (
       <div className={"rh-marketplace-access" + (access?.payment_required ? " locked" : "")}
-           aria-label="Story access" role="status">
+        aria-label="Story access" role="status">
         <div className="rh-access-copy">
           <strong>{title}</strong>
           <span>{explanation}</span>
+          {access && <div className="rh-free-progress" role="progressbar"
+            aria-label="Free story sentences" aria-valuemin={0} aria-valuemax={limit}
+            aria-valuenow={Math.min(count, limit)}>
+            <span style={{ width: `${Math.min(100, count / limit * 100)}%` }} />
+          </div>}
         </div>
+        {access?.payment_required && <button type="button" className="rh-access-retry"
+          onClick={() => setPanel("unlock")}>{tr("Unlock", "解锁")}</button>}
         {accessError && scene && <button type="button" className="rh-access-retry"
-          onClick={() => void refreshSceneAccess(scene.id)}>
-          {tr("Retry check", "重试查询")}
-        </button>}
+          onClick={() => void refreshSceneAccess(scene.id)}>{tr("Retry check", "重试查询")}</button>}
       </div>
     );
   }
@@ -1800,7 +1796,7 @@ export function RehearsalApp() {
                     {tr("saved result", "已认可结果")}
                   </p>
                 )}
-                {marketplaceAllowance()}
+                {storyAllowance()}
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1835,13 +1831,13 @@ export function RehearsalApp() {
                     !online ||
                     form.premise.trim().length < 10 ||
                     actors.length !== 2 ||
-                    generationBlocked
+                    (generationBlocked && !paymentRequired)
                   }
                 >
                   {busy
                     ? tr("Setting the stage…", "准备舞台…")
                     : paymentRequired
-                      ? tr("Unlock required", "需要解锁")
+                      ? tr("Connect wallet to unlock", "绑定钱包解锁")
                       : tr("Start rehearsal", "开始排戏")}
                   <span>→</span>
                 </button>
@@ -1869,7 +1865,7 @@ export function RehearsalApp() {
                 </span>
                 {doc?.demo && <span className="rh-demo">DEMO</span>}
               </div>
-              {marketplaceAllowance()}
+              {storyAllowance()}
               <div className="rh-reading" ref={reader} onScroll={scrolling}>
                 {doc?.source && (
                   <p className="rh-source">
@@ -1897,11 +1893,10 @@ export function RehearsalApp() {
                     <p>{tr("The stage is ready.", "舞台已准备好。")}</p>
                     <button
                       className="rh-secondary"
-                      disabled={generationBlocked}
-                      onClick={() =>
-                        task(async () => {
-                          await send({ kind: "continue" });
-                        })
+                      disabled={generationBlocked && !paymentRequired}
+                      onClick={() => paymentRequired
+                        ? setPanel("unlock")
+                        : task(async () => { await send({ kind: "continue" }); })
                       }
                     >
                       {tr("Rehearse the opening", "排演开场")}
@@ -1954,10 +1949,11 @@ export function RehearsalApp() {
                     className="rh-secondary rh-takeover-next"
                     aria-label="Next line"
                     disabled={busy || !online}
-                    onClick={() =>
-                      task(async () => {
-                        await send({ kind: "read", revealed: revealed + 1 });
-                      })
+                    onClick={() => readingLocked
+                      ? setPanel("unlock")
+                      : task(async () => {
+                          await send({ kind: "read", revealed: revealed + 1 });
+                        })
                     }
                   >
                     {tr("Next line", "下一句")} ↓
@@ -2056,22 +2052,23 @@ export function RehearsalApp() {
                     </button>
                     <button
                       aria-label={
-                        job ? "Pause" : waitingLines ? "Next line" : "Continue"
+                        job ? "Pause"
+                        : (readingLocked || (!waitingLines && paymentRequired)) ? "Unlock story"
+                        : waitingLines ? "Next line" : "Continue"
                       }
                       className="rh-primary"
-                      disabled={busy || !online || (!job && !waitingLines && generationBlocked)}
-                      onClick={() =>
-                        task(async () => {
-                          if (job)
-                            await rehearsal("/jobs/" + job + "/pause", {});
-                          else if (waitingLines)
-                            await send({
-                              kind: "read",
-                              revealed: revealed + 1,
-                            });
+                      disabled={busy || !online || (!job && !waitingLines && accessUnavailable)}
+                      onClick={() => {
+                        if (!job && (readingLocked || (!waitingLines && paymentRequired))) {
+                          setPanel("unlock");
+                          return;
+                        }
+                        void task(async () => {
+                          if (job) await rehearsal("/jobs/" + job + "/pause", {});
+                          else if (waitingLines) await send({ kind: "read", revealed: revealed + 1 });
                           else await send({ kind: "continue" });
-                        })
-                      }
+                        });
+                      }}
                     >
                       {job ? (
                         <>
@@ -2080,8 +2077,9 @@ export function RehearsalApp() {
                         </>
                       ) : (
                         <>
-                          {waitingLines
-                            ? tr("Next line", "下一句")
+                          {(readingLocked || (!waitingLines && paymentRequired))
+                            ? tr("Unlock story", "解锁故事")
+                            : waitingLines ? tr("Next line", "下一句")
                             : tr("Continue", "继续演")}
                           <span>→</span>
                         </>
@@ -2244,6 +2242,22 @@ export function RehearsalApp() {
       )}
       {panel && (
         <Sheet key={panel} title={titles[panel]} close={() => setPanel(null)}>
+          {panel === "unlock" && (
+            <div className="rh-unlock-sheet">
+              <p className="rh-eyebrow">{tr("40 FREE SENTENCES", "40 句免费剧情")}</p>
+              <h2>{tr("Your story is just beginning.", "故事，才刚刚开始。")}</h2>
+              <p>{tr("The 40-sentence free preview applies to every character combination, including private characters.",
+                "40 句免费上限适用于所有角色组合，包括私人角色。")}</p>
+              <div className="rh-unlock-plan">
+                <strong>{tr("Connect a wallet to unlock more", "绑定钱包，解锁后续剧情")}</strong>
+                <small>{tr("Verified wallet connection and Solana checkout are not integrated yet. No paid credits can be issued in this build.",
+                  "钱包签名及 Solana 支付核验尚未接入，当前版本不能购买或发放付费额度。")}</small>
+              </div>
+              <button className="rh-primary" onClick={() => setPanel(null)}>
+                {tr("Return to story", "返回故事")}
+              </button>
+            </div>
+          )}
           {panel === "actor" && actor && (
             <>
               <div className="rh-actor-detail">

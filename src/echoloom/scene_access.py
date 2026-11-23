@@ -129,6 +129,7 @@ def preview(doc):
     for v in d.get("versions", {}).values():
         available = FREE_SENTENCE_LIMIT
         final = None
+        completed_blocks = set()
         for original in history(doc, v["head"]):
             if available <= 0:
                 break
@@ -142,6 +143,8 @@ def preview(doc):
                 clipped = deepcopy(block)
                 if len(units) > available:
                     clipped["text"] = "".join(units[:available]).rstrip()
+                else:
+                    completed_blocks.add(block["id"])
                 filtered.append(clipped)
                 available -= min(available, len(units))
             if not filtered:
@@ -151,7 +154,12 @@ def preview(doc):
             node["blocks"] = filtered
             # Generated state attached to the original block may mention a
             # later sentence; never expose its unfiltered source derivation.
-            node["state"] = deepcopy(doc["initial_state"])
+            for key in ("world_facts", "beliefs", "goals", "relationships", "threads"):
+                node["state"][key] = [
+                    fact for fact in node["state"][key]
+                    if fact.get("source_node") not in doc["nodes"]
+                    or fact.get("source_block") in completed_blocks
+                ]
             safe_nodes[node["id"]] = node
             final = node["id"]
         v["head"] = final

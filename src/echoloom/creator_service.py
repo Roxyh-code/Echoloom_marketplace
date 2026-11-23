@@ -1,8 +1,11 @@
 """Server-owned creator records; no fake provider is installed in live mode."""
 
 import json
+import logging
+import time
 from contextlib import ExitStack
 from copy import deepcopy
+from threading import Lock, Thread
 from uuid import UUID
 
 from fastapi import HTTPException, Request
@@ -41,6 +44,9 @@ from .providers import ProviderError
 from .schemas import ImageInput, Profile
 
 
+logger = logging.getLogger(__name__)
+
+
 def references(factory, value):
     """Protect portraits/characters pinned by any active, archived or saved draft."""
     with factory() as db:
@@ -50,6 +56,12 @@ def references(factory, value):
 
 
 def register_creator(app, factory, locks, settings, image_render, serialize_character):
+    # Single-process prototype worker. Creation requests return as soon as the
+    # profile is saved; a daemon worker finishes the expensive image API call.
+    # A durable queue is required before deploying this with multiple workers.
+    active_portraits = set()
+    active_portraits_guard = Lock()
+
     def owner(request):
         return request.state.user_id
 
@@ -166,6 +178,122 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                 )
             ]
 
+    def complete_initial_portrait(rid, user):
+        started = time.monotonic()
+        try:
+            # Use a NEW DB session; never hold a FastAPI request/session open
+            # while OpenAI renders the image. Retry/recovery is idempotent by rid.
+            with locks.hold("creator-portrait-job:" + rid), factory() as db:
+                request_job = db.get(CreatorRequest, rid)
+                if (not request_job or request_job.owner_id != user
+                        or request_job.status != "pending"):
+                    return
+                cid = (request_job.result or {}).get("character_id")
+                if not cid:
+                    return
+                c = character(db, cid, user)
+                image = db.scalar(
+                    select(Portrait)
+                    .where(Portrait.character_id == cid)
+                    .order_by(Portrait.version.asc())
+                )
+                image_error = None
+                try:
+                    if not image:
+                        result = image_render(
+                            UUID(cid),
+                            ImageInput(expected_image_id=c.current_image_id),
+                            False, db,
+                        )
+                        image = db.get(Portrait, result["id"])
+                    if image:
+                        with locks.hold(cid):
+                            db.refresh(c)
+                            if c.current_image_id is None and c.current_profile_version == 1:
+                                c.current_image_id = image.id
+                                db.commit()
+                except (ProviderError, HTTPException) as exc:
+                    db.rollback()
+                    image_error = (exc.detail if isinstance(exc, HTTPException)
+                                   else str(exc))
+                except Exception as exc:
+                    db.rollback()
+                    # Do not log raw provider errors, prompts or private profile.
+                    logger.warning(
+                        "creator portrait worker failed type=%s", type(exc).__name__
+                    )
+                    image_error = "Portrait generation failed. The saved character is safe."
+
+                if image and not image_error:
+                    pinned_ids = list(db.scalars(
+                        select(CreatorWork.id)
+                        .where(CreatorWork.owner_id == user)
+                    ))
+                    db.rollback()
+                    for wid in pinned_ids:
+                        with locks.hold("creator-work:" + wid):
+                            pinned = db.get(CreatorWork, wid, populate_existing=True)
+                            if not pinned:
+                                continue
+                            doc = deepcopy(pinned.document)
+                            changed = False
+                            for members in doc["casts"].values():
+                                for member in members:
+                                    if (
+                                        member.get("creation_job_id") == rid
+                                        and member["character_id"] == cid
+                                        and member["version"] == 1
+                                        and not member["portrait_id"]
+                                    ):
+                                        member["portrait_id"] = image.id
+                                        member["portrait_url"] = (
+                                            f"/api/characters/{cid}/images/{image.id}/file"
+                                        )
+                                        changed = True
+                            if changed:
+                                pinned.document = CreatorDocument.model_validate(
+                                    doc
+                                ).model_dump()
+                                pinned.revision += 1
+                                pinned.updated_at = now()
+                                db.commit()
+                request_job = db.get(CreatorRequest, rid, populate_existing=True)
+                if request_job and request_job.status == "pending":
+                    request_job.status = "succeeded"
+                    request_job.result = {
+                        "character_id": cid,
+                        "phase": "portrait_failed" if image_error else "ready",
+                        "image_error": image_error,
+                    }
+                    db.commit()
+                logger.info(
+                    "creator stage=portrait finished seconds=%.2f success=%s",
+                    time.monotonic() - started, not bool(image_error),
+                )
+        finally:
+            with active_portraits_guard:
+                active_portraits.discard(rid)
+
+    def start_initial_portrait(rid, user):
+        # Prevent simultaneous duplicate paid image calls on repeated requests.
+        # After a process restart, retrying the same request_id resumes safely
+        # and detects an already-persisted portrait before calling OpenAI.
+        with active_portraits_guard:
+            if rid in active_portraits:
+                return
+            active_portraits.add(rid)
+        try:
+            Thread(
+                target=complete_initial_portrait,
+                args=(rid, user),
+                name="creator-portrait-" + rid[:8],
+                daemon=True,
+            ).start()
+        except Exception:
+            with active_portraits_guard:
+                active_portraits.discard(rid)
+            raise
+
     @app.post("/api/creator/characters", status_code=201)
     def create_character(body: CreatorCharacterInput, request: Request):
         if len(body.description) > settings.max_profile_input_chars:
@@ -174,9 +302,9 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             )
         user = owner(request)
         rid = str(body.request_id)
-        payload = body.model_dump(mode="json")
+        started = time.monotonic()
         with locks.hold("creator-request:" + rid), factory() as db:
-            row = record(db, rid, user, "character", payload)
+            row = record(db, rid, user, "character", body.model_dump(mode="json"))
             if row.status == "succeeded":
                 return row.result
             cid = (row.result or {}).get("character_id")
@@ -203,84 +331,20 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                             character_id=c.id,
                             version=1,
                             profile_json=profile.model_dump(),
-                            change_summary="Create character and portrait",
+                            change_summary="Create character; portrait generated asynchronously",
                         )
                     )
                     db.add(Conversation(character_id=c.id))
                     row.result = {"character_id": c.id, "phase": "portrait_pending"}
                     db.commit()
                     cid = c.id
-            c = character(db, cid, user)
-            # A restart can recover a portrait already saved before its response was recorded.
-            image = db.scalar(
-                select(Portrait)
-                .where(Portrait.character_id == cid)
-                .order_by(Portrait.version)
+            # Return the profile immediately, without blocking on image API.
+            start_initial_portrait(rid, user)
+            logger.info(
+                "creator stage=profile response_seconds=%.2f portrait=background",
+                time.monotonic() - started,
             )
-            image_error = None
-            try:
-                if not image:
-                    result = image_render(
-                        UUID(cid),
-                        ImageInput(expected_image_id=c.current_image_id),
-                        False,
-                        db,
-                    )
-                    image = db.get(Portrait, result["id"])
-                with locks.hold(cid):
-                    db.refresh(c)
-                    if c.current_image_id is None and c.current_profile_version == 1:
-                        c.current_image_id = image.id
-                        db.commit()
-            except (ProviderError, HTTPException) as exc:
-                db.rollback()
-                image_error = exc.detail if isinstance(exc, HTTPException) else str(exc)
-            if image and not image_error:
-                # Resolve only the original pending portrait, never a later edit.
-                pinned_ids = list(
-                    db.scalars(
-                        select(CreatorWork.id).where(CreatorWork.owner_id == user)
-                    )
-                )
-                db.rollback()
-                for pinned_id in pinned_ids:
-                    with locks.hold("creator-work:" + pinned_id):
-                        pinned = db.get(CreatorWork, pinned_id, populate_existing=True)
-                        if not pinned:
-                            continue
-                        doc = deepcopy(pinned.document)
-                        changed = False
-                        for members in doc["casts"].values():
-                            for member in members:
-                                if (
-                                    member.get("creation_job_id") == rid
-                                    and member["character_id"] == cid
-                                    and member["version"] == 1
-                                    and not member["portrait_id"]
-                                ):
-                                    member["portrait_id"] = image.id
-                                    member["portrait_url"] = (
-                                        f"/api/characters/{cid}/images/{image.id}/file"
-                                    )
-                                    changed = True
-                        if changed:
-                            pinned.document = CreatorDocument.model_validate(
-                                doc
-                            ).model_dump()
-                            pinned.revision += 1
-                            pinned.updated_at = now()
-                            db.commit()
-
-            db.refresh(c)
-            row = db.get(CreatorRequest, rid)
-            row.status = "succeeded"
-            row.result = {
-                "character_id": cid,
-                "phase": "portrait_failed" if image_error else "ready",
-                "image_error": image_error,
-            }
-            db.commit()
-            return row.result
+            return {"character_id": cid, "phase": "portrait_pending"}
 
     @app.get("/api/creator/jobs/{rid}")
     def job(rid: UUID, request: Request):

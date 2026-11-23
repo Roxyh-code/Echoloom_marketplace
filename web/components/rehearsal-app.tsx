@@ -1467,7 +1467,7 @@ export function RehearsalApp() {
                   <div className="rh-cast-slots">
                     {actors.map((a, index) => (
                       <div className="rh-cast-slot" key={a.id}>
-                        <div>
+                        <div className="rh-locked-slot">
                           <span className="rh-slot-letter">{index === 0 ? "A" : "B"}</span>
                           <Avatar actor={a} size="large" />
                           <strong>{a.name}</strong>

@@ -147,3 +147,50 @@ test("owned published character appears once, opens public detail and supports l
   expect(restored.status()).toBe(200);
   expect((await restored.json()).short_description).toBe("A curious archivist returns.");
 });
+
+test("bottom navigation keeps the same order and column across pages, even on hover", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const labels = ["Discover", "Characters", "My stories"];
+  const nav = page.getByRole("navigation", { name: "Primary navigation" });
+
+  async function expectStableNavigation(active: string) {
+    const tabs = nav.locator(":scope > a, :scope > button");
+    await expect(tabs).toHaveCount(3);
+    await expect.poll(async () => tabs.allTextContents()).toEqual(labels);
+    await expect(nav.getByRole(active === "Characters" || active === "My stories" ? "button" : "link", { name: active, exact: true }))
+      .toHaveAttribute("aria-current", "page");
+    const centres = await tabs.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const item = node.getBoundingClientRect();
+        const container = node.parentElement!.getBoundingClientRect();
+        return (item.x + item.width / 2 - container.x) / container.width;
+      })
+    );
+    for (const [i, x] of centres.entries()) {
+      expect(x, `Tab ${labels[i]} must stay in column ${i + 1}`).toBeGreaterThan((i + 0.25) / 3);
+      expect(x, `Tab ${labels[i]} must stay in column ${i + 1}`).toBeLessThan((i + 0.75) / 3);
+    }
+  }
+
+  await page.goto("/marketplace");
+  await expectStableNavigation("Discover");
+  const charactersLink = nav.getByRole("link", { name: "Characters", exact: true });
+  await charactersLink.hover();
+  await charactersLink.click();
+  await expect(page).toHaveURL(/\/rehearsal\?view=characters/);
+  await expect(page.locator(".mc-character-grid")).toBeVisible();
+  await expectStableNavigation("Characters");
+
+  await nav.getByRole("button", { name: "My stories", exact: true }).hover();
+  await nav.getByRole("button", { name: "My stories", exact: true }).click();
+  await expect(page.getByRole("heading", { name: /Let your characters/ })).toBeVisible();
+  await expectStableNavigation("My stories");
+
+  await nav.getByRole("link", { name: "Discover", exact: true }).click();
+  await expect(page).toHaveURL(/\/marketplace$/);
+  await expectStableNavigation("Discover");
+
+  await page.getByRole("link", { name: "View character Mira" }).click();
+  await expect(page).toHaveURL(/\/marketplace\/preview\/sample-mira/);
+  await expectStableNavigation("Discover");
+});

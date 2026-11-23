@@ -152,13 +152,10 @@ test("in-scene creation includes portraits, preserves cast and setup at 320px", 
       .first()
       .click();
     await page.getByLabel("Describe your character").fill(description);
-    // The 320px mobile footer animates with the viewport and Playwright's
-    // stability-based click can time out before the request is sent. Test the
-    // form submit directly here; the regular click path is covered in
-    // mobile-characters.spec.ts.
-    await page.locator("form#mc-create").evaluate((form) =>
-      (form as HTMLFormElement).requestSubmit()
-    );
+    // At 320px the footer can animate while Playwright checks stability.
+    // Force the REAL submit button click (not requestSubmit) so React has
+    // committed the controlled textarea value before the form submits.
+    await page.locator('button[form="mc-create"]').click({ force: true });
     // The Profile is usable immediately. Do not require the portrait
     // to finish before editing or adding this Character to a Scene.
     await expect(page.getByRole("heading", { name: "Evelyn" })).toBeVisible({

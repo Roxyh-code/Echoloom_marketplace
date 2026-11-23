@@ -15,6 +15,7 @@ import {
   Node,
   Review,
   Scene,
+  SceneAccess,
   Setup,
   blankSetup,
   chain,
@@ -294,6 +295,9 @@ export function RehearsalApp() {
   const [reviewError, setReviewError] = useState("");
   const [job, setJob] = useState<string | null>(null);
   const [jobFailed, setJobFailed] = useState<string | null>(null);
+  // The server is authoritative for Marketplace trial and direction allowances.
+  const [accessSnapshot, setAccessSnapshot] = useState<{ sceneId: string; value: SceneAccess } | null>(null);
+  const [accessError, setAccessError] = useState("");
   const [elapsed, setElapsed] = useState(0);
   const [roleText, setRoleText] = useState("");
   const [inputType, setInputType] = useState<"dialogue" | "action">("dialogue");
@@ -355,10 +359,39 @@ export function RehearsalApp() {
   }, [page, scene?.id, version?.id, visibleText]);
   const actors = doc?.cast || [];
   const marketplaceCast = actors.some((a) => Boolean(a.source_listing_id));
+  const access = accessSnapshot?.sceneId === scene?.id ? accessSnapshot.value : null;
+  const accessUnavailable = marketplaceCast && (!access || !!accessError);
+  const paymentRequired = marketplaceCast && access?.payment_required === true;
+  const generationBlocked = accessUnavailable || paymentRequired;
   const taken = actors.find((a) => a.id === version?.takeover);
   const state =
     readState(nodes, revealed, new Set(Object.keys(doc?.nodes || {}))) ||
     doc?.initial_state;
+  async function refreshSceneAccess(sceneId: string) {
+    try {
+      const result = await rehearsal<SceneAccess>("/scenes/" + sceneId + "/access");
+      if (current.current?.id === sceneId) {
+        setAccessSnapshot({ sceneId, value: result });
+        setAccessError("");
+      }
+    } catch (cause) {
+      if (current.current?.id === sceneId) {
+        setAccessError(cause instanceof Error ? cause.message : "Cannot check story access.");
+      }
+    }
+  }
+  useEffect(() => {
+    if (!scene?.id || !marketplaceCast) {
+      setAccessSnapshot(null);
+      setAccessError("");
+      return;
+    }
+    // A new scene never inherits allowances from the previously opened scene.
+    setAccessSnapshot(null);
+    setAccessError("");
+    void refreshSceneAccess(scene.id);
+  }, [scene?.id, marketplaceCast]);
+
   function accept(s: Scene) {
     if (current.current?.id === s.id && current.current.revision > s.revision)
       return;
@@ -496,6 +529,16 @@ export function RehearsalApp() {
   }
   function report(e: unknown) {
     if (e instanceof RehearsalError) {
+      if (e.status === 402) {
+        // Refresh after a rejected generation; the server may have consumed
+        // the final direction in another tab.
+        if (current.current?.id) void refreshSceneAccess(current.current.id);
+        setError(tr(
+          "This story needs an unlock before more AI generation. Payments are not available in this build; you can still read and save the story.",
+          "继续生成需要解锁。当前版本尚未接入支付，但仍可阅读和保存故事。",
+        ));
+        return;
+      }
       setError(e.message);
       setDeps(e.dependencies || []);
       if (e.status === 409 && e.message.includes("revision")) setConflict(true);
@@ -721,6 +764,10 @@ export function RehearsalApp() {
           accept(j.scene);
         }
         if (["completed", "cancelled", "failed"].includes(j.status)) {
+          // After commit/refund, read the settled server-side balance.
+          if (j.scene.document.cast.some((a) => Boolean(a.source_listing_id))) {
+            void refreshSceneAccess(j.scene.id);
+          }
           setJob(null);
           if (j.status === "cancelled")
             setNotice(
@@ -843,6 +890,13 @@ export function RehearsalApp() {
     await task(async () => {
       if (conflict)
         throw new Error("Resolve the newer revision before starting.");
+      if (generationBlocked) {
+        if (paymentRequired) throw new Error(tr(
+          "An unlock is required to generate this scene. Payments are not available yet.",
+          "生成这一场需要解锁，当前版本尚未接入支付。",
+        ));
+        throw new Error(tr("Checking story allowance. Retry the access check.", "正在检查故事额度，请重试。"));
+      }
       await saveQueue.current;
       await syncSetup(form);
       const next = await send({ kind: "continue" });
@@ -983,6 +1037,52 @@ export function RehearsalApp() {
         : pendingDraft.current
           ? tr("Device draft · waiting to sync", "本机草稿 · 等待同步")
           : tr("Saved automatically", "已自动保存");
+  function marketplaceAllowance() {
+    if (!marketplaceCast) return null;
+    const title = accessError
+      ? tr("Unable to check access", "无法查询使用额度")
+      : !access
+        ? tr("Checking story access…", "正在检查故事额度…")
+        : access.payment_required
+          ? tr("Unlock required", "需要解锁")
+          : !access.opening_consumed
+            ? tr("Your free first story", "你的首次免费故事")
+            : tr(
+                `${access.directions_available ?? 0} AI direction${access.directions_available === 1 ? "" : "s"} remaining`,
+                `剩余 ${access.directions_available ?? 0} 次 AI 剧情指导`,
+              );
+    const explanation = accessError
+      ? tr("Your saved story remains readable. Try checking your allowance again.", "已保存的故事仍可阅读。请重试额度查询。")
+      : !access
+        ? tr("The server decides which AI actions are available.", "可用的 AI 操作由服务器决定。")
+        : access.payment_required
+          ? tr(
+              "Additional AI generation is locked. Payments are not available in this build; you can still read, edit existing text, and save this story.",
+              "后续 AI 生成已锁定。此版本尚未接入支付，但仍可阅读、编辑已有文字及保存故事。",
+            )
+          : !access.opening_consumed
+            ? tr(
+                "Your first AI opening and one subsequent AI direction are free.",
+                "首次 AI 开场与随后一次 AI 剧情指导免费。",
+              )
+            : tr(
+                "Reading, reviewing, and saving do not use AI directions.",
+                "阅读、回顾和保存不会消耗 AI 指导次数。",
+              );
+    return (
+      <div className={"rh-marketplace-access" + (access?.payment_required ? " locked" : "")}
+           aria-label="Story access" role="status">
+        <div className="rh-access-copy">
+          <strong>{title}</strong>
+          <span>{explanation}</span>
+        </div>
+        {accessError && scene && <button type="button" className="rh-access-retry"
+          onClick={() => void refreshSceneAccess(scene.id)}>
+          {tr("Retry check", "重试查询")}
+        </button>}
+      </div>
+    );
+  }
   function bodyBlocks(list: Node[], readOnly = false) {
     return list.map((n, i) => (
       <section className="rh-segment" key={n.id}>
@@ -1700,6 +1800,7 @@ export function RehearsalApp() {
                     {tr("saved result", "已认可结果")}
                   </p>
                 )}
+                {marketplaceAllowance()}
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1733,12 +1834,15 @@ export function RehearsalApp() {
                     !!job ||
                     !online ||
                     form.premise.trim().length < 10 ||
-                    actors.length !== 2
+                    actors.length !== 2 ||
+                    generationBlocked
                   }
                 >
                   {busy
                     ? tr("Setting the stage…", "准备舞台…")
-                    : tr("Start rehearsal", "开始排戏")}
+                    : paymentRequired
+                      ? tr("Unlock required", "需要解锁")
+                      : tr("Start rehearsal", "开始排戏")}
                   <span>→</span>
                 </button>
               </footer>
@@ -1765,6 +1869,7 @@ export function RehearsalApp() {
                 </span>
                 {doc?.demo && <span className="rh-demo">DEMO</span>}
               </div>
+              {marketplaceAllowance()}
               <div className="rh-reading" ref={reader} onScroll={scrolling}>
                 {doc?.source && (
                   <p className="rh-source">
@@ -1792,6 +1897,7 @@ export function RehearsalApp() {
                     <p>{tr("The stage is ready.", "舞台已准备好。")}</p>
                     <button
                       className="rh-secondary"
+                      disabled={generationBlocked}
                       onClick={() =>
                         task(async () => {
                           await send({ kind: "continue" });
@@ -1920,7 +2026,7 @@ export function RehearsalApp() {
                       />
                       <button
                         className="rh-send"
-                        disabled={busy || !!job || !online || !roleText.trim()}
+                        disabled={busy || !!job || !online || !roleText.trim() || generationBlocked}
                         aria-label="Send performance"
                       >
                         ↑
@@ -1953,7 +2059,7 @@ export function RehearsalApp() {
                         job ? "Pause" : waitingLines ? "Next line" : "Continue"
                       }
                       className="rh-primary"
-                      disabled={busy || !online}
+                      disabled={busy || !online || (!job && !waitingLines && generationBlocked)}
                       onClick={() =>
                         task(async () => {
                           if (job)

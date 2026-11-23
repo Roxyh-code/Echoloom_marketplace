@@ -227,9 +227,18 @@ export function MarketplaceDiscover() {
       }));
       const request: CreateSceneInput = {
         operation_id: operation(),
-        cast_sources: selected.map((entry) => entry.source) as [CastSource, CastSource],
         setup: { ...blankSetup, language: "en" },
       };
+      if (selected.every((entry) => entry.source.source === "private")) {
+        // Preserve existing local/private draft behavior, including the
+        // unclaimed-account bootstrap path used by legacy Rehearsal.
+        request.character_ids = selected.map((entry) =>
+          (entry.source as Extract<CastSource, { source: "private" }>).character_id
+        );
+      } else {
+        // All public and mixed-source scenes use backend-verified Listing IDs.
+        request.cast_sources = selected.map((entry) => entry.source) as [CastSource, CastSource];
+      }
       const scene = await rehearsal<Scene>("/scenes", request);
       updateCast([]);
       router.push("/rehearsal?view=setup&scene=" + encodeURIComponent(scene.id));

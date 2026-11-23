@@ -60,11 +60,9 @@ jobs:
       - name: Install Playwright Chromium
         working-directory: web
         run: npx playwright install --with-deps chromium
-      - name: Record character workflow in isolated showcase mode
+      - name: Test Marketplace, characters, and rehearsal mobile flows
         working-directory: web
-        env:
-          ECHOLOOM_RECORD_DEMO: '1'
-        run: npx playwright test e2e/demo-video.spec.ts --reporter=line
+        run: npx playwright test e2e/marketplace.spec.ts e2e/editorial-ui.spec.ts e2e/mobile-characters.spec.ts e2e/rehearsal.spec.ts --reporter=line
 
       - name: Upload one-off character demo video
         if: always()

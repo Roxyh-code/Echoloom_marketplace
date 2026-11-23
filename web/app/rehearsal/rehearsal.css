@@ -2246,3 +2246,31 @@
   margin-bottom: 10px;
   padding: 9px !important;
 }
+
+/* Marketplace story reader: visible server-side allowance, no pretend checkout. */
+.rh-marketplace-access {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #54408c66;
+  background: #21192d;
+  color: #e9deff;
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin: 13px 16px 16px;
+  flex: none;
+}
+.rh-marketplace-access.locked {
+  border-color: #936f5b;
+  background: #2c2025;
+}
+.rh-access-copy { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.rh-access-copy strong { font-size: 12px; font-weight: 700; }
+.rh-access-copy span { font-size: 11px; line-height: 1.45; color: #d6cae3; }
+.rh-access-retry { border: 1px solid #ad91e5; background: transparent; border-radius: 7px; padding: 8px; font-size: 11px; color: #e9deff; }
+.rh-marketplace-access button:focus-visible { outline: 2px solid #bda6ff; outline-offset: 2px; }
+.rh-stage .rh-marketplace-access { margin: 6px 16px; }
+@media(max-width:360px) {
+  .rh-marketplace-access { padding: 9px 10px; }
+  .rh-access-copy span { font-size: 10px; }
+}

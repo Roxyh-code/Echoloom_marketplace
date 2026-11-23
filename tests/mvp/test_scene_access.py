@@ -1,231 +1,221 @@
-"""Marketplace Scene Access: server-side first trial and metered AI generations.
+"""Unified 40-sentence free preview for ALL character combinations.
 
-All tests use the deterministic local FakeText provider; no wallet or LLM key.
+No real wallet or model calls. Production-like FastAPI/worker using FakeText.
 """
+from copy import deepcopy
 from uuid import uuid4
 
-from sqlalchemy import select
-
-from echoloom.db import sessions
-from echoloom.scene_access_models import SceneAccess, SceneTrialClaim, SceneUsage
-from echoloom.rehearsal_schema import Performance, StateChange
+from echoloom.db import RehearsalScene, sessions
+from echoloom.rehearsal_schema import Block, Performance
 from test_marketplace import publish, register_account, seed_character
-from test_rehearsal import wait, quick
+from test_rehearsal import quick, wait
 
 
-def new_marketplace_scene(setup, ids=None):
-    client, *_ = setup
-    if ids is None:
-        owner = register_account(setup)
-        ids = [
-            publish(client, seed_character(setup, owner)),
-            publish(client, seed_character(setup, owner)),
-        ]
-    body = {
+def request_scene(client, *, character_ids=None, cast_sources=None, demo=False):
+    response = client.post("/api/rehearsal/scenes", json={
         "operation_id": str(uuid4()),
-        "cast_sources": [
-            {"source": "listing", "listing_id": record["listing_id"],
-             "expected_revision": record["latest_revision"]}
-            for record in ids
-        ],
-        "setup": {"premise": "Two strangers confront their shared past in a station."},
-    }
-    response = client.post("/api/rehearsal/scenes", json=body)
+        **({"character_ids": character_ids} if character_ids else {}),
+        **({"cast_sources": cast_sources} if cast_sources else {}),
+        "demo": demo,
+        "setup": {"premise": "Two travelers meet at an old railway station."},
+    })
     assert response.status_code == 201, response.text
-    return response.json(), ids
-
-
-def make_command(scene, kind="continue", **data):
-    return {
-        "operation_id": str(uuid4()),
-        "expected_revision": scene["revision"],
-        "kind": kind,
-        **data,
-    }
-
-
-def submit(client, scene, kind="continue", **data):
-    return client.post(
-        f"/api/rehearsal/scenes/{scene['id']}/commands",
-        json=make_command(scene, kind, **data),
-    )
-
-
-def allowance(client, scene):
-    response = client.get(f"/api/rehearsal/scenes/{scene['id']}/access")
-    assert response.status_code == 200, response.text
     return response.json()
 
 
-def start_and_wait(client, scene, kind="continue", **data):
-    response = submit(client, scene, kind, **data)
-    assert response.status_code == 200, response.text
-    return wait(client, response.json())
+def command(client, scene, kind="continue", **extra):
+    return client.post(
+        f"/api/rehearsal/scenes/{scene['id']}/commands",
+        json={"operation_id": str(uuid4()), "expected_revision": scene["revision"],
+              "kind": kind, **extra},
+    )
 
 
-def test_trial_opening_one_direction_then_payment_required(setup):
-    client, _, _, _, engine = setup
-    scene, _ = new_marketplace_scene(setup)
-    before = allowance(client, scene)
-    assert before == {
-        "mode": "marketplace", "opening_available": 0,
-        "directions_available": 0, "opening_consumed": False,
-        "trial_eligible": True, "payment_required": False,
-    }
-    first = start_and_wait(client, scene)
-    assert first["status"] == "completed", first
-    scene = first["scene"]
-    assert allowance(client, scene)["opening_consumed"] is True
-    assert allowance(client, scene)["directions_available"] == 1
-
-    second = start_and_wait(client, scene, "direction", text="Let Mira confess the truth.")
-    assert second["status"] == "completed", second
-    scene = second["scene"]
-    assert allowance(client, scene)["directions_available"] == 0
-    assert allowance(client, scene)["payment_required"] is True
-
-    denied = submit(client, scene, "continue")
-    assert denied.status_code == 402, denied.text
-    assert len(client.get("/api/rehearsal/scenes").json()) == 1
-    with sessions(engine)() as db:
-        journal = list(db.scalars(select(SceneUsage)))
-        assert len(journal) == 2
-        assert all(u.status == "charged" for u in journal)
-        assert sorted(u.category for u in journal) == ["direction", "opening"]
+def generate(client, scene, kind="continue", **extra):
+    r = command(client, scene, kind, **extra)
+    assert r.status_code == 200, r.text
+    return wait(client, r.json())
 
 
-def test_first_trial_does_not_repeat_for_new_scene_after_delete(setup):
-    client, _, _, _, engine = setup
-    original, records = new_marketplace_scene(setup)
-    second, _ = new_marketplace_scene(setup, records)
-    assert allowance(client, second)["trial_eligible"] is True
-    first_job = start_and_wait(client, original)
-    assert first_job["status"] == "completed"
-    assert allowance(client, second)["payment_required"] is True
-    assert submit(client, second).status_code == 402
-    assert client.delete(f"/api/rehearsal/scenes/{original['id']}").status_code == 204
-    assert submit(client, second).status_code == 402
-    with sessions(engine)() as db:
-        claim = db.scalar(select(SceneTrialClaim))
-        assert claim.scene_id == original["id"]
-        assert db.get(SceneAccess, original["id"]) is None
+def access(client, scene):
+    r = client.get(f"/api/rehearsal/scenes/{scene['id']}/access")
+    assert r.status_code == 200, r.text
+    return r.json()
 
 
-def test_failed_opening_refunds_and_can_claim_other_scene(setup):
-    client, fake, _, _, engine = setup
-    scene, records = new_marketplace_scene(setup)
-    other, _ = new_marketplace_scene(setup, records)
-    fake.fail = True
-    failed = start_and_wait(client, scene)
-    assert failed["status"] == "failed"
-    assert allowance(client, scene)["trial_eligible"] is True
-    with sessions(engine)() as db:
-        assert db.scalar(select(SceneTrialClaim)) is None
-        usage = db.scalar(select(SceneUsage))
-        assert usage.status == "refunded"
-    fake.fail = False
-    success = start_and_wait(client, other)
-    assert success["status"] == "completed"
-    assert allowance(client, scene)["payment_required"] is True
-    assert allowance(client, other)["opening_consumed"] is True
+def story_text(scene):
+    return "\n".join(
+        block["text"]
+        for node in scene["document"]["nodes"].values()
+        for block in node["blocks"]
+    )
 
 
-def test_failed_direction_refunds_retry_uses_one_credit(setup):
+def test_two_private_characters_are_metered_and_generated_sentences_count(setup):
     client, fake, *_ = setup
-    scene, _ = new_marketplace_scene(setup)
-    opening = start_and_wait(client, scene)
-    assert opening["status"] == "completed"
-    scene = opening["scene"]
-    fake.fail = True
-    response = submit(client, scene, "direction", text="Reveal what changed.")
-    assert response.status_code == 200
-    failed = wait(client, response.json())
-    assert failed["status"] == "failed"
-    assert allowance(client, scene)["directions_available"] == 1
-    fake.fail = False
-    retry = client.post(f"/api/rehearsal/jobs/{failed['id']}/retry")
-    assert retry.status_code == 200, retry.text
-    result = wait(client, {"job_id": retry.json()["job_id"]})
-    assert result["status"] == "completed"
-    assert allowance(client, scene)["directions_available"] == 0
-    replay = client.post(f"/api/rehearsal/jobs/{failed['id']}/retry")
-    assert replay.json()["job_id"] == retry.json()["job_id"]
+    a, b = quick(client, "Rin"), quick(client, "Tao")
+    scene = request_scene(client, character_ids=[a, b])
+    initial = access(client, scene)
+    assert initial == {
+        "mode": "metered",
+        "free_sentence_limit": 40,
+        "generated_sentences": 0,
+        "free_sentences_remaining": 40,
+        "payment_required": False,
+        "wallet_checkout_available": False,
+    }
+    first = generate(client, scene)
+    assert first["status"] == "completed"
+    scene = first["scene"]
+    assert access(client, scene)["generated_sentences"] == 2
+    for _ in range(2):
+        scene = generate(client, scene)["scene"]
+    assert access(client, scene)["generated_sentences"] == 6
+    assert access(client, scene)["payment_required"] is False
+    assert all("source_listing_id" not in a for a in scene["document"]["cast"])
 
 
-def test_same_operation_id_does_not_charge_twice(setup):
-    client, _, _, _, engine = setup
-    scene, _ = new_marketplace_scene(setup)
-    body = make_command(scene, "continue")
-    url = f"/api/rehearsal/scenes/{scene['id']}/commands"
-    first = client.post(url, json=body)
-    assert first.status_code == 200
-    j = wait(client, first.json())
-    assert j["status"] == "completed"
-    repeated = client.post(url, json=body)
-    assert repeated.status_code == 200
-    assert repeated.json()["job_id"] == first.json()["job_id"]
-    assert allowance(client, scene)["directions_available"] == 1
-    with sessions(engine)() as db:
-        assert len(db.scalars(select(SceneUsage)).all()) == 1
-
-
-def test_manual_operations_free_ai_rewrite_and_branch_metered(setup):
+def test_mixed_and_public_cast_have_same_40_sentence_limit(setup):
     client, _, _, _, _ = setup
-    scene, _ = new_marketplace_scene(setup)
-    j = start_and_wait(client, scene)
-    scene = j["scene"]
-    assert submit(client, scene, "rename", name="New title").status_code == 200
-    scene = client.get(f"/api/rehearsal/scenes/{scene['id']}").json()
-    assert allowance(client, scene)["directions_available"] == 1
-    j = start_and_wait(client, scene, "branch", text="A surprising visitor arrives.")
-    assert j["status"] == "completed"
-    assert allowance(client, j["scene"])["directions_available"] == 0
-    denied = submit(client, j["scene"], "replay", text="Try again.")
-    assert denied.status_code == 402
+    owner = register_account(setup)
+    listing_a = publish(client, seed_character(setup, owner))
+    listing_b = publish(client, seed_character(setup, owner))
+    owned = quick(client, "Private")
+    a = {"source": "listing", "listing_id": listing_a["listing_id"],
+         "expected_revision": listing_a["latest_revision"]}
+    b = {"source": "listing", "listing_id": listing_b["listing_id"],
+         "expected_revision": listing_b["latest_revision"]}
+    mixed = request_scene(client, cast_sources=[
+        {"source": "private", "character_id": owned}, a
+    ])
+    public = request_scene(client, cast_sources=[a, b])
+    for scene in (mixed, public):
+        assert access(client, scene)["mode"] == "metered"
+        after = generate(client, scene)["scene"]
+        assert access(client, after)["generated_sentences"] == 2
 
 
-def test_private_and_demo_rehearsals_remain_unmetered(setup):
+def test_generator_truncates_at_sentence_40_next_line_41_requires_wallet(setup, monkeypatch):
+    client, fake, _, _, engine = setup
+    a, b = quick(client, "Mira"), quick(client, "Rowan")
+    scene = request_scene(client, character_ids=[a, b])
+    all_sentences = " ".join(f"Sentence {i}." for i in range(1, 47))
+    monkeypatch.setattr(fake, "rehearsal", lambda context: Performance(
+        blocks=[Block(type="narration", character_id=None, text=all_sentences)]
+    ))
+    job = generate(client, scene)
+    assert job["status"] == "completed", job
+    scene = job["scene"]
+    txt = story_text(scene)
+    assert "Sentence 40." in txt
+    assert "Sentence 41." not in txt
+    assert access(client, scene)["free_sentences_remaining"] == 0
+    assert access(client, scene)["payment_required"] is True
+    assert command(client, scene, "read", revealed=40).status_code == 200
+    latest = client.get(f"/api/rehearsal/scenes/{scene['id']}").json()
+    over = command(client, latest, "read", revealed=41)
+    assert over.status_code == 402
+    assert command(client, latest, "continue").status_code == 402
+    assert "Sentence 41." not in client.get("/api/rehearsal/scenes").text
+    export = client.get(f"/api/rehearsal/scenes/{scene['id']}/export")
+    assert export.status_code == 200
+    assert "Sentence 40." in export.text and "Sentence 41." not in export.text
+    # Already-readable words can still be saved without an extra charge.
+    saved = command(client, latest, "result")
+    assert saved.status_code == 200
+    assert saved.json()["document"]["status"] == "saved"
+
+
+def test_existing_legacy_50_sentence_story_does_not_expose_hidden_text(setup):
+    client, fake, _, _, engine = setup
+    a, b = quick(client, "Mira"), quick(client, "Rowan")
+    scene = request_scene(client, character_ids=[a, b])
+    job = generate(client, scene)
+    assert job["status"] == "completed"
+    sid = scene["id"]
+    with sessions(engine)() as db:
+        row = db.get(RehearsalScene, sid)
+        doc = deepcopy(row.document)
+        # Simulate a genuine pre-migration document without the new counter.
+        doc.pop("free_generated_sentences", None)
+        v = doc["versions"][doc["active_version"]]
+        node = doc["nodes"][v["head"]]
+        node["blocks"][0]["text"] = " ".join(f"Legacy sentence {i}." for i in range(1, 51))
+        v["revealed"] = 50
+        row.document = doc
+        db.commit()
+    response = client.get(f"/api/rehearsal/scenes/{sid}")
+    assert response.status_code == 200
+    assert "Legacy sentence 39." in response.text
+    assert "Legacy sentence 40." in response.text
+    assert "Legacy sentence 41." not in response.text
+    assert "Legacy sentence 50." not in response.text
+    assert "Legacy sentence 41." not in client.get("/api/rehearsal/scenes").text
+    assert "Legacy sentence 41." not in client.get(
+        f"/api/rehearsal/scenes/{sid}/export"
+    ).text
+    assert access(client, scene)["payment_required"]
+    assert command(client, response.json(), "read", revealed=41).status_code == 402
+
+
+def test_free_sentences_are_per_scene_even_when_reusing_private_characters(setup):
     client, *_ = setup
     a, b = quick(client, "Rin"), quick(client, "Tao")
-    private = client.post("/api/rehearsal/scenes", json={
-        "operation_id": str(uuid4()),
-        "character_ids": [a, b],
-        "setup": {"premise": "A long-awaited reunion at the station."},
-    })
-    assert private.status_code == 201
-    scene = private.json()
-    assert allowance(client, scene)["mode"] == "private"
-    for _ in range(3):
-        job = start_and_wait(client, scene)
-        assert job["status"] == "completed", job
-        scene = job["scene"]
-    assert allowance(client, scene)["payment_required"] is False
+    first = request_scene(client, character_ids=[a, b])
+    first = generate(client, first)["scene"]
+    new = request_scene(client, character_ids=[a, b])
+    assert access(client, first)["generated_sentences"] == 2
+    assert access(client, new)["generated_sentences"] == 0
+    assert access(client, new)["free_sentence_limit"] == 40
 
 
-def test_partial_generated_result_charged_once_and_retry_not_charged_again(setup, monkeypatch):
+def test_demo_is_exempt_and_failure_does_not_use_free_sentences(setup):
     client, fake, *_ = setup
-    scene, _ = new_marketplace_scene(setup)
-    # Force an error only after the first generated block has been durably saved.
-    old_provider = fake.rehearsal
-    def two_blocks(context):
-        output = old_provider(context)
-        output.changes = [StateChange(after_block=1, text="A revealed detail.")]
-        return output
-    monkeypatch.setattr(fake, "rehearsal", two_blocks)
-    from echoloom import rehearsal_service
-    original = rehearsal_service.state_change
-    def fail_after_first(*args, **kwargs):
-        raise RuntimeError("Injected second-block failure")
-    monkeypatch.setattr(rehearsal_service, "state_change", fail_after_first)
-    failed = start_and_wait(client, scene)
+    example = request_scene(client, demo=True)
+    assert access(client, example)["mode"] == "demo"
+    assert access(client, example)["payment_required"] is False
+    a, b = quick(client, "Rin"), quick(client, "Tao")
+    scene = request_scene(client, character_ids=[a, b])
+    fake.fail = True
+    failed = generate(client, scene)
     assert failed["status"] == "failed"
-    assert failed["scene"]["document"]["nodes"]
-    assert allowance(client, scene)["opening_consumed"] is True
-    assert allowance(client, scene)["directions_available"] == 1
-    monkeypatch.setattr(rehearsal_service, "state_change", original)
-    monkeypatch.setattr(fake, "rehearsal", old_provider)
-    retry = client.post(f"/api/rehearsal/jobs/{failed['id']}/retry")
-    assert retry.status_code == 200, retry.text
-    done = wait(client, {"job_id": retry.json()["job_id"]})
-    assert done["status"] == "completed"
-    assert allowance(client, done["scene"])["directions_available"] == 1
+    assert access(client, scene)["free_sentences_remaining"] == 40
+    fake.fail = False
+    scene = client.get(f"/api/rehearsal/scenes/{scene['id']}").json()
+    successful = generate(client, scene)
+    assert successful["status"] == "completed"
+    assert access(client, successful["scene"])["generated_sentences"] == 2
+
+
+def test_same_operation_id_not_charged_twice(setup):
+    client, *_ = setup
+    a, b = quick(client, "Rin"), quick(client, "Tao")
+    scene = request_scene(client, character_ids=[a, b])
+    url = f"/api/rehearsal/scenes/{scene['id']}/commands"
+    request = {"operation_id": str(uuid4()),
+               "expected_revision": scene["revision"], "kind": "continue"}
+    one = client.post(url, json=request)
+    assert one.status_code == 200
+    wait(client, one.json())
+    again = client.post(url, json=request)
+    assert again.status_code == 200
+    assert one.json()["job_id"] == again.json()["job_id"]
+    assert access(client, scene)["generated_sentences"] == 2
+
+def test_prepared_demo_cannot_be_used_to_bypass_paid_casts(setup):
+    client, *_ = setup
+    a, b = quick(client, "Rin"), quick(client, "Tao")
+    example = request_scene(client, demo=True)
+    assert command(client, example, "cast", character_ids=[a, b]).status_code == 409
+    forged = client.post("/api/rehearsal/scenes", json={
+        "operation_id": str(uuid4()),
+        "demo": True,
+        "character_ids": [a, b],
+    })
+    assert forged.status_code == 422
+    forged_source = client.post("/api/rehearsal/scenes", json={
+        "operation_id": str(uuid4()),
+        "demo": True,
+        "source_scene_id": example["id"],
+    })
+    assert forged_source.status_code == 422

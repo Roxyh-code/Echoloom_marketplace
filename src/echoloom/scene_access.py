@@ -1,164 +1,183 @@
-"""Meter AI generation at the server boundary for Marketplace-cast scenes.
+"""Unified prototype story allowance: first 40 generated/revealed sentences.
 
-This is *not* a payment verifier. Until Phase 4, it can grant only an account's
-first free opening + one free user-directed generation. Paid credits must be
-issued later by a trusted, receipt-verified backend path, never request JSON.
+All non-demo casts (private/private, mixed, public/public) use this rule.
+This file cannot grant paid access: only a future server-verified wallet
+receipt can enable generation and reveal beyond the free allowance.
 
-The account in this local prototype is not independently verified identity.
-Do not market it as Sybil-resistant or publicly deploy it as-is.
+We meter GENERATED sentences across all versions and retries, not buttons.
+Read/preview/export are server-restricted to the first 40 story sentences.
+Existing Scenes without a stored counter are migrated lazily from their
+distinct already-persisted AI nodes. New Scenes have no account requirement
+for their initial free preview; wallet/auth is required for later paid use.
 """
-from fastapi import HTTPException
-from sqlalchemy import select, update
+from copy import deepcopy
 
-from .scene_access_models import SceneAccess, SceneTrialClaim, SceneUsage
+from fastapi import HTTPException
+
+from .rehearsal_domain import history, sentences
+
+FREE_SENTENCE_LIMIT = 40
+UNLOCK_MESSAGE = (
+    "The free story ends at 40 sentences. Connect a wallet and purchase "
+    "a verified unlock to continue. Wallet checkout is not available yet."
+)
+
+
+def is_metered(doc):
+    return not doc.get("demo", False)
 
 
 def is_marketplace(doc):
+    """Cast provenance, deliberately independent of AI story billing."""
     return any(a.get("source_listing_id") for a in doc.get("cast", []))
 
 
 def ensure_access(db, row):
-    """Existing scenes are lazily brought under access control after migration."""
-    if not is_marketplace(row.document):
+    """Compatibility hook; no browser/client can grant access here."""
+    return None
+
+
+def _legacy_used(doc):
+    # Count unique AI-created text even if a version was forked, so forks
+    # cannot recycle a 40-sentence free allocation.
+    seen = set()
+    count = 0
+    for node in doc.get("nodes", {}).values():
+        if node.get("source") not in ("ai", "demo"):
+            continue
+        for block in node["blocks"]:
+            if not block.get("user_edited") and block["id"] not in seen:
+                seen.add(block["id"])
+                count += len(sentences(block["text"]))
+    return count
+
+
+def generated(doc):
+    # Once a Scene starts the new persistent counter, forked read-prefix
+    # copies and manual edits cannot change or reset its spent allowance.
+    if "free_generated_sentences" in doc:
+        return doc["free_generated_sentences"]
+    return _legacy_used(doc)
+
+
+def remaining(doc):
+    if not is_metered(doc):
         return None
-    if not row.owner_id:
-        raise HTTPException(401, "Sign in to use Marketplace characters.")
-    access = db.get(SceneAccess, row.id)
-    if access is None:
-        access = SceneAccess(scene_id=row.id, account_id=row.owner_id)
-        db.add(access)
-        db.flush()
-    if access.account_id != row.owner_id:
-        raise HTTPException(404, "Scene access not found.")
-    return access
+    return max(0, FREE_SENTENCE_LIMIT - generated(doc))
 
 
-def status(db, row):
-    access = ensure_access(db, row)
-    if access is None:
-        return {
-            "mode": "private",
-            "opening_available": None,
-            "directions_available": None,
-            "opening_consumed": False,
-            "trial_eligible": False,
-            "payment_required": False,
-        }
-    db.refresh(access)
-    claim = db.get(SceneTrialClaim, row.owner_id)
-    eligible = claim is None or claim.scene_id == row.id
-    return {
-        "mode": "marketplace",
-        "opening_available": access.opening_available,
-        "directions_available": access.directions_available,
-        "opening_consumed": access.opening_consumed,
-        "trial_eligible": not access.opening_consumed and eligible,
-        "payment_required": (access.directions_available == 0 if access.opening_consumed
-                             else access.opening_available == 0 and not eligible),
-    }
+def check_generation(doc):
+    if is_metered(doc) and remaining(doc) == 0:
+        raise HTTPException(402, UNLOCK_MESSAGE)
 
 
-def _spend(db, scene_id, field):
-    column = getattr(SceneAccess, field)
-    updated = db.execute(
-        update(SceneAccess)
-        .where(SceneAccess.scene_id == scene_id, column > 0)
-        .values({field: column - 1})
-    )
-    if updated.rowcount != 1:
-        raise HTTPException(402, "Free story allowance exhausted. A verified unlock is required.")
+def mark_generated(doc, block):
+    """After a generated block is accepted, persist its sentence debit.
+
+    This runs in the same Scene commit as the block, so failed/no-output
+    operations do not consume the allowance, and partial output does.
+    """
+    previous = generated(doc)
+    doc["free_generated_sentences"] = previous + len(sentences(block["text"]))
+
+
+def check_read(doc, requested):
+    if is_metered(doc) and requested > FREE_SENTENCE_LIMIT:
+        raise HTTPException(402, UNLOCK_MESSAGE)
 
 
 def reserve(db, row, root_operation_id):
-    """Atomically reserve 1 unit; caller commits with the queued generation.
-
-    root_operation_id stays unchanged across the worker's retry attempts.
-    """
-    access = ensure_access(db, row)
-    if access is None:
-        return False
-    previous = db.get(SceneUsage, str(root_operation_id))
-    if previous:
-        if previous.account_id != row.owner_id or previous.scene_id != row.id:
-            raise HTTPException(409, "Generation allowance belongs to another scene.")
-        if previous.status in ("reserved", "charged"):
-            return True
-        category = previous.category
-    else:
-        category = "direction" if access.opening_consumed else "opening"
-
-    if category == "opening" and access.opening_consumed:
-        # Only an existing charged retry may reuse the opening entitlement.
-        raise HTTPException(409, "This opening has already been generated.")
-
-    if category == "opening" and access.opening_available == 0:
-        claim = db.get(SceneTrialClaim, row.owner_id)
-        if claim is None:
-            # Unique PK prevents concurrent cross-scene double claims at DB level.
-            db.add(SceneTrialClaim(account_id=row.owner_id, scene_id=row.id))
-            access.trial_granted = True
-            access.opening_available = 1
-            access.directions_available += 1
-            db.flush()
-        elif claim.scene_id != row.id:
-            raise HTTPException(402, "The free story was already used. Unlock a new scene.")
-    _spend(db, row.id, "opening_available" if category == "opening" else "directions_available")
-    if previous:
-        previous.status = "reserved"
-    else:
-        db.add(SceneUsage(
-            operation_id=str(root_operation_id),
-            scene_id=row.id,
-            account_id=row.owner_id,
-            category=category,
-            status="reserved",
-        ))
-    return True
+    check_generation(row.document)
+    return is_metered(row.document)
 
 
 def finish(db, row, job, produced=False):
-    """Commit an allowance once a usable AI block is persisted; else refund it.
+    """Generation is now charged by persisted sentence count, not job count."""
+    return None
 
-    Called in the SAME transaction that saves the block or terminal job state.
-    A root already charged by a partial attempt is not charged again by retry.
+
+def status(db, row):
+    doc = row.document
+    if not is_metered(doc):
+        return {
+            "mode": "demo",
+            "free_sentence_limit": None,
+            "generated_sentences": 0,
+            "free_sentences_remaining": None,
+            "payment_required": False,
+            "wallet_checkout_available": False,
+        }
+    used = generated(doc)
+    return {
+        "mode": "metered",
+        "free_sentence_limit": FREE_SENTENCE_LIMIT,
+        "generated_sentences": used,
+        "free_sentences_remaining": max(0, FREE_SENTENCE_LIMIT - used),
+        "payment_required": used >= FREE_SENTENCE_LIMIT,
+        "wallet_checkout_available": False,
+    }
+
+
+def preview(doc):
+    """Strip text beyond the free allowance from ALL Scene read DTOs.
+
+    Do not trust hiding a Next line button: a raw Scene or old Job event
+    could otherwise expose all generated text. This server copy retains
+    only the first 40 sentences of EACH branch and discards unreachable
+    nodes/hidden result state. Actual durable documents are untouched.
+
+    For newly generated Scenes the worker itself truncates at sentence 40.
+    This projection additionally protects legacy scenes created earlier.
     """
-    if not is_marketplace(row.document):
-        return
-    root = job.result.get("usage_root", job.id)
-    usage = db.get(SceneUsage, str(root))
-    if not usage or usage.status != "reserved":
-        return
-    if usage.scene_id != row.id or usage.account_id != row.owner_id:
-        raise HTTPException(409, "Generation allowance ownership mismatch.")
-    if produced:
-        usage.status = "charged"
-        if usage.category == "opening":
-            db.execute(
-                update(SceneAccess).where(SceneAccess.scene_id == row.id)
-                .values(opening_consumed=True)
-            )
-        return
-
-    usage.status = "refunded"
-    access = ensure_access(db, row)
-    if usage.category == "direction":
-        db.execute(
-            update(SceneAccess).where(SceneAccess.scene_id == row.id)
-            .values(directions_available=SceneAccess.directions_available + 1)
-        )
-        return
-
-    if access.trial_granted and not access.opening_consumed:
-        # An opening that never produced a block must not burn the only trial.
-        claim = db.get(SceneTrialClaim, row.owner_id)
-        if claim and claim.scene_id == row.id:
-            db.delete(claim)
-        db.execute(
-            update(SceneAccess).where(SceneAccess.scene_id == row.id)
-            .values(trial_granted=False, opening_available=0, directions_available=0)
-        )
-    else:
-        db.execute(
-            update(SceneAccess).where(SceneAccess.scene_id == row.id)
-            .values(opening_available=SceneAccess.opening_available + 1)
-        )
+    if not is_metered(doc):
+        return deepcopy(doc)
+    d = deepcopy(doc)
+    safe_nodes = {}
+    for v in d.get("versions", {}).values():
+        available = FREE_SENTENCE_LIMIT
+        final = None
+        completed_blocks = set()
+        for original in history(doc, v["head"]):
+            if available <= 0:
+                break
+            filtered = []
+            for block in original["blocks"]:
+                if available <= 0:
+                    break
+                units = sentences(block["text"])
+                if not units:
+                    continue
+                clipped = deepcopy(block)
+                if len(units) > available:
+                    clipped["text"] = "".join(units[:available]).rstrip()
+                else:
+                    completed_blocks.add(block["id"])
+                filtered.append(clipped)
+                available -= min(available, len(units))
+            if not filtered:
+                break
+            node = deepcopy(original)
+            node["parent"] = final
+            node["blocks"] = filtered
+            # Generated state attached to the original block may mention a
+            # later sentence; never expose its unfiltered source derivation.
+            for key in ("world_facts", "beliefs", "goals", "relationships", "threads"):
+                node["state"][key] = [
+                    fact for fact in node["state"][key]
+                    if fact.get("source_node") not in doc["nodes"]
+                    or fact.get("source_block") in completed_blocks
+                ]
+            safe_nodes[node["id"]] = node
+            final = node["id"]
+        v["head"] = final
+        v["revealed"] = min(v.get("revealed", FREE_SENTENCE_LIMIT),
+                            FREE_SENTENCE_LIMIT)
+    d["nodes"] = safe_nodes
+    # Source excerpt and saved-state metadata can contain unrevealed text.
+    if d.get("source"):
+        d["source"].pop("excerpt", None)
+    if d.get("result"):
+        result = d["result"]
+        if result.get("head") not in safe_nodes or generated(doc) > FREE_SENTENCE_LIMIT:
+            d["result"] = None
+    return d

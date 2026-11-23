@@ -8,12 +8,12 @@ integration, **not** that the live model writes coherent fiction.
 The opt-in smoke runner uses a real configured OpenAI text provider through
 FastAPI, LangGraph and the real asynchronous Rehearsal worker. It creates a
 temporary database, two original fictional public Listings, a first free Scene,
-and exercises two model generations. It verifies:
+and exercises two model generations (which usually generate fewer than 40 sentences). It verifies:
 
 1. Listing-only safe snapshots never contain hidden Character private fields.
-2. First Opening and one directed continuation generate stored text.
+2. Two real-model sample generations before the 40-sentence cap generate stored text.
 3. Attributions contain only the two Scene actor IDs or null narrator.
-4. Third AI generation is rejected with HTTP 402.
+4. The 41st attempted read is rejected with HTTP 402; new generation is blocked after 40 generated sentences.
 5. Read/save/reopen preserves exact generated text and Scene provenance.
 
 The run does NOT call an image-generation model or issue any Solana payments.
@@ -91,3 +91,5 @@ performed the billable run.
 
 Known non-production constraints: current local account identity is not
 verified or Sybil-resistant. Wallet checkout/paid unlock is a separate phase.
+
+**Updated 40-sentence contract:** The live smoke's two model samples need not exhaust 40 sentences. It verifies the 41st Next line is unauthorized. The deterministic offline suite additionally tests the exact 40th sentence, truncation of a 46-sentence response, and private/public parity. No live Solana unlock is claimed.

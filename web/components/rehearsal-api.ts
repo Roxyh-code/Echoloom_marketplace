@@ -30,12 +30,12 @@ export type CastSource =
   | { source: "listing"; listing_id: string; expected_revision: number; character_id?: never };
 
 export type SceneAccess = {
-  mode: "private" | "marketplace";
-  opening_available: number | null;
-  directions_available: number | null;
-  opening_consumed: boolean;
-  trial_eligible: boolean;
+  mode: "demo" | "metered";
+  free_sentence_limit: number | null;
+  generated_sentences: number;
+  free_sentences_remaining: number | null;
   payment_required: boolean;
+  wallet_checkout_available: boolean;
 };
 
 export type CreateSceneInput = {

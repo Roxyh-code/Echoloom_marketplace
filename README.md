@@ -55,3 +55,7 @@ GitHub Actions checks the Python backend, Next.js production build, and the extr
 ## Live-model acceptance (Phase 2)
 
 The CI suite uses simulated AI providers. For a billable, opt-in real-model smoke run with an isolated database and a manual story-quality rubric, follow [docs/LIVE_MODEL_ACCEPTANCE.md](docs/LIVE_MODEL_ACCEPTANCE.md). This does **not** run automatically in CI and is **not** a Solana payment test.
+
+## Reader free limit (current prototype)
+
+All real two-character scenes (private or public/mixed casts) are free for the **first 40 generated story sentences**. The server does not allow reading sentence 41 or further AI generation after the sentence cap. The wallet-unlock UI explains the next phase, but **Solana checkout is not integrated**. The prepared example Demo remains exempt. See [docs/HACKATHON_CONTRACT.md](docs/HACKATHON_CONTRACT.md) for the updated policy and current anti-abuse limits.

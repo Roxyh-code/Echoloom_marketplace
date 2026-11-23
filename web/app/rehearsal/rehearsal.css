@@ -2274,3 +2274,13 @@
   .rh-marketplace-access { padding: 9px 10px; }
   .rh-access-copy span { font-size: 10px; }
 }
+
+/* Unified 40-sentence preview: the ledger is server-owned. */
+.rh-free-progress { width: 100%; height: 5px; background: #392c4d; border-radius: 99px; overflow: hidden; margin-top: 7px; }
+.rh-free-progress span { display: block; height: 100%; background: #bda6ff; border-radius: inherit; transition: width 180ms ease; }
+.rh-unlock-sheet { display: grid; gap: 14px; padding: 8px 2px 14px; }
+.rh-unlock-sheet h2 { font-size: 23px; line-height: 1.2; font-weight: 600; margin: 0; }
+.rh-unlock-sheet > p { font-size: 13px; line-height: 1.6; margin: 0; }
+.rh-unlock-plan { display: grid; gap: 6px; padding: 16px; border: 1px solid #554277; border-radius: 10px; background: #251d33; color: #eee3ff; }
+.rh-unlock-plan strong { font-size: 14px; }
+.rh-unlock-plan small { font-size: 12px; line-height: 1.6; color: #ccc0db; }

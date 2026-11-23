@@ -622,6 +622,9 @@
   padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
 }
 .rh-nav > * {
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
   background: none;
   border: 0;
   color: #7a7a7a !important;

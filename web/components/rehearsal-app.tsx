@@ -1,5 +1,6 @@
 "use client";
 import { MobileCharacterStudio } from "./mobile-character-studio";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 import { countLines, visibleLines, readState } from "./rehearsal-reading";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -2078,24 +2079,12 @@ export function RehearsalApp() {
         (page === "characters" &&
           characterMode === "library" &&
           !characterPicking)) && (
-        <nav className="rh-nav" aria-label="Studio navigation">
-          <a className="rh-nav-discover" href="/marketplace">
-            <Glyph name="book" /> Discover
-          </a>
-          <button
-            className={page === "list" ? "active" : ""}
-            onClick={() => navigate("list")}
-          >
-            <Glyph name="star" />
-            {tr("My stories", "我的故事")}
-          </button>
-          <button
-            className={page === "characters" ? "active" : ""}
-            onClick={() => openCharacters()}
-          >
-            <Glyph name="people" /> Characters
-          </button>
-        </nav>
+        <MobileBottomNav
+          variant="studio"
+          active={page === "characters" ? "characters" : "stories"}
+          onCharacters={() => openCharacters()}
+          onStories={() => navigate("list")}
+        />
       )}
       {panel && (
         <Sheet key={panel} title={titles[panel]} close={() => setPanel(null)}>

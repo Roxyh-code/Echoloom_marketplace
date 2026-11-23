@@ -9,6 +9,7 @@ import {
   MarketplaceApiError,
 } from "@/components/marketplace-api";
 import "../marketplace.css";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
 /** Public listing preview: never load or render the private Character profile. */
 export default function PublicListingPage() {
@@ -120,10 +121,7 @@ export default function PublicListingPage() {
           </article>
         ) : null}
       </div>
-      <nav className="em-bottom-nav" aria-label="Primary navigation">
-        <Link href="/marketplace" aria-current="page"><span>Discover</span></Link>
-        <Link href="/characters/new"><span>Create character</span></Link>
-      </nav>
+      <MobileBottomNav active="discover" />
     </main>
   );
 }

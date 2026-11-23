@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { findPlaceholderCharacter } from "@/components/marketplace-placeholders";
 import "../../marketplace.css";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
 /** Static preview: deliberately does not look up a Listing or unlock rehearsal. */
 export default async function CharacterPreviewPage({
@@ -46,10 +47,7 @@ export default async function CharacterPreviewPage({
           <Link href="/marketplace" className="em-hero-link" style={{ marginTop: 24 }}>← Discover characters</Link>
         </article>
       </div>
-      <nav className="em-bottom-nav" aria-label="Primary navigation">
-        <Link href="/marketplace" aria-current="page"><span>Discover</span></Link>
-        <Link href="/characters/new"><span>Create character</span></Link>
-      </nav>
+      <MobileBottomNav active="discover" />
     </main>
   );
 }

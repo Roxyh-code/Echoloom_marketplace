@@ -7,6 +7,7 @@ import type { Character, Scene } from "./rehearsal-api";
 import { blankSetup, operation, rehearsal } from "./rehearsal-api";
 import { listOwnedListings, listPublishedListings, type MarketplaceListing, type OwnedListingDetail } from "./marketplace-api";
 import { placeholderCharacters } from "./marketplace-placeholders";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 
 type ShelfItem = {
   id: string;
@@ -231,11 +232,7 @@ export function MarketplaceDiscover() {
       </aside>}
       {error && <p className="em-error" role="alert">{error}</p>}
 
-      <nav className="em-bottom-nav" aria-label="Primary navigation">
-        <Link href="/marketplace" aria-current="page"><Icon name="compass" size={21}/><span>Discover</span></Link>
-        <Link href="/rehearsal?view=characters"><Icon name="book" size={21}/><span>Characters</span></Link>
-        <Link href="/rehearsal"><Icon name="pen" size={21}/><span>My stories</span></Link>
-      </nav>
+      <MobileBottomNav active="discover" />
     </main>
   );
 }

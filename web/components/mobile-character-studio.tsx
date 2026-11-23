@@ -14,7 +14,7 @@ import { listOwnedListings, type OwnedListingDetail } from "./marketplace-api";
 import { localGet, localPut, operation } from "./rehearsal-api";
 type Mode = "library" | "create" | "detail";
 type Person = Character & { archived?: boolean };
-type Creation = { request_id: string; description: string };
+type Creation = { request_id: string; description: string; character_id?: string };
 function Picture({
   character,
   large = false,
@@ -261,13 +261,16 @@ export function MobileCharacterStudio({
         setPerson(c);
         setImageError(r.image_error || "");
       }
-      setPending(null);
-      localPut("character-creation", null);
+      const portraitPending = r.phase === "portrait_pending";
+      const tracked = { ...job, character_id: c.id };
+      setPending(portraitPending ? tracked : null);
+      localPut("character-creation", portraitPending ? tracked : null);
       localPut("character-description", "");
       setDescription("");
       await changed();
+      // No need to wait for the slow Image API: open the saved profile now.
       if (modeRef.current === "create") url("detail", c.id);
-      else setNotice(c.profile.name + " is ready in your characters.");
+      else setNotice(c.profile.name + " is saved in your characters.");
     } catch (e) {
       if (alive.current) setError((e as Error).message);
     } finally {
@@ -298,6 +301,11 @@ export function MobileCharacterStudio({
           if (!active) return;
           if (modeRef.current === "create" || personRef.current?.id === c.id)
             setPerson(c);
+          if (j.status === "pending") {
+            const tracked = { ...pending, character_id: c.id };
+            localPut("character-creation", tracked);
+            if (modeRef.current === "create") url("detail", c.id, true);
+          }
           if (j.status === "succeeded") {
             setImageError(j.result.image_error || "");
             setPending(null);
@@ -394,6 +402,8 @@ export function MobileCharacterStudio({
     }
   }
   const buttonDisabled = busy || creating;
+  const portraitGenerating = !!(pending?.character_id && person?.id === pending.character_id &&
+    !person.current_image_id);
   const field = (f: FormData, k: string) => String(f.get(k) || "").trim();
   return (
     <>
@@ -712,6 +722,16 @@ export function MobileCharacterStudio({
                 Edit portrait →
               </button>
             </div>
+            {portraitGenerating && (
+              <div className="mc-portrait-pending" role="status">
+                <span className="mc-portrait-spinner" aria-hidden="true">✧</span>
+                <div>
+                  <strong>Portrait generating in the background</strong>
+                  <p>Your character is saved and ready to use. You can explore the
+                    profile or start a story while the portrait finishes.</p>
+                </div>
+              </div>
+            )}
             {imageError && (
               <div className="rh-alert error" role="alert">
                 <span>{imageError}</span>
@@ -1108,17 +1128,19 @@ export function MobileCharacterStudio({
                     placeholder="Change her hair to auburn. Keep her face and clothing."
                   />
                 </label>
-                <button className="rh-primary" disabled={busy}>
-                  {busy
-                    ? "Creating a portrait…"
-                    : person.current_image_id
-                      ? "Edit portrait"
-                      : "Generate portrait"}
+                <button className="rh-primary" disabled={busy || portraitGenerating}>
+                  {portraitGenerating
+                    ? "Initial portrait is still generating…"
+                    : busy
+                      ? "Creating a portrait…"
+                      : person.current_image_id
+                        ? "Edit portrait"
+                        : "Generate portrait"}
                 </button>
                 <button
                   type="button"
                   className="rh-secondary mc-another"
-                  disabled={busy}
+                  disabled={busy || portraitGenerating}
                   onClick={() => run(() => makePortrait(false))}
                 >
                   Try another portrait

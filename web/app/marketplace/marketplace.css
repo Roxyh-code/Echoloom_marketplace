@@ -234,3 +234,28 @@
 
 /* Apply the same portrait crop to every character, including placeholders. */
 .em-cover img { object-fit: cover; object-position: center 32%; }
+
+/* Phase 2: keep public Listing preview and casting as distinct controls. */
+.em-book-entry { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.em-card-select {
+  display: inline-flex; justify-content: center; align-items: center; gap: 6px;
+  min-height: 36px; border-radius: 9px; border: 1px solid #7B57C8;
+  background: transparent; color: #BEA9FF; font-size: 12px; font-weight: 650;
+}
+.em-card-select[aria-pressed="true"] { background: #54408C; border-color: #54408C; color: #FFF; }
+.em-card-select:focus-visible, .em-cast-replace:focus-visible, .em-cast-remove:focus-visible { outline: 2px solid #B9A1FC; outline-offset: 2px; }
+.em-cast-tray { align-items: flex-start; }
+.em-cast-members { display: grid; gap: 4px; margin-top: 6px; }
+.em-cast-member { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.em-cast-member-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 650; }
+.em-cast-replace, .em-cast-remove { padding: 3px 5px; background: transparent; color: #BBA6FC; border: 0; font-size: 10px; }
+.em-cast-replace.active { text-decoration: underline; color: #FFF; }
+.em-cast-remove { font-size: 18px; line-height: 1; color: #B8B8B8; }
+.em-cast-controls { display: flex; align-items: center; align-self: center; gap: 4px; }
+.em-cast-hint { display: block; margin-top: 7px; color: #CBB7FF; font-size: 11px; }
+.em-detail-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 24px; }
+.em-detail-actions .em-cast-action { min-height: 42px; font-size: 13px; }
+@media(max-width: 380px) {
+  .em-cast-tray { flex-wrap: wrap; }
+  .em-cast-controls { width: 100%; justify-content: space-between; }
+}

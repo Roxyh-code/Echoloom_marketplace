@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Character, Scene } from "./rehearsal-api";
+import type { Character, Scene, CreateSceneInput, CastSource } from "./rehearsal-api";
 import { blankSetup, operation, rehearsal } from "./rehearsal-api";
-import { listOwnedListings, listPublishedListings, type MarketplaceListing, type OwnedListingDetail } from "./marketplace-api";
+import { getPublishedListing, listOwnedListings, listPublishedListings, type MarketplaceListing, type OwnedListingDetail } from "./marketplace-api";
+import { addCast, listingChoice, privateChoice, readCast, saveCast, type CastChoice } from "./marketplace-casting";
 import { placeholderCharacters } from "./marketplace-placeholders";
 import { MobileBottomNav } from "./mobile-bottom-nav";
 
@@ -18,6 +19,7 @@ type ShelfItem = {
   listingId?: string;
   creator?: string;
   tags?: string[];
+  revision?: number;
 };
 
 
@@ -51,9 +53,18 @@ function Cover({ item, selected, onSelect }: { item: ShelfItem; selected: boolea
     return <Link className="em-book-card" href={"/marketplace/preview/" + encodeURIComponent(item.id)} aria-label={"View character " + item.name}>{inner}</Link>;
   }
   if (item.kind === "published") {
-    // Link by public Listing ID. Never pass a private Character ID into public
-    // navigation or the legacy unpaid rehearsal Scene API.
-    return <Link className="em-book-card" href={"/marketplace/" + encodeURIComponent(item.listingId!)} aria-label={"View published character " + item.name}>{inner}</Link>;
+    // Public card navigation and selection are separate accessible controls.
+    // Do not pass private Character IDs through public navigation.
+    return (
+      <div className="em-book-entry">
+        <Link className="em-book-card" href={"/marketplace/" + encodeURIComponent(item.listingId!)} aria-label={"View published character " + item.name}>{inner}</Link>
+        <button type="button" className="em-card-select" onClick={onSelect} aria-pressed={selected}
+          aria-label={(selected ? "Remove " : "Select ") + item.name + (selected ? " from" : " for") + " your cast"}>
+          <Icon name={selected ? "check" : "plus"} size={15} />
+          {selected ? "In your cast" : "Add to cast"}
+        </button>
+      </div>
+    );
   }
   return <button type="button" className="em-book-card em-selectable" onClick={onSelect} aria-pressed={selected} aria-label={(selected ? "Remove " : "Select ") + item.name + (selected ? " from" : " for") + " your cast"}>{inner}</button>;
 }
@@ -69,9 +80,14 @@ export function MarketplaceDiscover() {
   const [publishedError, setPublishedError] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "published" | "mine">("all");
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<CastChoice[]>([]);
+  const [replaceSlot, setReplaceSlot] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setSelected(readCast());
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -119,6 +135,7 @@ export function MarketplaceDiscover() {
   const publishedShelf = useMemo<ShelfItem[]>(() => published.map((listing) => ({
     id: `published:${listing.listing_id}`,
     listingId: listing.listing_id,
+    revision: listing.revision,
     name: listing.name,
     description: listing.short_description,
     image: listing.cover_image_url,
@@ -156,9 +173,43 @@ export function MarketplaceDiscover() {
     : filter === "published" ? publishedLoading
     : loading || publishedLoading || ownedLoading;
 
-  function toggle(id: string) {
+  function choose(item: ShelfItem) {
+    if (item.kind === "placeholder") return;
     setError("");
-    setSelected((old) => old.includes(id) ? old.filter((x) => x !== id) : old.length < 2 ? [...old, id] : [old[1], id]);
+    const choice = item.kind === "published"
+      ? listingChoice({
+          listing_id: item.listingId!,
+          revision: item.revision!,
+          name: item.name,
+          short_description: item.description,
+          cover_image_url: item.image,
+          tags: item.tags || [],
+          public_personality: [],
+          creator_display_name: item.creator || "",
+        })
+      : privateChoice(item.id, item.name, item.image);
+    const previous = selected;
+    if (previous.some((v) => v.key === choice.key)) {
+      updateCast(previous.filter((v) => v.key !== choice.key));
+      return;
+    }
+    // If the current account owns the listing, the same underlying
+    // Character cannot fill both a public and a private seat.
+    const underlying = (candidate: CastChoice) => {
+      if (candidate.source.source === "private") return candidate.source.character_id;
+      return ownedListings.find((v) => v.listing_id === candidate.source.listing_id)?.character_id || candidate.key;
+    };
+    if (previous.some((v) => underlying(v) === underlying(choice))) {
+      setError("That character is already in your cast. Choose someone different.");
+      return;
+    }
+    updateCast(addCast(previous, choice, replaceSlot));
+    setReplaceSlot(null);
+  }
+
+  function updateCast(next: CastChoice[]) {
+    setSelected(next);
+    saveCast(next);
   }
 
   async function createWithCast() {
@@ -166,12 +217,21 @@ export function MarketplaceDiscover() {
     setStarting(true);
     setError("");
     try {
-      // Stage 2 is still the local rehearsal, not a paid marketplace checkout.
-      const scene = await rehearsal<Scene>("/scenes", {
+      // Always use the new server-validated cast_sources contract, including
+      // the mixed private/public case. Never supply private IDs for listings.
+      await Promise.all(selected.map(async (entry) => {
+        if (entry.source.source !== "listing") return;
+        const current = await getPublishedListing(entry.source.listing_id);
+        if (current.revision !== entry.source.expected_revision)
+          throw new Error(current.name + " was updated. Remove and select the new version.");
+      }));
+      const request: CreateSceneInput = {
         operation_id: operation(),
-        character_ids: selected,
+        cast_sources: selected.map((entry) => entry.source) as [CastSource, CastSource],
         setup: { ...blankSetup, language: "en" },
-      });
+      };
+      const scene = await rehearsal<Scene>("/scenes", request);
+      updateCast([]);
       router.push("/rehearsal?view=setup&scene=" + encodeURIComponent(scene.id));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not open your story. Please try again.");
@@ -212,7 +272,7 @@ export function MarketplaceDiscover() {
           <div className="em-shelf-header" role="status"><span>{collectionLoading ? "Loading…" : `${visible.length} characters`}</span></div>
           {visible.length ? (
             <div className="em-book-grid">
-              {visible.map((item) => <Cover key={item.id} item={item} selected={selected.includes(item.id)} onSelect={() => toggle(item.id)}/>)}
+              {visible.map((item) => <Cover key={item.id} item={item} selected={selected.some((v) => v.key === (item.kind === "published" ? "listing:" + item.listingId : "private:" + item.id))} onSelect={() => choose(item)}/>)}
             </div>
           ) : (
             <div className="em-empty">
@@ -226,9 +286,26 @@ export function MarketplaceDiscover() {
       </div>
 
       {selected.length > 0 && <aside className="em-cast-tray" aria-label="Selected story cast">
-        <div className="em-cast-copy"><span>YOUR STORY CAST <span className="em-cast-count">{selected.length}/2</span></span><p>{selected.map((id) => mine.find((x) => x.id === id)?.name).filter(Boolean).join(" & ") || "Choose your characters"}</p></div>
-        {selected.length === 2 ? <button type="button" disabled={starting} onClick={() => void createWithCast()} className="em-cast-action">{starting ? "Opening…" : "Set the scene"} <Icon name="arrow" size={17}/></button> : <span className="em-cast-instruction">Choose one more</span>}
-        <button type="button" onClick={() => setSelected([])} className="em-cast-clear" aria-label="Clear selected characters"><Icon name="close" size={15}/></button>
+        <div className="em-cast-copy">
+          <span>YOUR STORY CAST <span className="em-cast-count">{selected.length}/2</span></span>
+          <div className="em-cast-members">
+            {selected.map((entry, index) => (
+              <div key={entry.key} className="em-cast-member">
+                <span className="em-cast-member-name">{index === 0 ? "A" : "B"} · {entry.name}</span>
+                <button type="button" className={replaceSlot === index ? "em-cast-replace active" : "em-cast-replace"}
+                  aria-label={"Replace " + entry.name} aria-pressed={replaceSlot === index}
+                  onClick={() => setReplaceSlot(replaceSlot === index ? null : index)}>Replace</button>
+                <button type="button" className="em-cast-remove" aria-label={"Remove " + entry.name + " from cast"}
+                  onClick={() => { updateCast(selected.filter((v) => v.key !== entry.key)); setReplaceSlot(null); }}>×</button>
+              </div>
+            ))}
+          </div>
+          {replaceSlot !== null && <small className="em-cast-hint">Choose a character above to replace slot {replaceSlot ? "B" : "A"}.</small>}
+        </div>
+        <div className="em-cast-controls">
+          {selected.length === 2 ? <button type="button" disabled={starting} onClick={() => void createWithCast()} className="em-cast-action">{starting ? "Opening…" : "Set the scene"} <Icon name="arrow" size={17}/></button> : <span className="em-cast-instruction">Choose one more</span>}
+          <button type="button" onClick={() => { updateCast([]); setReplaceSlot(null); }} className="em-cast-clear" aria-label="Clear selected characters"><Icon name="close" size={15}/></button>
+        </div>
       </aside>}
       {error && <p className="em-error" role="alert">{error}</p>}
 

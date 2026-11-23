@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   getPublishedListing,
@@ -10,10 +10,12 @@ import {
 } from "@/components/marketplace-api";
 import "../marketplace.css";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { addPublishedToSavedCast } from "@/components/marketplace-casting";
 
 /** Public listing preview: never load or render the private Character profile. */
 export default function PublicListingPage() {
   const params = useParams<{ listingId: string }>();
+  const router = useRouter();
   const listingId = params.listingId;
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -115,9 +117,17 @@ export default function PublicListingPage() {
               </section>
             )}
 
-            <Link href="/marketplace" className="em-hero-link" style={{ marginTop: 24 }}>
-              ← Explore more characters
-            </Link>
+            <div className="em-detail-actions">
+              <button type="button" className="em-cast-action" onClick={() => {
+                addPublishedToSavedCast(listing);
+                router.push("/marketplace");
+              }}>
+                Add to story <span aria-hidden="true">→</span>
+              </button>
+              <Link href="/marketplace" className="em-hero-link">
+                ← Explore more characters
+              </Link>
+            </div>
           </article>
         ) : null}
       </div>

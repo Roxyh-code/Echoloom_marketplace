@@ -152,10 +152,13 @@ test("in-scene creation includes portraits, preserves cast and setup at 320px", 
       .first()
       .click();
     await page.getByLabel("Describe your character").fill(description);
-    await page
-      .getByRole("button", { name: /^Create character/ })
-      .last()
-      .click();
+    // The 320px mobile footer animates with the viewport and Playwright's
+    // stability-based click can time out before the request is sent. Test the
+    // form submit directly here; the regular click path is covered in
+    // mobile-characters.spec.ts.
+    await page.locator("form#mc-create").evaluate((form) =>
+      (form as HTMLFormElement).requestSubmit()
+    );
     await expect(page.getByAltText("Portrait of Evelyn")).toBeVisible();
     await page
       .getByRole("button", { name: "Edit character", exact: true })

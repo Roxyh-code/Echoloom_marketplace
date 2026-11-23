@@ -32,6 +32,7 @@ from .rehearsal_domain import (
     fork,
     history,
     line_count,
+    sentences,
     new_document,
     reading_base,
     reading_view,
@@ -381,7 +382,6 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                         budget = scene_access.remaining(d)
                         if budget == 0:
                             break
-                        from .rehearsal_domain import sentences
                         units = sentences(b["text"])
                         if len(units) > budget:
                             b["text"] = "".join(units[:budget]).rstrip()
@@ -390,7 +390,11 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                         if change.after_block == index:
                             state_change(state, change, node_id, b["id"])
                     if index == 0:
-                        target["revealed"] = line_count(d, target["head"]) + 1
+                        # First read shows the whole initial passage, not
+                        # just its first sentence.
+                        target["revealed"] = (
+                            line_count(d, target["head"]) + len(sentences(b["text"]))
+                        )
                         if request_event.get("persistent"):
                             target["instructions"].append(
                                 {
@@ -410,6 +414,17 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                             node_id,
                         )
                     else:
+                        previous = d["nodes"][node_id]["blocks"][-1]
+                        # Model sometimes splits one speaker's continuous
+                        # utterance into adjacent dialogue blocks. The UI
+                        # treats them as a single turn, including while the
+                        # generation worker is streaming block events.
+                        if (
+                            previous["type"] == b["type"] == "dialogue"
+                            and previous["character_id"] == b["character_id"]
+                            and target["revealed"] == line_count(d, target["head"])
+                        ):
+                            target["revealed"] += len(sentences(b["text"]))
                         d["nodes"][node_id]["blocks"].append(b)
                         d["nodes"][node_id]["state"] = deepcopy(state)
                     save(row, d)

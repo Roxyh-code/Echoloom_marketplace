@@ -5,11 +5,11 @@ export async function readCurrentSegment(page: Page) {
   await expect(app).toHaveAttribute("data-working", "false");
   await expect(app).toHaveAttribute("data-generating", "false");
   for (let i = 0; i < 150; i++) {
-    const next = page.getByRole("button", { name: "Next line", exact: true });
+    const next = page.getByRole("button", { name: "Next paragraph", exact: true });
     if (!(await next.count())) return;
     await expect(next).toBeEnabled();
     await next.click();
     await expect(app).toHaveAttribute("data-working", "false");
   }
-  throw new Error("Reader did not reach the end of the generated segment.");
+  throw new Error("Reader did not reach the end of the generated paragraphs.");
 }

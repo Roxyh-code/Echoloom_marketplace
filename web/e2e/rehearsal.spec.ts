@@ -257,7 +257,7 @@ test("permission denial never falls back to cached scene text", async ({
   ).not.toBeVisible();
 });
 
-test("one sentence at a time → refresh keeps position → intervene without unseen future", async ({
+test("one paragraph at a time → refresh preserves complete passage and unseen future", async ({
   page,
   request,
 }) => {
@@ -270,10 +270,14 @@ test("one sentence at a time → refresh keeps position → intervene without un
     "false",
   );
   await expect(
-    page.getByText("Rain softens the station lights.", { exact: true }),
+    page.getByText(
+      "Rain softens the station lights. Two cups of coffee wait on the bench.",
+      { exact: true },
+    ),
   ).toBeVisible();
+  // Both descriptive sentences are a single narration paragraph.
   await expect(
-    page.getByText("Two cups of coffee wait on the bench.", { exact: false }),
+    page.getByText("He pushes the warm cup a little closer.", { exact: true }),
   ).not.toBeVisible();
   await expect(
     page.getByText("I remembered how you take it.", { exact: true }),
@@ -283,22 +287,16 @@ test("one sentence at a time → refresh keeps position → intervene without un
   const original = initial[0].document.active_version;
   const originalHead = initial[0].document.versions[original].head;
   const originalNodes = Object.keys(initial[0].document.nodes).length;
-  await page.getByRole("button", { name: "Next line", exact: true }).click();
+  await page.getByRole("button", { name: "Next paragraph", exact: true }).click();
   await expect(
-    page.getByText(
-      "Rain softens the station lights. Two cups of coffee wait on the bench.",
-      { exact: true },
-    ),
+    page.getByText("He pushes the warm cup a little closer.", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("I remembered how you take it.", { exact: true }),
   ).not.toBeVisible();
   await page.reload();
   await expect(
-    page.getByText(
-      "Rain softens the station lights. Two cups of coffee wait on the bench.",
-      { exact: true },
-    ),
+    page.getByText("He pushes the warm cup a little closer.", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("I remembered how you take it.", { exact: true }),
@@ -319,7 +317,8 @@ test("one sentence at a time → refresh keeps position → intervene without un
       changed.document.versions[changed.document.active_version].head
     ];
   expect(head.blocks.map((b: any) => b.text).join("")).toBe(
-    "Rain softens the station lights. Two cups of coffee wait on the bench.",
+    "Rain softens the station lights. Two cups of coffee wait on the bench." +
+    "He pushes the warm cup a little closer.",
   );
   expect(changed.document.versions[original].head).toBe(originalHead);
   await page.screenshot({

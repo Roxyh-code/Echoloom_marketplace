@@ -351,6 +351,7 @@ test("any public Marketplace scene is metered by sentences, not by the number of
     await page.getByRole("button", { name: "Select " + name + " for your cast" }).click();
   }
   await page.getByRole("button", { name: /Set the scene/ }).click();
+  await expect(page).toHaveURL(/\/rehearsal\?view=setup&scene=/);
   const before = await (await page.request.get(backend + "/api/rehearsal/scenes")).json();
   expect(before).toHaveLength(1);
   const sid = before[0].id;

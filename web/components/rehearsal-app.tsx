@@ -768,7 +768,7 @@ export function RehearsalApp() {
         }
         if (["completed", "cancelled", "failed"].includes(j.status)) {
           // After commit/refund, read the settled server-side balance.
-          if (j.scene.document.cast.some((a) => Boolean(a.source_listing_id))) {
+          if (!j.scene.document.demo) {
             void refreshSceneAccess(j.scene.id);
           }
           setJob(null);

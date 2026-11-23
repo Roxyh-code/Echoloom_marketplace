@@ -652,7 +652,7 @@ export function MobileCharacterStudio({
                           ? "Portrait ready"
                           : person
                             ? "Creating the portrait"
-                            : "Portrait follows automatically"}
+                            : "Portrait and profile generate in parallel"}
                       </strong>
                       <small>
                         {person

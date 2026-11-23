@@ -78,3 +78,14 @@ Do not let optional NFT minting, per-minute billing or resale royalties block G0
 - Existing scenes with Marketplace actors from before this migration are initialized lazily. `GET /api/rehearsal/scenes/{id}/access` reports status (owner only); exhausted generations fail with HTTP 402. No endpoint accepts prices, wallet IDs, or client-declared access grants.
 - Phase 4 must add trusted, receipt-verified pack grants (five directions for refills; one opening plus five directions for subsequent scenes). No fake paid unlock exists in this phase.
 - **Security boundary:** the current local login is *not verified identity* or a Sybil-resistant public authentication system. The one-free-scene rule is enforceable only per local account and is unsuitable for a public launch until identity/anti-abuse design is completed.
+
+## Phase 2 · 40-sentence free preview (revised product decision, 2026-11-23)
+
+**This supersedes the old first-ever 1 Opening + 1 Direction quota and the Marketplace-only billing rule above.** Historical sections remain for context; they no longer describe runtime behavior.
+
+- Every **non-demo** AI Scene has exactly **40 free AI-generated sentences**, regardless of cast source: two private, mixed private/public, or two published Marketplace Listings. Creator payouts remain a *separate* concern from AI inference billing.
+- The free allowance is **per Scene** in this prototype. Generation is counted by server-side sentence boundaries, not clicking the Continue button or browser-visible CSS lines. An output that would cross 40 is persisted only through sentence 40. Existing Scene versions are projected to exclude material beyond that cap.
+- Next line can reveal existing content only through sentence 40. The **41st read** is rejected with HTTP 402. AI generation after the 40th saved sentence is also rejected. The backend enforces both; the frontend merely displays status and opens an unlock explanation sheet.
+- Saving, reviewing and exporting the first 40 sentences remain possible. Neither frontend state nor a wallet-connect attempt can grant credits. The current wallet sheet is honest about unavailable checkout; **no paid unlock, signature verification, mint or receipt verifier is implemented**.
+- A prepared Demo Scene is exempt. There is no deduction of previous generated paragraphs for existing users: their original stored text is preserved, but API views/exports beyond 40 are gated until verified paid entitlement exists.
+- **Open commercialization decisions:** per-Scene free preview can be repeated with fresh Scenes; production launch must address free-scene farming and verified user identity. We also need server-side paid read/generation entitlements and economic evaluation of 40 free sentences. The earlier 45/45/10 split remains a proposal for two third-party published Listings, with distinct rules needed for private/published combinations.

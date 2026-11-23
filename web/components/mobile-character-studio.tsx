@@ -303,6 +303,8 @@ export function MobileCharacterStudio({
             setPerson(c);
           if (j.status === "pending") {
             const tracked = { ...pending, character_id: c.id };
+            setPending((previous) => previous?.request_id === tracked.request_id
+              ? tracked : previous);
             localPut("character-creation", tracked);
             if (modeRef.current === "create") url("detail", c.id, true);
           }

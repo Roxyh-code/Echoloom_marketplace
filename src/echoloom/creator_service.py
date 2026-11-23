@@ -270,6 +270,26 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                     "creator stage=portrait finished seconds=%.2f success=%s",
                     time.monotonic() - started, not bool(image_error),
                 )
+        except Exception as exc:
+            # A rare DB/pinning failure must not leave a permanently pending
+            # request. Preserve the profile and flag an image-only retry.
+            logger.warning(
+                "creator portrait completion error type=%s", type(exc).__name__
+            )
+            try:
+                with factory() as db:
+                    row = db.get(CreatorRequest, rid)
+                    if row and row.owner_id == user and row.status == "pending":
+                        row.status = "succeeded"
+                        row.result = {
+                            "character_id": (row.result or {}).get("character_id"),
+                            "phase": "portrait_failed",
+                            "image_error": "Portrait generation was interrupted. Your character is saved.",
+                        }
+                        db.commit()
+            except Exception as saving_error:
+                logger.warning("creator portrait recovery error type=%s",
+                               type(saving_error).__name__)
         finally:
             with active_portraits_guard:
                 active_portraits.discard(rid)
@@ -360,6 +380,16 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
         rid = str(body.request_id)
         with locks.hold("creator-request:" + rid), factory() as db:
             character(db, cid, user)
+            for initial in db.scalars(
+                select(CreatorRequest).where(
+                    CreatorRequest.owner_id == user,
+                    CreatorRequest.scope == "character",
+                    CreatorRequest.status == "pending",
+                )
+            ):
+                if (initial.result or {}).get("character_id") == str(cid):
+                    raise HTTPException(409,
+                        "The initial portrait is still generating. Please wait before requesting another.")
             row = record(
                 db, rid, user, "portrait:" + str(cid), body.model_dump(mode="json")
             )

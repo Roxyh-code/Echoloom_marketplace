@@ -636,6 +636,14 @@ class OpenAIImages:
                     "n": 1,
                     "size": "1024x1024",
                 }
+                # Only new GPT Image portraits receive the configurable
+                # quality option. Edits preserve the provider's default for
+                # identity consistency; non-GPT image models may reject it.
+                if (source is None and (
+                    s.image_model.startswith("gpt-image-")
+                    or s.image_model == "chatgpt-image-latest"
+                ) and s.image_initial_quality != "auto"):
+                    args["quality"] = s.image_initial_quality
                 result = (
                     client.images.edit(
                         image=("portrait.png", source, "image/png"), **args

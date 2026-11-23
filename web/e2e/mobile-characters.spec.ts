@@ -188,3 +188,35 @@ test("lost creation response recovers both profile and portrait after refresh", 
   ).json();
   expect(portraits).toHaveLength(1);
 });
+
+test("Profile is visible and usable while its portrait is still generating", async ({
+  page,
+  request,
+}) => {
+  await request.post("http://127.0.0.1:8001/__test/image-delay/4");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/characters/new");
+  await page.getByLabel("Describe your character").fill(
+    "A gentle historian with long auburn hair and green eyes, always smiling kindly."
+  );
+  await page.getByRole("button", { name: /^Create character/ }).last().click();
+  await expect(page.getByRole("heading", { name: "Evelyn" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByText("Portrait generating in the background")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit character", exact: true })).toBeEnabled();
+  const created = await (await request.get("/api/creator/characters")).json();
+  expect(created).toHaveLength(1);
+  expect(created[0].profile.name).toBe("Evelyn");
+  expect(created[0].current_image_id).toBeNull();
+
+  // We do not submit Create Character twice and never lose Profile on refresh.
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Evelyn" })).toBeVisible();
+  await expect(page.getByAltText("Portrait of Evelyn")).toBeVisible({
+    timeout: 15_000,
+  });
+  const updated = await (await request.get("/api/creator/characters")).json();
+  expect(updated).toHaveLength(1);
+  expect(updated[0].current_image_id).toBeTruthy();
+});

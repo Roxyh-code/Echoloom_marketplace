@@ -217,8 +217,8 @@ export function MarketplaceDiscover() {
     setStarting(true);
     setError("");
     try {
-      // Always use the new server-validated cast_sources contract, including
-      // the mixed private/public case. Never supply private IDs for listings.
+      // Public and mixed casting use server-verified Listing sources; two
+      // private characters continue using the backward-compatible legacy API.
       await Promise.all(selected.map(async (entry) => {
         if (entry.source.source !== "listing") return;
         const current = await getPublishedListing(entry.source.listing_id);

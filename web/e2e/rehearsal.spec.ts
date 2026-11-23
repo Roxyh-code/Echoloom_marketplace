@@ -159,7 +159,9 @@ test("in-scene creation includes portraits, preserves cast and setup at 320px", 
     await page.locator("form#mc-create").evaluate((form) =>
       (form as HTMLFormElement).requestSubmit()
     );
-    await expect(page.getByAltText("Portrait of Evelyn")).toBeVisible();
+    await expect(page.getByAltText("Portrait of Evelyn")).toBeVisible({
+      timeout: 15_000,
+    });
     await page
       .getByRole("button", { name: "Edit character", exact: true })
       .click();

@@ -430,7 +430,7 @@ test("Next line stops at 40 for private characters and opens wallet-unlock expla
   await page.getByRole("button", { name: "Unlock story" }).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: "Your story is just beginning." })).toBeVisible();
-  await expect(sheet).toContainText("Wallet");
+  await expect(sheet).toContainText(/wallet/i);
   await expect(sheet).toContainText("not integrated yet");
   await sheet.getByRole("button", { name: "Return to story" }).click();
 

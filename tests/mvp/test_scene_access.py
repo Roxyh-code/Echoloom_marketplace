@@ -136,6 +136,8 @@ def test_existing_legacy_50_sentence_story_does_not_expose_hidden_text(setup):
     with sessions(engine)() as db:
         row = db.get(RehearsalScene, sid)
         doc = deepcopy(row.document)
+        # Simulate a genuine pre-migration document without the new counter.
+        doc.pop("free_generated_sentences", None)
         v = doc["versions"][doc["active_version"]]
         node = doc["nodes"][v["head"]]
         node["blocks"][0]["text"] = " ".join(f"Legacy sentence {i}." for i in range(1, 51))

@@ -59,3 +59,37 @@ The CI suite uses simulated AI providers. For a billable, opt-in real-model smok
 ## Reader free limit (current prototype)
 
 All real two-character scenes (private or public/mixed casts) are free for the **first 40 generated story sentences**. The server does not allow reading sentence 41 or further AI generation after the sentence cap. The wallet-unlock UI explains the next phase, but **Solana checkout is not integrated**. The prepared example Demo remains exempt. See [docs/HACKATHON_CONTRACT.md](docs/HACKATHON_CONTRACT.md) for the updated policy and current anti-abuse limits.
+
+
+## Character creation performance
+
+Character Studio now saves the AI-generated **profile first** and opens the character detail immediately. The initial portrait is rendered **asynchronously** in a background worker; the character remains usable while it is generating. A progress message on the detail page and `GET /api/creator/jobs/{request_id}` report its status. Image errors leave the profile intact, with an image-only retry. The creation request ID is reusable after a lost HTTP response or server restart, so a retry does not regenerate the character profile.
+
+For GPT Image API generation, `IMAGE_INITIAL_QUALITY=medium` (default) provides a first-portrait quality/performance tradeoff; `IMAGE_INITIAL_QUALITY=low` is suitable for faster draft previews, and `auto` uses the model's default. Quality is intentionally **not overridden on edits** or unknown image model names. Keep `IMAGE_MODEL` set to a model your OpenAI project can access. Existing `API_TIMEOUT_SECONDS` controls provider timeout. Review safe backend log lines `creator stage=profile`, `creator stage=portrait`, and `provider=openai kind=image elapsed=...` to distinguish profile time from image service latency (no profile text or secret is logged).
+
+**Deployment note:** This optimization uses an in-process daemon worker in the same **single-worker local prototype** environment as rehearsal jobs. A multi-process deployment needs a persistent external queue, a lease/recovery mechanism, and job monitoring before treating image generation as production-reliable. Running multiple image workers simultaneously against the same local SQLite database is not supported.
+
+## Faster Character creation: parallel Profile + portrait
+
+When creating a Character, the backend launches two **concurrent AI requests**
+from the same original text description: (1) structured Profile generation and
+(2) initial portrait generation. Because the image prompt uses the **original
+description**, its appearance may differ from extra visual details invented
+later by the Profile model. Add explicit appearance details when that matters,
+or edit the portrait afterward.
+
+The UI opens the saved Character as soon as its Profile is ready, while a
+progress message shows that the portrait continues in the background.
+Creation and image results use the same `request_id` so repeated
+submissions cannot launch duplicate in-flight requests. Failed image calls
+preserve the Profile; use **Retry portrait**, not Create Character again.
+
+For the initial GPT Image render, configure `IMAGE_INITIAL_QUALITY=medium`
+(default) or `low` for a faster draft; `auto` uses provider defaults.
+This does not affect portrait edits or non-GPT image models.
+Real image latency has not been benchmarked in CI (fake provider only).
+
+**Deployment limit:** This uses an in-memory background thread for a
+single-process local MVP, not a durable task queue. With a process crash in
+the middle of an external paid image request, recovering it may require a new
+image call. Never automatically retry an uncertain billable request.

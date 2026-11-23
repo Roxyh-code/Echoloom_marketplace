@@ -142,21 +142,41 @@ test("in-scene creation includes portraits, preserves cast and setup at 320px", 
     .click();
   await expect(page.getByRole("heading", { name: /Who is in/ })).toBeVisible();
   const panel = page.getByRole("dialog");
-  for (const [name, description] of [
+  for (const [index, [name, description]] of [
     ["Lena", "A quiet restorer who wants an honest answer."],
     ["Rowan", "An old friend hiding why he left the city."],
-  ]) {
+  ].entries()) {
     await page
       .getByRole("button", { name: "Create", exact: false })
       .filter({ hasText: /Create/ })
       .first()
       .click();
     await page.getByLabel("Describe your character").fill(description);
-    await page
-      .getByRole("button", { name: /^Create character/ })
-      .last()
-      .click();
-    await expect(page.getByAltText("Portrait of Evelyn")).toBeVisible();
+    await expect(page.getByLabel("Describe your character")).toHaveValue(description);
+    // At 320px the footer can animate while Playwright checks stability.
+    // Force the REAL submit button click (not requestSubmit) so React has
+    // committed the controlled textarea value before the form submits.
+    await page.locator('button[form="mc-create"]').click({ force: true });
+    // Distinguish server-side creation failures from a slow UI transition.
+    await expect.poll(async () => {
+      const items = await (await request.get("/api/creator/characters")).json();
+      return items.length;
+    }, { timeout: 15_000 }).toBe(index + 1);
+    // The Profile is usable immediately. Do not require the portrait
+    // to finish before editing or adding this Character to a Scene.
+    try {
+      await expect(page.getByRole("heading", { name: "Evelyn" })).toBeVisible({
+        timeout: 15_000,
+      });
+    } catch (error) {
+      // Test-only diagnostics: no private users or live model credentials.
+      console.log("in-scene creation navigation", {
+        index,
+        url: page.url(),
+        visibleText: (await page.locator("body").innerText()).slice(0, 1000),
+      });
+      throw error;
+    }
     await page
       .getByRole("button", { name: "Edit character", exact: true })
       .click();
@@ -194,7 +214,10 @@ test("in-scene creation includes portraits, preserves cast and setup at 320px", 
   ).toBeTruthy();
   const cc = await (await request.get("/api/rehearsal/characters")).json();
   expect(cc).toHaveLength(2);
-  expect(cc.every((c: any) => !!c.current_image_id)).toBeTruthy();
+  await expect.poll(async () => {
+    const characters = await (await request.get("/api/rehearsal/characters")).json();
+    return characters.every((c: any) => !!c.current_image_id);
+  }, { timeout: 15_000 }).toBeTruthy();
 });
 
 test("permission denial never falls back to cached scene text", async ({

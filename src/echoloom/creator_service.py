@@ -1,8 +1,11 @@
 """Server-owned creator records; no fake provider is installed in live mode."""
 
 import json
+import logging
+import time
 from contextlib import ExitStack
 from copy import deepcopy
+from threading import Event, Lock, Thread
 from uuid import UUID
 
 from fastapi import HTTPException, Request
@@ -41,6 +44,9 @@ from .providers import ProviderError
 from .schemas import ImageInput, Profile
 
 
+logger = logging.getLogger(__name__)
+
+
 def references(factory, value):
     """Protect portraits/characters pinned by any active, archived or saved draft."""
     with factory() as db:
@@ -50,6 +56,12 @@ def references(factory, value):
 
 
 def register_creator(app, factory, locks, settings, image_render, serialize_character):
+    # Single-process prototype worker. Creation requests return as soon as the
+    # profile is saved; a daemon worker finishes the expensive image API call.
+    # A durable queue is required before deploying this with multiple workers.
+    active_portraits = {}
+    active_portraits_guard = Lock()
+
     def owner(request):
         return request.state.user_id
 
@@ -166,6 +178,188 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                 )
             ]
 
+    def complete_initial_portrait(rid, user, description, profile_ready):
+        started = time.monotonic()
+        try:
+            # Start the image request from the ORIGINAL user description while
+            # the text model is independently producing a structured Profile.
+            # An image prompt requiring generated Profile fields would force
+            # the two expensive calls to remain sequential.
+            prompt = (
+                "Create one original fictional character portrait. No text or "
+                "watermark. Use the physical features, clothing, age and visual "
+                "style explicitly described here; invent unspecified visual "
+                "details tastefully and keep a coherent character design. "
+                "User's original character description: " + description
+            )
+            data = None
+            image_error = None
+            # Recovery: if the same request was completed and the portrait
+            # already saved, never pay for another image API call.
+            with factory() as check_db:
+                existing_job = check_db.get(CreatorRequest, rid)
+                if not existing_job or existing_job.status != "pending":
+                    return
+                existing_cid = (existing_job.result or {}).get("character_id")
+                existing_image = (
+                    check_db.scalar(
+                        select(Portrait.id)
+                        .where(Portrait.character_id == existing_cid)
+                        .order_by(Portrait.version.asc())
+                    )
+                    if existing_cid else None
+                )
+            if not existing_image:
+                try:
+                    data = app.state.images.render(prompt)
+                except (ProviderError, HTTPException) as exc:
+                    image_error = exc.detail if isinstance(exc, HTTPException) else str(exc)
+                except Exception as exc:
+                    logger.warning(
+                        "creator parallel image request failed type=%s", type(exc).__name__
+                    )
+                    image_error = "Portrait generation failed. Your character is saved."
+            # Synchronize on the PROFILE COMMIT, not on the user's HTTP request.
+            # If images finish first, the worker waits; if the Profile finishes
+            # first, the HTTP client can immediately navigate to Character detail.
+            profile_ready.wait()
+            with locks.hold("creator-portrait-job:" + rid), factory() as db:
+                request_job = db.get(CreatorRequest, rid)
+                if (not request_job or request_job.owner_id != user
+                        or request_job.status != "pending"):
+                    return
+                cid = (request_job.result or {}).get("character_id")
+                if not cid:
+                    return
+                c = character(db, cid, user)
+                image = db.scalar(
+                    select(Portrait)
+                    .where(Portrait.character_id == cid)
+                    .order_by(Portrait.version.asc())
+                )
+                try:
+                    if not image and not image_error:
+                        result = image_render(
+                            UUID(cid),
+                            ImageInput(expected_image_id=c.current_image_id),
+                            False, db,
+                            prepared_data=data,
+                            prepared_prompt=prompt,
+                        )
+                        image = db.get(Portrait, result["id"])
+                    if image:
+                        with locks.hold(cid):
+                            db.refresh(c)
+                            # Editing the Profile while its first portrait is
+                            # rendering must NOT orphan the image. Only an
+                            # explicit portrait selection should supersede it.
+                            if c.current_image_id is None:
+                                c.current_image_id = image.id
+                                db.commit()
+                except (ProviderError, HTTPException) as exc:
+                    db.rollback()
+                    image_error = (exc.detail if isinstance(exc, HTTPException)
+                                   else str(exc))
+                except Exception as exc:
+                    db.rollback()
+                    # Do not log raw provider errors, prompts or private profile.
+                    logger.warning(
+                        "creator portrait worker failed type=%s", type(exc).__name__
+                    )
+                    image_error = "Portrait generation failed. The saved character is safe."
+
+                if image and not image_error:
+                    pinned_ids = list(db.scalars(
+                        select(CreatorWork.id)
+                        .where(CreatorWork.owner_id == user)
+                    ))
+                    db.rollback()
+                    for wid in pinned_ids:
+                        with locks.hold("creator-work:" + wid):
+                            pinned = db.get(CreatorWork, wid, populate_existing=True)
+                            if not pinned:
+                                continue
+                            doc = deepcopy(pinned.document)
+                            changed = False
+                            for members in doc["casts"].values():
+                                for member in members:
+                                    if (
+                                        member.get("creation_job_id") == rid
+                                        and member["character_id"] == cid
+                                        and member["version"] == 1
+                                        and not member["portrait_id"]
+                                    ):
+                                        member["portrait_id"] = image.id
+                                        member["portrait_url"] = (
+                                            f"/api/characters/{cid}/images/{image.id}/file"
+                                        )
+                                        changed = True
+                            if changed:
+                                pinned.document = CreatorDocument.model_validate(
+                                    doc
+                                ).model_dump()
+                                # The arrival of an asynchronous portrait is
+                                # presentation-only. Do NOT bump the creative
+                                # revision or invalidate an in-flight scene
+                                # edit holding the previously fetched revision.
+                                db.commit()
+                request_job = db.get(CreatorRequest, rid, populate_existing=True)
+                if request_job and request_job.status == "pending":
+                    request_job.status = "succeeded"
+                    request_job.result = {
+                        "character_id": cid,
+                        "phase": "portrait_failed" if image_error else "ready",
+                        "image_error": image_error,
+                    }
+                    db.commit()
+                logger.info(
+                    "creator stage=portrait finished seconds=%.2f success=%s",
+                    time.monotonic() - started, not bool(image_error),
+                )
+        except Exception as exc:
+            # A rare DB/pinning failure must not leave a permanently pending
+            # request. Preserve the profile and flag an image-only retry.
+            logger.warning(
+                "creator portrait completion error type=%s", type(exc).__name__
+            )
+            try:
+                with factory() as db:
+                    row = db.get(CreatorRequest, rid)
+                    if row and row.owner_id == user and row.status == "pending":
+                        row.status = "succeeded"
+                        row.result = {
+                            "character_id": (row.result or {}).get("character_id"),
+                            "phase": "portrait_failed",
+                            "image_error": "Portrait generation was interrupted. Your character is saved.",
+                        }
+                        db.commit()
+            except Exception as saving_error:
+                logger.warning("creator portrait recovery error type=%s",
+                               type(saving_error).__name__)
+        finally:
+            with active_portraits_guard:
+                active_portraits.pop(rid, None)
+
+    def start_initial_portrait(rid, user, description):
+        # Only one paid image request may be in flight for this request_id.
+        with active_portraits_guard:
+            if rid in active_portraits:
+                return active_portraits[rid]
+            ready = Event()
+            active_portraits[rid] = ready
+        try:
+            Thread(
+                target=complete_initial_portrait,
+                args=(rid, user, description, ready),
+                name="creator-portrait-" + rid[:8],
+                daemon=True,
+            ).start()
+        except Exception:
+            with active_portraits_guard:
+                active_portraits.pop(rid, None)
+            raise
+        return ready
+
     @app.post("/api/creator/characters", status_code=201)
     def create_character(body: CreatorCharacterInput, request: Request):
         if len(body.description) > settings.max_profile_input_chars:
@@ -174,113 +368,62 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             )
         user = owner(request)
         rid = str(body.request_id)
-        payload = body.model_dump(mode="json")
+        started = time.monotonic()
         with locks.hold("creator-request:" + rid), factory() as db:
-            row = record(db, rid, user, "character", payload)
+            row = record(db, rid, user, "character", body.model_dump(mode="json"))
             if row.status == "succeeded":
                 return row.result
             cid = (row.result or {}).get("character_id")
-            if not cid:
-                try:
-                    profile = Profile.model_validate(
-                        app.state.text.generate(body.description)
-                    )
-                except ProviderError as exc:
-                    fail(db, rid, str(exc))
-                    raise
-                with locks.hold("account-bootstrap"):
-                    from .companion_models import Account
+            if not cid and user is None:
+                from .companion_models import Account
 
-                    if user is None and db.scalar(select(Account.id).limit(1)):
+                with locks.hold("account-bootstrap"):
+                    if db.scalar(select(Account.id).limit(1)):
                         raise HTTPException(
                             401, "Please sign in before saving your character."
                         )
-                    c = Character(owner_id=user, original_description=body.description)
-                    db.add(c)
-                    db.flush()
-                    db.add(
-                        ProfileRevision(
-                            character_id=c.id,
-                            version=1,
-                            profile_json=profile.model_dump(),
-                            change_summary="Create character and portrait",
-                        )
-                    )
-                    db.add(Conversation(character_id=c.id))
-                    row.result = {"character_id": c.id, "phase": "portrait_pending"}
-                    db.commit()
-                    cid = c.id
-            c = character(db, cid, user)
-            # A restart can recover a portrait already saved before its response was recorded.
-            image = db.scalar(
-                select(Portrait)
-                .where(Portrait.character_id == cid)
-                .order_by(Portrait.version)
-            )
-            image_error = None
+            # Launch before the Profile LLM call: truly parallel AI requests.
+            ready = start_initial_portrait(rid, user, body.description)
             try:
-                if not image:
-                    result = image_render(
-                        UUID(cid),
-                        ImageInput(expected_image_id=c.current_image_id),
-                        False,
-                        db,
-                    )
-                    image = db.get(Portrait, result["id"])
-                with locks.hold(cid):
-                    db.refresh(c)
-                    if c.current_image_id is None and c.current_profile_version == 1:
-                        c.current_image_id = image.id
-                        db.commit()
-            except (ProviderError, HTTPException) as exc:
-                db.rollback()
-                image_error = exc.detail if isinstance(exc, HTTPException) else str(exc)
-            if image and not image_error:
-                # Resolve only the original pending portrait, never a later edit.
-                pinned_ids = list(
-                    db.scalars(
-                        select(CreatorWork.id).where(CreatorWork.owner_id == user)
-                    )
-                )
-                db.rollback()
-                for pinned_id in pinned_ids:
-                    with locks.hold("creator-work:" + pinned_id):
-                        pinned = db.get(CreatorWork, pinned_id, populate_existing=True)
-                        if not pinned:
-                            continue
-                        doc = deepcopy(pinned.document)
-                        changed = False
-                        for members in doc["casts"].values():
-                            for member in members:
-                                if (
-                                    member.get("creation_job_id") == rid
-                                    and member["character_id"] == cid
-                                    and member["version"] == 1
-                                    and not member["portrait_id"]
-                                ):
-                                    member["portrait_id"] = image.id
-                                    member["portrait_url"] = (
-                                        f"/api/characters/{cid}/images/{image.id}/file"
-                                    )
-                                    changed = True
-                        if changed:
-                            pinned.document = CreatorDocument.model_validate(
-                                doc
-                            ).model_dump()
-                            pinned.revision += 1
-                            pinned.updated_at = now()
-                            db.commit()
+                if not cid:
+                    try:
+                        profile = Profile.model_validate(
+                            app.state.text.generate(body.description)
+                        )
+                    except ProviderError as exc:
+                        fail(db, rid, str(exc))
+                        raise
+                    with locks.hold("account-bootstrap"):
+                        from .companion_models import Account
 
-            db.refresh(c)
-            row = db.get(CreatorRequest, rid)
-            row.status = "succeeded"
-            row.result = {
-                "character_id": cid,
-                "phase": "portrait_failed" if image_error else "ready",
-                "image_error": image_error,
-            }
-            db.commit()
-            return row.result
+                        if user is None and db.scalar(select(Account.id).limit(1)):
+                            raise HTTPException(
+                                401, "Please sign in before saving your character."
+                            )
+                        c = Character(owner_id=user, original_description=body.description)
+                        db.add(c)
+                        db.flush()
+                        db.add(
+                            ProfileRevision(
+                                character_id=c.id,
+                                version=1,
+                                profile_json=profile.model_dump(),
+                                change_summary="Parallel profile and portrait creation",
+                            )
+                        )
+                        db.add(Conversation(character_id=c.id))
+                        row.result = {"character_id": c.id, "phase": "portrait_pending"}
+                        db.commit()
+                        cid = c.id
+                logger.info(
+                    "creator stage=profile response_seconds=%.2f portrait=parallel",
+                    time.monotonic() - started,
+                )
+                return {"character_id": cid, "phase": "portrait_pending"}
+            finally:
+                # Wake the image worker whether Profile succeeded or failed.
+                # A failed profile leaves no character for image attachment.
+                ready.set()
 
     @app.get("/api/creator/jobs/{rid}")
     def job(rid: UUID, request: Request):
@@ -296,6 +439,16 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
         rid = str(body.request_id)
         with locks.hold("creator-request:" + rid), factory() as db:
             character(db, cid, user)
+            for initial in db.scalars(
+                select(CreatorRequest).where(
+                    CreatorRequest.owner_id == user,
+                    CreatorRequest.scope == "character",
+                    CreatorRequest.status == "pending",
+                )
+            ):
+                if (initial.result or {}).get("character_id") == str(cid):
+                    raise HTTPException(409,
+                        "The initial portrait is still generating. Please wait before requesting another.")
             row = record(
                 db, rid, user, "portrait:" + str(cid), body.model_dump(mode="json")
             )

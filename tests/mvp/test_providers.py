@@ -122,6 +122,38 @@ def test_adapter_calls_official_sdk_and_uses_source_for_edit(monkeypatch):
     assert "response_format" not in calls[-1]  # GPT image models return b64 directly.
 
 
+
+def test_gpt_image_first_portrait_uses_configured_quality_but_edits_keep_default(monkeypatch):
+    calls = []
+    class Client:
+        def __init__(self, **kwargs):
+            self.images = SimpleNamespace(generate=self.generate, edit=self.edit)
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def generate(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(data=[
+                SimpleNamespace(b64_json=base64.b64encode(b"image").decode())
+            ])
+        def edit(self, **kwargs):
+            return self.generate(**kwargs)
+    monkeypatch.setattr("echoloom.providers.OpenAI", Client)
+    base = Settings(
+        _env_file=None, image_api_key="fake-for-test",
+        image_model="gpt-image-1.5", image_initial_quality="low",
+    )
+    assert OpenAIImages(base).render("portrait") == b"image"
+    assert calls[-1]["quality"] == "low"
+    assert OpenAIImages(base).render("change hair", source=b"previous") == b"image"
+    assert "quality" not in calls[-1]
+    original = base.model_copy(update={"image_initial_quality": "auto"})
+    OpenAIImages(original).render("portrait")
+    assert "quality" not in calls[-1]
+    other = base.model_copy(update={"image_model": "configured-unknown-image-model"})
+    OpenAIImages(other).render("portrait")
+    assert "quality" not in calls[-1]
+
+
 @pytest.mark.parametrize(
     ("code", "param", "message", "expected"),
     [

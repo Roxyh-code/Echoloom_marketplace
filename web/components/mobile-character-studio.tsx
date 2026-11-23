@@ -14,7 +14,7 @@ import { listOwnedListings, type OwnedListingDetail } from "./marketplace-api";
 import { localGet, localPut, operation } from "./rehearsal-api";
 type Mode = "library" | "create" | "detail";
 type Person = Character & { archived?: boolean };
-type Creation = { request_id: string; description: string };
+type Creation = { request_id: string; description: string; character_id?: string };
 function Picture({
   character,
   large = false,
@@ -119,6 +119,7 @@ export function MobileCharacterStudio({
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const guard = useRef(false);
   const creationGuard = useRef(false);
+  const creationEpoch = useRef(0);
   const alive = useRef(true);
   const modeRef = useRef(mode);
   modeRef.current = mode;
@@ -175,9 +176,22 @@ export function MobileCharacterStudio({
   useEffect(() => {
     alive.current = true;
     const q = new URLSearchParams(location.search);
-    setDescription(localGet("character-description", ""));
     const job = localGet<Creation | null>("character-creation", null);
-    setPending(job);
+    // Opening "Create" from another screen mounts a FRESH Studio instance,
+    // so startCreate() is not called. Discard a completed Profile's lingering
+    // portrait-only job from the new form; its image still completes server-side.
+    // Retain an unfinished Profile (no character_id) for explicit recovery.
+    const newCharacter = initialCreate || q.has("create");
+    if (newCharacter && job?.character_id) {
+      creationEpoch.current++;
+      setDescription("");
+      localPut("character-description", "");
+      setPending(null);
+      localPut("character-creation", null);
+    } else {
+      setDescription(localGet("character-description", ""));
+      setPending(job);
+    }
     api<Health>("/health")
       .then(setHealth)
       .catch(() => {});
@@ -232,6 +246,18 @@ export function MobileCharacterStudio({
     return c;
   }
   function startCreate() {
+    // Invalidate any prior asynchronous job poll before a new creation.
+    creationEpoch.current++;
+    // Create New must always start with an EMPTY form. A previous request
+    // may still be pending for Profile/portrait recovery; this explicit user
+    // action detaches the local form from that job but never cancels the
+    // server worker. "Resume character creation" remains a separate action.
+    if (pending) {
+      setPending(null);
+      localPut("character-creation", null);
+    }
+    setDescription("");
+    localPut("character-description", "");
     setPerson(null);
     setImageError("");
     url("create");
@@ -261,13 +287,21 @@ export function MobileCharacterStudio({
         setPerson(c);
         setImageError(r.image_error || "");
       }
-      setPending(null);
-      localPut("character-creation", null);
+      const portraitPending = r.phase === "portrait_pending";
+      const tracked = { ...job, character_id: c.id };
+      setPending(portraitPending ? tracked : null);
+      localPut("character-creation", portraitPending ? tracked : null);
       localPut("character-description", "");
       setDescription("");
-      await changed();
+      // The new Profile should be interactive IMMEDIATELY. Do not await
+      // library/Scene refresh before navigating: those unrelated network
+      // calls can be slower or fail while the Character itself is saved.
       if (modeRef.current === "create") url("detail", c.id);
-      else setNotice(c.profile.name + " is ready in your characters.");
+      else setNotice(c.profile.name + " is saved in your characters.");
+      void changed().catch(() => {
+        if (alive.current)
+          setNotice("Character saved. Refresh to update the library.");
+      });
     } catch (e) {
       if (alive.current) setError((e as Error).message);
     } finally {
@@ -278,6 +312,7 @@ export function MobileCharacterStudio({
   // Recover a profile/portrait even after refresh or a dropped POST response. Never regenerate the profile.
   useEffect(() => {
     if (!pending) return;
+    const token = creationEpoch.current;
     let active = true;
     let polling = false;
     const tick = async () => {
@@ -292,12 +327,19 @@ export function MobileCharacterStudio({
             detail?: string;
           };
         }>("/jobs/" + pending.request_id);
-        if (!active) return;
+        if (!active || token !== creationEpoch.current) return;
         if (j.result?.character_id) {
           const c = await api<Person>("/characters/" + j.result.character_id);
-          if (!active) return;
+          if (!active || token !== creationEpoch.current) return;
           if (modeRef.current === "create" || personRef.current?.id === c.id)
             setPerson(c);
+          if (j.status === "pending") {
+            const tracked = { ...pending, character_id: c.id };
+            setPending((previous) => previous?.request_id === tracked.request_id
+              ? tracked : previous);
+            localPut("character-creation", tracked);
+            if (modeRef.current === "create") url("detail", c.id, true);
+          }
           if (j.status === "succeeded") {
             setImageError(j.result.image_error || "");
             setPending(null);
@@ -305,9 +347,12 @@ export function MobileCharacterStudio({
             localPut("character-creation", null);
             localPut("character-description", "");
             setDescription("");
-            await changed();
             if (alive.current && modeRef.current === "create")
               url("detail", c.id, true);
+            void changed().catch(() => {
+              if (alive.current)
+                setNotice("Character saved. Refresh to update the library.");
+            });
           }
         } else if (j.status === "failed") {
           setError(
@@ -394,6 +439,8 @@ export function MobileCharacterStudio({
     }
   }
   const buttonDisabled = busy || creating;
+  const portraitGenerating = !!(pending?.character_id && person?.id === pending.character_id &&
+    !person.current_image_id);
   const field = (f: FormData, k: string) => String(f.get(k) || "").trim();
   return (
     <>
@@ -586,12 +633,22 @@ export function MobileCharacterStudio({
               id="mc-create"
               onSubmit={(e) => {
                 e.preventDefault();
-                void createCharacter(pending || undefined);
+                // The browser's submitted field is authoritative even if
+                // React has not committed its last controlled onChange yet.
+                // This matters for quick submits on narrow/mobile screens.
+                const submitted = String(
+                  new FormData(e.currentTarget).get("description") || "",
+                ).trim();
+                void createCharacter(pending || {
+                  request_id: operation(),
+                  description: submitted,
+                });
               }}
             >
               <label>
                 Describe your character
                 <textarea
+                  name="description"
                   value={pending ? pending.description : description}
                   onChange={(e) => {
                     setDescription(e.target.value);
@@ -640,7 +697,7 @@ export function MobileCharacterStudio({
                           ? "Portrait ready"
                           : person
                             ? "Creating the portrait"
-                            : "Portrait follows automatically"}
+                            : "Portrait and profile generate in parallel"}
                       </strong>
                       <small>
                         {person
@@ -712,6 +769,16 @@ export function MobileCharacterStudio({
                 Edit portrait →
               </button>
             </div>
+            {portraitGenerating && (
+              <div className="mc-portrait-pending" role="status">
+                <span className="mc-portrait-spinner" aria-hidden="true">✧</span>
+                <div>
+                  <strong>Portrait generating in the background</strong>
+                  <p>Your character is saved and ready to use. You can explore the
+                    profile or start a story while the portrait finishes.</p>
+                </div>
+              </div>
+            )}
             {imageError && (
               <div className="rh-alert error" role="alert">
                 <span>{imageError}</span>
@@ -1108,17 +1175,19 @@ export function MobileCharacterStudio({
                     placeholder="Change her hair to auburn. Keep her face and clothing."
                   />
                 </label>
-                <button className="rh-primary" disabled={busy}>
-                  {busy
-                    ? "Creating a portrait…"
-                    : person.current_image_id
-                      ? "Edit portrait"
-                      : "Generate portrait"}
+                <button className="rh-primary" disabled={busy || portraitGenerating}>
+                  {portraitGenerating
+                    ? "Initial portrait is still generating…"
+                    : busy
+                      ? "Creating a portrait…"
+                      : person.current_image_id
+                        ? "Edit portrait"
+                        : "Generate portrait"}
                 </button>
                 <button
                   type="button"
                   className="rh-secondary mc-another"
-                  disabled={busy}
+                  disabled={busy || portraitGenerating}
                   onClick={() => run(() => makePortrait(false))}
                 >
                   Try another portrait

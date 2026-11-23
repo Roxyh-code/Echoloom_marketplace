@@ -51,3 +51,7 @@ GitHub Actions checks the Python backend, Next.js production build, and the extr
 ## Safety and limitations
 
 **Do not publish this stage as a public multi-user marketplace.** Legacy account and database compatibility models remain, but the old standalone chat/story and companion/calendar routes have been removed. The app still uses local-only account semantics. Public DTOs, creator ownership proofs, real wallet authentication, backend price authority, payment receipt verification and paid-scene access controls must be implemented before deployment. Only original or properly licensed characters may be commercially listed; do not upload copyrighted character art without permission. Never add `.env`, `work/`, keys, customer data or third-party commercial UI assets to git.
+
+## Live-model acceptance (Phase 2)
+
+The CI suite uses simulated AI providers. For a billable, opt-in real-model smoke run with an isolated database and a manual story-quality rubric, follow [docs/LIVE_MODEL_ACCEPTANCE.md](docs/LIVE_MODEL_ACCEPTANCE.md). This does **not** run automatically in CI and is **not** a Solana payment test.

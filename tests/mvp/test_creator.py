@@ -295,6 +295,14 @@ def test_image_provider_delay_does_not_block_profile_or_duplicate_calls(setup, m
         assert saved.status_code == 200
         assert saved.json()["profile"]["name"] == "Evelyn"
         assert saved.json()["current_image_id"] is None
+        # Users can edit Profile while an avatar is rendering. The first image
+        # should still become visible unless another portrait was selected.
+        updated = {**saved.json()["profile"], "name": "Evelyn Edited"}
+        edited = client.patch("/api/characters/" + cid, json={
+            "profile": updated, "expected_version": 1
+        })
+        assert edited.status_code == 200, edited.text
+        assert edited.json()["profile_version"] == 2
         status = client.get("/api/creator/jobs/" + body["request_id"]).json()
         assert status["status"] == "pending"
         assert status["result"]["phase"] == "portrait_pending"

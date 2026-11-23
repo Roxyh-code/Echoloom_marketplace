@@ -159,7 +159,9 @@ test("in-scene creation includes portraits, preserves cast and setup at 320px", 
     await page.locator("form#mc-create").evaluate((form) =>
       (form as HTMLFormElement).requestSubmit()
     );
-    await expect(page.getByAltText("Portrait of Evelyn")).toBeVisible({
+    // The Profile is usable immediately. Do not require the portrait
+    // to finish before editing or adding this Character to a Scene.
+    await expect(page.getByRole("heading", { name: "Evelyn" })).toBeVisible({
       timeout: 15_000,
     });
     await page
@@ -199,7 +201,10 @@ test("in-scene creation includes portraits, preserves cast and setup at 320px", 
   ).toBeTruthy();
   const cc = await (await request.get("/api/rehearsal/characters")).json();
   expect(cc).toHaveLength(2);
-  expect(cc.every((c: any) => !!c.current_image_id)).toBeTruthy();
+  await expect.poll(async () => {
+    const characters = await (await request.get("/api/rehearsal/characters")).json();
+    return characters.every((c: any) => !!c.current_image_id);
+  }, { timeout: 15_000 }).toBeTruthy();
 });
 
 test("permission denial never falls back to cached scene text", async ({

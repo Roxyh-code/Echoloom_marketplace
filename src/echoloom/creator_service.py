@@ -250,7 +250,10 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                     if image:
                         with locks.hold(cid):
                             db.refresh(c)
-                            if c.current_image_id is None and c.current_profile_version == 1:
+                            # Editing the Profile while its first portrait is
+                            # rendering must NOT orphan the image. Only an
+                            # explicit portrait selection should supersede it.
+                            if c.current_image_id is None:
                                 c.current_image_id = image.id
                                 db.commit()
                 except (ProviderError, HTTPException) as exc:

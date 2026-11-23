@@ -56,6 +56,8 @@ class CreateScene(Model):
 
     @model_validator(mode="after")
     def source_selection(self):
+        if self.demo and (self.character_ids or self.source_scene_id):
+            raise ValueError("A prepared Demo cannot carry custom or source characters.")
         if self.cast_sources:
             if len(self.cast_sources) != 2:
                 raise ValueError("Select exactly two cast sources.")

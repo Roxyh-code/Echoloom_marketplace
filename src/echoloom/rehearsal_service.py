@@ -789,6 +789,9 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     raise HTTPException(422, "This line has not been generated yet.")
                 v["revealed"] = body.revealed
             elif kind == "cast":
+                # The prepared DEMO cannot be converted into a free custom Scene.
+                if d.get("demo"):
+                    raise HTTPException(409, "The prepared demo cast is fixed. Create a new Story.")
                 # Marketplace actor provenance is fixed for a scene; changing
                 # either published role must create a new independently checked
                 # scene, not silently convert it to an unpaid private cast.

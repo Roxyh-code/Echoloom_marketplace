@@ -605,12 +605,22 @@ export function MobileCharacterStudio({
               id="mc-create"
               onSubmit={(e) => {
                 e.preventDefault();
-                void createCharacter(pending || undefined);
+                // The browser's submitted field is authoritative even if
+                // React has not committed its last controlled onChange yet.
+                // This matters for quick submits on narrow/mobile screens.
+                const submitted = String(
+                  new FormData(e.currentTarget).get("description") || "",
+                ).trim();
+                void createCharacter(pending || {
+                  request_id: operation(),
+                  description: submitted,
+                });
               }}
             >
               <label>
                 Describe your character
                 <textarea
+                  name="description"
                   value={pending ? pending.description : description}
                   onChange={(e) => {
                     setDescription(e.target.value);

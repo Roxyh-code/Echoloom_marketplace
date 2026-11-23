@@ -112,10 +112,12 @@ def register_rehearsal(app, factory, locks, settings, serialize):
         row.updated_at = now()
 
     def pack(row):
+        # Centralized public DTO projection. The original Scene and all hidden
+        # future prose stay server-side; no full document in commands/jobs.
         return {
             "id": row.id,
             "revision": row.revision,
-            "document": row.document,
+            "document": scene_access.preview(row.document),
             "updated_at": row.updated_at,
         }
 
@@ -373,6 +375,17 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                         "user_edited": request_event["kind"] == "event" and index == 0,
                         "operation_id": jid,
                     }
+                    # Bound real persisted AI prose, not just the Reader UI.
+                    # A model may produce many sentences in one response.
+                    if scene_access.is_metered(d):
+                        budget = scene_access.remaining(d)
+                        if budget == 0:
+                            break
+                        from .rehearsal_domain import sentences
+                        units = sentences(b["text"])
+                        if len(units) > budget:
+                            b["text"] = "".join(units[:budget]).rstrip()
+                        scene_access.mark_generated(d, b)
                     for change in output.changes:
                         if change.after_block == index:
                             state_change(state, change, node_id, b["id"])
@@ -577,6 +590,10 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             state = None
             if body.source_scene_id:
                 parent = own(db, body.source_scene_id, owner)
+                # A saved result is not a free export of paywalled text into
+                # a new Scene. Preserve older content but require a verified
+                # unlock before it becomes a new story's source material.
+                scene_access.check_generation(parent.document)
                 result = parent.document.get("result")
                 if not result:
                     raise HTTPException(409, "Save the previous scene's result first.")
@@ -767,6 +784,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             if kind == "settle":
                 pass
             elif kind == "read":
+                scene_access.check_read(d, body.revealed)
                 if body.revealed > line_count(d, v["head"]):
                     raise HTTPException(422, "This line has not been generated yet.")
                 v["revealed"] = body.revealed
@@ -1017,13 +1035,12 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     v["revealed"] = line_count(d, v["head"])
                 # Reserve after validating the command, before ANY scene/job
                 # write. This same transaction also persists the queued job.
-                if scene_access.is_marketplace(d):
-                    with locks.hold("scene-access-account:" + str(owner)):
-                        scene_access.reserve(db, row, op.id)
+                if scene_access.is_metered(d):
+                    scene_access.check_generation(d)
                 d["status"] = "saved" if d.get("result") else "rehearsing"
                 op.status = "queued"
                 op.result = {
-                    **({"usage_root": op.id} if scene_access.is_marketplace(d) else {}),
+                    **({"usage_root": op.id} if scene_access.is_metered(d) else {}),
                     "version_id": v["id"],
                     "base_node_id": v["head"],
                     "events": [],
@@ -1149,9 +1166,8 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             # A retry shares the original logical allowance. If the first
             # attempt produced nothing, it re-reserves a refunded unit; if a
             # partial block was saved, the root was already charged once.
-            if scene_access.is_marketplace(d):
-                with locks.hold("scene-access-account:" + str(request.state.user_id)):
-                    scene_access.reserve(db, row, result.get("usage_root", j.id))
+            if scene_access.is_metered(d):
+                scene_access.check_generation(d)
                 result["usage_root"] = result.get("usage_root", j.id)
             retry_job = RehearsalOperation(
                 id=uid(),
@@ -1193,7 +1209,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             )
             if exists:
                 return op.result
-            doc = deepcopy(row.document)
+            doc = scene_access.preview(row.document)
             v = version(doc, body.version_id)
             doc, v = reading_view(doc, v)
             if body.node_id:
@@ -1297,7 +1313,8 @@ def register_rehearsal(app, factory, locks, settings, serialize):
         with factory() as db:
             row = own(db, sid, request.state.user_id)
             v = version(row.document, version_id)
-            export_doc = row.document
+            export_doc = scene_access.preview(row.document)
+            v = version(export_doc, version_id)
             if visible_only:
                 export_doc, v = reading_view(export_doc, v)
             text = render(export_doc, v, format, include_title, include_names)

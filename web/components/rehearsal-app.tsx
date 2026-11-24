@@ -1,6 +1,7 @@
 "use client";
 import { MobileCharacterStudio } from "./mobile-character-studio";
 import { MobileBottomNav } from "./mobile-bottom-nav";
+import { MobileAppFrame } from "./mobile-app-frame";
 import { countLines, nextPassageEnd, visibleLines, readState } from "./rehearsal-reading";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -617,20 +618,6 @@ export function RehearsalApp() {
       window.removeEventListener("offline", connection);
     };
   }, []);
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    const resize = () =>
-      document.documentElement.style.setProperty(
-        "--rh-vh",
-        `${viewport?.height || innerHeight}px`,
-      );
-    resize();
-    viewport?.addEventListener("resize", resize);
-    return () => {
-      viewport?.removeEventListener("resize", resize);
-      document.documentElement.style.removeProperty("--rh-vh");
-    };
-  }, []);
   function send(
     cmd: Command,
     oid = operation(),
@@ -1145,7 +1132,7 @@ export function RehearsalApp() {
     ));
   }
   return (
-    <main
+    <MobileAppFrame
       className={"rehearsal-app rh-" + page}
       data-working={busy ? "true" : "false"}
       data-generating={job ? "true" : "false"}
@@ -3160,6 +3147,6 @@ export function RehearsalApp() {
           )}
         </Sheet>
       )}
-    </main>
+    </MobileAppFrame>
   );
 }

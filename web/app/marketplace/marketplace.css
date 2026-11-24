@@ -259,3 +259,98 @@
   .em-cast-tray { flex-wrap: wrap; }
   .em-cast-controls { width: 100%; justify-content: space-between; }
 }
+
+
+/* A single details-and-casting contract for Public and Private Characters. */
+.em-cover-source {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  pointer-events: none;
+  border: 1px solid rgba(201, 179, 255, .5);
+  border-radius: 5px;
+  background: rgba(19, 16, 31, .88);
+  color: #f3eaff;
+  padding: 4px 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.em-cover-source-mine { color: #eee7fa; background: rgba(57, 45, 83, .90); }
+.em-cover-source-placeholder { background: rgba(29, 27, 38, .83); color: #d0c4e2; }
+.em-card-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  border: 1px solid rgba(193, 171, 239, .22);
+  border-radius: 9px;
+  color: #a9a0bc;
+  font-size: 12px;
+  font-weight: 600;
+}
+.em-book-entry .em-book-card { flex: 1; }
+.em-book-entry .em-card-select { width: 100%; }
+.em-detail-back { color: #cbb7ff; font-size: 13px; font-weight: 650; }
+.em-character-article { padding: 24px 0 40px; }
+.em-character-intro { display: flex; align-items: flex-start; gap: 18px; margin-top: 18px; }
+.em-detail-portrait {
+  width: 42%; flex-shrink: 0; aspect-ratio: 2 / 3; border-radius: 12px;
+  overflow: hidden; background: #211c2c; display: grid; place-items: center;
+}
+.em-detail-portrait img {
+  width: 100%; height: 100%; object-fit: cover; object-position: center 32%;
+}
+.em-character-description { flex: 1; min-width: 0; }
+.em-character-description h1 {
+  margin: 0 0 12px; font-size: 27px; line-height: 1.15; overflow-wrap: anywhere;
+}
+.em-detail-creator { font-size: 12px; color: #a89bbd; }
+.em-detail-summary { margin-top: 17px; color: #d9d1e7; line-height: 1.6; overflow-wrap: anywhere; }
+.em-detail-section { margin-top: 26px; }
+.em-detail-section h2 { font-size: 14px; font-weight: 650; margin-bottom: 12px; }
+.em-detail-section p { color: #d9d1e7; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.em-detail-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.em-detail-tags span {
+  border: 1px solid #55496c; padding: 6px 10px; border-radius: 20px; font-size: 12px;
+}
+/* Both buttons share the same visual hierarchy, dimensions, and trailing arrow. */
+.em-detail-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+  margin-top: 28px;
+}
+.em-detail-actions .em-detail-button {
+  min-width: 0;
+  width: 100%;
+  min-height: 54px;
+  padding: 12px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #765bb0;
+  border-radius: 10px;
+  background: #54408c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+}
+.em-detail-actions .em-detail-button:hover { background: #664fa1; }
+.em-detail-actions .em-detail-button:focus-visible {
+  outline: 2px solid #d1beff; outline-offset: 3px;
+}
+.em-detail-button-arrow { flex: 0 0 auto; margin-left: auto; font-size: 17px; line-height: 1; }
+@media (max-width: 360px) {
+  .em-character-intro { gap: 12px; }
+  .em-character-description h1 { font-size: 23px; }
+  .em-detail-actions { gap: 9px; }
+  .em-detail-actions .em-detail-button { min-height: 58px; padding: 10px; font-size: 11px; gap: 5px; }
+}

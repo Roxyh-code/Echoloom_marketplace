@@ -38,35 +38,46 @@ function Icon({ name, size = 20 }: { name: "search" | "book" | "pen" | "compass"
 }
 
 function Cover({ item, selected, onSelect }: { item: ShelfItem; selected: boolean; onSelect: () => void }) {
-  const inner = (
-    <>
-      <span className={"em-cover em-cover-" + item.kind}>
-        {item.image ? <img src={item.image} alt={"Portrait of " + item.name} loading="lazy" /> : <span className="em-cover-monogram">{item.name.slice(0, 1)}</span>}
-        {selected && <span className="em-cover-selected"><Icon name="check" size={15} /></span>}
-      </span>
-      <span className="em-cover-title">{item.name}</span>
-      <span className="em-cover-desc">{item.description}</span>
-    </>
-  );
-  if (item.kind === "placeholder") {
-    // A static frontend preview is not a real public Listing or castable Character.
-    return <Link className="em-book-card" href={"/marketplace/preview/" + encodeURIComponent(item.id)} aria-label={"View character " + item.name}>{inner}</Link>;
-  }
-  if (item.kind === "published") {
-    // Public card navigation and selection are separate accessible controls.
-    // Do not pass private Character IDs through public navigation.
-    return (
-      <div className="em-book-entry">
-        <Link className="em-book-card" href={"/marketplace/" + encodeURIComponent(item.listingId!)} aria-label={"View published character " + item.name}>{inner}</Link>
-        <button type="button" className="em-card-select" onClick={onSelect} aria-pressed={selected}
-          aria-label={(selected ? "Remove " : "Select ") + item.name + (selected ? " from" : " for") + " your cast"}>
+  // The artwork/title area is ALWAYS a details link; selecting for a Story
+  // is an independent control. Sample placeholders aren't live Characters.
+  const href = item.kind === "placeholder"
+    ? "/marketplace/preview/" + encodeURIComponent(item.id)
+    : item.kind === "published"
+      ? "/marketplace/" + encodeURIComponent(item.listingId!)
+      : "/marketplace/private/" + encodeURIComponent(item.id);
+  const origin = item.kind === "published" ? "PUBLIC"
+    : item.kind === "mine" ? "PRIVATE" : "PREVIEW";
+  const label = item.kind === "published" ? "View published character " + item.name
+    : item.kind === "mine" ? "View private character " + item.name
+    : "View character " + item.name;
+  return (
+    <div className="em-book-entry">
+      <Link className="em-book-card" href={href} aria-label={label}>
+        <span className={"em-cover em-cover-" + item.kind}>
+          {item.image
+            ? <img src={item.image} alt={"Portrait of " + item.name} loading="lazy" />
+            : <span className="em-cover-monogram">{item.name.slice(0, 1)}</span>}
+          <span className={"em-cover-source em-cover-source-" + item.kind}>{origin}</span>
+          {selected && <span className="em-cover-selected"><Icon name="check" size={15} /></span>}
+        </span>
+        <span className="em-cover-title">{item.name}</span>
+        <span className="em-cover-desc">{item.description}</span>
+      </Link>
+      {item.kind === "placeholder" ? (
+        <span className="em-card-preview" aria-label="Preview only; not available for casting">
+          Preview only
+        </span>
+      ) : (
+        <button type="button" className="em-card-select" onClick={onSelect}
+          aria-pressed={selected}
+          aria-label={(selected ? "Remove " : "Select ") + item.name
+            + (selected ? " from" : " for") + " your cast"}>
           <Icon name={selected ? "check" : "plus"} size={15} />
           {selected ? "In your cast" : "Add to cast"}
         </button>
-      </div>
-    );
-  }
-  return <button type="button" className="em-book-card em-selectable" onClick={onSelect} aria-pressed={selected} aria-label={(selected ? "Remove " : "Select ") + item.name + (selected ? " from" : " for") + " your cast"}>{inner}</button>;
+      )}
+    </div>
+  );
 }
 
 export function MarketplaceDiscover() {

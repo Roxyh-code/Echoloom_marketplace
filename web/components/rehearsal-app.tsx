@@ -2045,7 +2045,7 @@ export function RehearsalApp() {
                       onClick={() => setPanel("intervene")}
                     >
                       <Glyph name="pen" />
-                      {tr("Intervene", "我来介入")}
+                      <span className="rh-action-label">{tr("Intervene", "我来介入")}</span>
                     </button>
                     <button
                       aria-label={
@@ -2090,7 +2090,7 @@ export function RehearsalApp() {
                       }}
                     >
                       <Glyph name="branch" />
-                      {tr("Other directions", "其他走向")}
+                      <span className="rh-action-label">{tr("Other directions", "其他走向")}</span>
                     </button>
                   </div>
                 )}

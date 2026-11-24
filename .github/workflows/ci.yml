@@ -62,7 +62,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test Marketplace, characters, and rehearsal mobile flows
         working-directory: web
-        run: npx playwright test e2e/marketplace.spec.ts e2e/editorial-ui.spec.ts e2e/mobile-characters.spec.ts e2e/rehearsal.spec.ts e2e/shared-mobile-frame.spec.ts --reporter=line
+        run: npx playwright test e2e/marketplace.spec.ts e2e/editorial-ui.spec.ts e2e/mobile-characters.spec.ts e2e/rehearsal.spec.ts e2e/rehearsal-typography.spec.ts e2e/shared-mobile-frame.spec.ts --reporter=line
 
       - name: Upload one-off character demo video
         if: always()

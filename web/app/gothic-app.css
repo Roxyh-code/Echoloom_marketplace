@@ -564,6 +564,7 @@ body ::selection { background: #6e52c8; color: #fff; }
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  padding-bottom: 5px; /* Allow for decorative glyph descenders outside the line box. */
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;

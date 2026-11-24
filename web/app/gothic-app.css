@@ -560,6 +560,8 @@ body ::selection { background: #6e52c8; color: #fff; }
 }
 .rehearsal-app.rh-stage .rh-action-label {
   display: block;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   text-align: center;
   white-space: normal;

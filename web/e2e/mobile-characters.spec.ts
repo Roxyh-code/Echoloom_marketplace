@@ -98,7 +98,7 @@ test("a slow portrait provider does not hold up the saved character profile", as
 
     // The image API is deliberately still blocked here.
     await expect(page.getByRole("heading", { name: "Evelyn" })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("status")).toContainText("Portrait generating in the background");
+    await expect(page.locator(".mc-portrait-pending[role=\"status\"]")).toContainText("Portrait generating in the background");
     const characters = await (await request.get(backend + "/api/creator/characters")).json();
     expect(characters).toHaveLength(1);
     expect(characters[0].profile.name).toBe("Evelyn");

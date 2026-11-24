@@ -25,11 +25,7 @@
   color: var(--rh-text);
   font: 15px/1.6 Inter, "Segoe UI", "PingFang SC", Arial, sans-serif;
 }
-.rehearsal-app {
-  background: var(--ed-paper);
-  max-width: 520px;
-  box-shadow: 0 0 65px #261f2020;
-}
+.rehearsal-app { background: var(--ed-paper); }
 .rehearsal-app button,
 .rh-sheet button { color: inherit; }
 .rehearsal-app :focus-visible,
@@ -396,7 +392,6 @@
   .rehearsal-app .rh-reading { padding-left: 18px; padding-right: 18px; }
 }
 @media (min-width: 650px) {
-  .rehearsal-app { margin: 24px auto; border: 1px solid #e6ded4; height: calc(100dvh - 48px); }
   .rh-sheet { border-radius: 18px; margin: auto; border-bottom: 1px solid #e8e8e8; }
 }
 @media (prefers-reduced-motion: reduce) {

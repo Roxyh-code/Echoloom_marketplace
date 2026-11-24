@@ -49,9 +49,13 @@ for (const viewport of [
           const r = b.getBoundingClientRect();
           return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
         }),
-        labelFits: labels.every(
-          (el) => el.scrollWidth <= el.clientWidth + 2 && el.scrollHeight <= el.clientHeight + 2,
-        ),
+        labelMeasurements: labels.map((el) => ({
+          text: el.textContent,
+          width: el.clientWidth,
+          scrollWidth: el.scrollWidth,
+          height: el.clientHeight,
+          scrollHeight: el.scrollHeight,
+        })),
         version: size(version),
         cast: size(cast),
         sync: size(sync),
@@ -72,7 +76,10 @@ for (const viewport of [
     expect(metrics.progress).toBeGreaterThanOrEqual(13);
     // The reading-size control still owns story prose; don't enlarge it by accident.
     expect(metrics.storySize).toBe(17);
-    expect(metrics.labelFits).toBe(true);
+    for (const label of metrics.labelMeasurements) {
+      expect(label.scrollWidth, `${label.text} text overflows horizontally at ${viewport.width}px`).toBeLessThanOrEqual(label.width + 2);
+      expect(label.scrollHeight, `${label.text} text is clipped vertically at ${viewport.width}px`).toBeLessThanOrEqual(label.height + 2);
+    }
     expect(metrics.horizontalOverflow).toBeLessThanOrEqual(1);
     for (const button of metrics.buttonRects) {
       expect(button.left).toBeGreaterThanOrEqual(metrics.frameLeft - 1);

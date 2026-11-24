@@ -159,6 +159,9 @@ export function AccountForm({
 /** Public Marketplace routes stay browsable without a local account. */
 function isPrivateRoute(pathname: string | null): boolean {
   if (pathname === null) return true;
+  // Private Character detail is under the Marketplace URL hierarchy for a
+  // consistent Discover UX, but still requires owner authentication.
+  if (pathname.startsWith("/marketplace/private/")) return true;
   return !(
     pathname === "/" ||
     pathname === "/marketplace" ||

@@ -157,6 +157,9 @@ test("public detail uses same aligned twin CTAs and public-only data", async ({ 
   await expect(page.getByText("Public navigator profile.")).toBeVisible();
   const buttons = page.locator(".em-detail-actions .em-detail-button");
   await expect(buttons).toHaveCount(2);
+  // The card click can leave the pointer over one CTA after navigation;
+  // compare both buttons in their neutral state rather than hover vs neutral.
+  await page.mouse.move(0, 0);
   const bounds = await buttons.evaluateAll((els) => els.map((el) => {
     const rect = el.getBoundingClientRect();
     return { y: rect.y, width: rect.width, height: rect.height,

@@ -117,11 +117,11 @@ test("private and public cards both open details; only Add to cast selects", asy
   expect(Math.abs(styles[0].rightGap - styles[1].rightGap)).toBeLessThan(2);
 
   await page.getByRole("link", { name: "Explore more characters" }).click();
-  await expect(page).toHaveURL(/\\/marketplace$/);
+  await expect(page).toHaveURL(/\/marketplace$/);
   await expect(page.getByRole("complementary", { name: "Selected story cast" })).toHaveCount(0);
   await page.getByRole("link", { name: "View private character Jun" }).click();
   await page.getByRole("button", { name: "Add to cast" }).click();
-  await expect(page).toHaveURL(/\\/marketplace$/);
+  await expect(page).toHaveURL(/\/marketplace$/);
   const tray = page.getByRole("complementary", { name: "Selected story cast" });
   await expect(tray).toContainText("Jun");
   await expect(page.getByRole("button", { name: "Remove Jun from your cast" })).toBeVisible();

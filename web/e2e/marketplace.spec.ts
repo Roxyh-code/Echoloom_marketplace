@@ -74,6 +74,103 @@ test("select two private characters and carry them into an existing story draft"
 });
 
 
+
+test("private and public cards both open details; only Add to cast selects", async ({ page, request }) => {
+  const backend = "http://127.0.0.1:8001";
+  const created = await request.post(backend + "/api/rehearsal/characters", {
+    data: { operation_id: crypto.randomUUID(), name: "Jun",
+      description: "A private poet from the seaside village." },
+  });
+  expect(created.status()).toBe(201);
+  const id = (await created.json()).character_id;
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/marketplace");
+  await expect(page.getByRole("link", { name: "View private character Jun" })).toBeVisible();
+  await expect(page.locator(".em-cover-source-mine").filter({ hasText: "PRIVATE" })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Select Jun for your cast" })).toBeVisible();
+
+  // Clicking the artwork/text never changes cast selection.
+  await page.getByRole("link", { name: "View private character Jun" }).click();
+  await expect(page).toHaveURL(new RegExp("/marketplace/private/" + id));
+  await expect(page.getByRole("heading", { name: "Jun" })).toBeVisible();
+  await expect(page.getByText(/YOUR PRIVATE CHARACTER/)).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Selected story cast" })).toHaveCount(0);
+
+  const actions = page.locator(".em-detail-actions .em-detail-button");
+  await expect(actions).toHaveCount(2);
+  // Same size, same purple fill, arrows at far right, matching screenshot request.
+  const styles = await actions.evaluateAll((elements) => elements.map((el) => {
+    const r = el.getBoundingClientRect();
+    const css = getComputedStyle(el);
+    const arrow = el.querySelector(".em-detail-button-arrow")!.getBoundingClientRect();
+    return {
+      left: r.left, top: r.top, width: r.width, height: r.height,
+      background: css.backgroundColor,
+      rightGap: r.right - arrow.right,
+    };
+  }));
+  expect(styles[0].background).toBe(styles[1].background);
+  expect(Math.abs(styles[0].width - styles[1].width)).toBeLessThan(1);
+  expect(Math.abs(styles[0].height - styles[1].height)).toBeLessThan(1);
+  expect(Math.abs(styles[0].top - styles[1].top)).toBeLessThan(1);
+  expect(styles[0].left).toBeLessThan(styles[1].left);
+  expect(Math.abs(styles[0].rightGap - styles[1].rightGap)).toBeLessThan(2);
+
+  await page.getByRole("link", { name: "Explore more characters" }).click();
+  await expect(page).toHaveURL(/\\/marketplace$/);
+  await expect(page.getByRole("complementary", { name: "Selected story cast" })).toHaveCount(0);
+  await page.getByRole("link", { name: "View private character Jun" }).click();
+  await page.getByRole("button", { name: "Add to cast" }).click();
+  await expect(page).toHaveURL(/\\/marketplace$/);
+  const tray = page.getByRole("complementary", { name: "Selected story cast" });
+  await expect(tray).toContainText("Jun");
+  await expect(page.getByRole("button", { name: "Remove Jun from your cast" })).toBeVisible();
+  // My characters filter uses the same private detail route and Add to cast CTA.
+  await page.getByRole("button", { name: "My characters" }).click();
+  await expect(page.getByRole("link", { name: "View private character Jun" })).toBeVisible();
+  await expect(page.locator(".em-card-select[aria-pressed=true]")).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+});
+
+test("public detail uses same aligned twin CTAs and public-only data", async ({ page, request }) => {
+  const backend = "http://127.0.0.1:8001";
+  const character = await request.post(backend + "/api/rehearsal/characters", {
+    data: { operation_id: crypto.randomUUID(), name: "Mira",
+      description: "A navigator of forgotten lands." },
+  });
+  const id = (await character.json()).character_id;
+  expect((await request.post(backend + "/api/account/register", {
+    data: { username: "listinglayout", password: "test-password-12345" },
+  })).status()).toBe(200);
+  const published = await request.post(backend + "/api/marketplace/listings", {
+    data: { character_id: id, name: "Mira", short_description: "Public navigator profile.",
+      tags: ["Adventure"], public_personality: ["Bold"],
+      rights_basis: "original", rights_confirmed: true },
+  });
+  expect(published.status()).toBe(200);
+  const listingId = (await published.json()).listing_id;
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/marketplace");
+  await page.getByRole("link", { name: "View published character Mira" }).click();
+  await expect(page).toHaveURL(new RegExp("/marketplace/" + listingId));
+  await expect(page.getByText(/PUBLIC CHARACTER/)).toBeVisible();
+  await expect(page.getByText("Public navigator profile.")).toBeVisible();
+  const buttons = page.locator(".em-detail-actions .em-detail-button");
+  await expect(buttons).toHaveCount(2);
+  const bounds = await buttons.evaluateAll((els) => els.map((el) => {
+    const rect = el.getBoundingClientRect();
+    return { y: rect.y, width: rect.width, height: rect.height,
+      color: getComputedStyle(el).backgroundColor,
+      arrow: el.querySelector(".em-detail-button-arrow")?.textContent };
+  }));
+  expect(Math.abs(bounds[0].y - bounds[1].y)).toBeLessThan(1);
+  expect(Math.abs(bounds[0].width - bounds[1].width)).toBeLessThan(1);
+  expect(Math.abs(bounds[0].height - bounds[1].height)).toBeLessThan(1);
+  expect(bounds[0].color).toEqual(bounds[1].color);
+  expect(bounds.map((value) => value.arrow)).toEqual(["→", "→"]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+});
+
 test("owned published character appears once, opens public detail and supports listing management", async ({ page }) => {
   const backend = "http://127.0.0.1:8001";
   const created = await page.request.post(backend + "/api/rehearsal/characters", {
@@ -108,6 +205,7 @@ test("owned published character appears once, opens public detail and supports l
   await page.goto("/marketplace");
   const publicCard = page.getByRole("link", { name: "View published character Hazel" });
   await expect(publicCard).toBeVisible();
+  await expect(page.locator(".em-cover-source-published").filter({ hasText: "PUBLIC" })).toHaveCount(1);
   await expect(page.locator(".em-book-card").filter({ hasText: "Hazel" })).toHaveCount(1);
   await expect(page.locator(".em-book-grid .em-book-card")).toHaveCount(4);
   await expect(page.getByRole("link", { name: "View character Ren" })).toHaveCount(0);
@@ -237,7 +335,7 @@ test("two published characters can be cast from Discover and detail, replaced, a
   await page.getByRole("button", { name: "Select Hazel for your cast" }).click();
   await page.getByRole("link", { name: "View published character Rowan" }).click();
   await expect(page).toHaveURL(new RegExp("/marketplace/" + listings.Rowan));
-  await page.getByRole("button", { name: "Add to story" }).click();
+  await page.getByRole("button", { name: "Add to cast" }).click();
   await expect(page).toHaveURL(/\/marketplace$/);
   const tray = page.getByRole("complementary", { name: "Selected story cast" });
   await expect(tray).toContainText("Hazel");

@@ -4,6 +4,7 @@ import "./globals.css";
 import "./bazar-tokens.css";
 import "./editorial-global.css";
 import "./gothic-app.css";
+import "./mobile-app-frame.css";
 import { AppChrome } from "@/components/app-chrome";
 export const metadata: Metadata = {
   title: "EchoLoom Marketplace · Interactive character stories",

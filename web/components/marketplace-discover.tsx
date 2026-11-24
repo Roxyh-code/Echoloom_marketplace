@@ -9,6 +9,7 @@ import { getPublishedListing, listOwnedListings, listPublishedListings, type Mar
 import { addCast, listingChoice, privateChoice, readCast, saveCast, type CastChoice } from "./marketplace-casting";
 import { placeholderCharacters } from "./marketplace-placeholders";
 import { MobileBottomNav } from "./mobile-bottom-nav";
+import { MobileAppFrame } from "./mobile-app-frame";
 
 type ShelfItem = {
   id: string;
@@ -260,7 +261,7 @@ export function MarketplaceDiscover() {
   }
 
   return (
-    <main className="em-app">
+    <MobileAppFrame className="em-app">
       <div className="em-page">
         <header className="em-header">
           <Link className="em-brand" href="/marketplace" aria-label="Echoloom Discover home"><img className="em-brand-icon" src="/echoloom-gothic-mark.svg" alt="" aria-hidden="true" /><span>Echoloom<span className="em-brand-dot">.</span></span></Link>
@@ -330,6 +331,6 @@ export function MarketplaceDiscover() {
       {error && <p className="em-error" role="alert">{error}</p>}
 
       <MobileBottomNav active="discover" />
-    </main>
+    </MobileAppFrame>
   );
 }

@@ -1,19 +1,16 @@
 <div align="center">
   <img src="docs/assets/readme-hero.svg" alt="Echoloom: discover characters, publish your own, and direct shared stories" width="100%" />
-
-  # Echoloom
-
-  **Your favorite characters. Stories only you can direct.**
-
-  A character marketplace and AI-powered story studio where you can create a character, share them with others, and bring two characters into a story of your own.
-
-  [**Watch the product demo**](demo/Echoloom_Character_Marketplace_Demo.mp4) · [**Get started**](#quick-start) · [**Explore the architecture**](#architecture)
-
-  [![CI](https://github.com/Roxyh-code/Echoloom_marketplace/actions/workflows/ci.yml/badge.svg)](https://github.com/Roxyh-code/Echoloom_marketplace/actions/workflows/ci.yml)
-  ![Next.js 16](https://img.shields.io/badge/Next.js-16-15131F?logo=nextdotjs)
-  ![FastAPI](https://img.shields.io/badge/FastAPI-Python%203.12%2B-15131F?logo=fastapi)
-  ![LangGraph](https://img.shields.io/badge/AI-LangGraph-6E52C8)
-  ![Status](https://img.shields.io/badge/status-hackathon%20prototype-9B73DB)
+  <h1>Echoloom</h1>
+  <p><strong>Your favorite characters. Stories only you can direct.</strong></p>
+  <p>A character marketplace and AI-powered story studio where you can create a character, share them with others, and bring two characters into a story of your own.</p>
+  <p><a href="demo/Echoloom_Character_Marketplace_Demo.mp4"><strong>Watch the product demo</strong></a> · <a href="#quick-start"><strong>Get started</strong></a> · <a href="#architecture"><strong>Explore the architecture</strong></a></p>
+  <p>
+    <a href="https://github.com/Roxyh-code/Echoloom_marketplace/actions/workflows/ci.yml"><img src="https://github.com/Roxyh-code/Echoloom_marketplace/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+    <img src="https://img.shields.io/badge/Next.js-16-15131F?logo=nextdotjs" alt="Next.js 16" />
+    <img src="https://img.shields.io/badge/FastAPI-Python%203.12%2B-15131F?logo=fastapi" alt="FastAPI / Python 3.12+" />
+    <img src="https://img.shields.io/badge/AI-LangGraph-6E52C8" alt="LangGraph" />
+    <img src="https://img.shields.io/badge/status-hackathon%20prototype-9B73DB" alt="Hackathon prototype" />
+  </p>
 </div>
 
 > **Project status:** Working local prototype, not a production or paid marketplace. Public character listings and AI story rehearsal are implemented; wallet authentication, Solana checkout and creator payouts are not. The banner above is an illustration of the flow, not an app screenshot.
@@ -68,7 +65,7 @@ flowchart LR
   </tr>
 </table>
 
-<sub>These are existing **development-only placeholder illustrations**, not evidence of public listing ownership or commercially cleared art. Some preview cards cannot be cast. Original licenses have not been verified; see [sample-art provenance and restrictions](docs/SAMPLE_ART_ASSETS.md).</sub>
+<p><small>These are existing <strong>development-only placeholder illustrations</strong>, not evidence of public listing ownership or commercially cleared art. Some preview cards cannot be cast. Original licenses have not been verified; see <a href="docs/SAMPLE_ART_ASSETS.md">sample-art provenance and restrictions</a>.</small></p>
 
 ## What you can build today
 

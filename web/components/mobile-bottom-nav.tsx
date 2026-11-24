@@ -41,7 +41,7 @@ export function MobileBottomNav({
   onStories?: () => void;
 }) {
   return (
-    <nav className={variant === "studio" ? "rh-nav" : "em-bottom-nav"}
+    <nav className={variant === "studio" ? "rh-nav el-mobile-nav" : "em-bottom-nav el-mobile-nav"}
       aria-label="Primary navigation">
       {sections.map((item) => {
         const selected = item.id === active;

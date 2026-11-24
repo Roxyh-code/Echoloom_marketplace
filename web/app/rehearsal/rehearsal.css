@@ -19,16 +19,6 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  width: 100%;
-  max-width: 430px;
-  height: var(--rh-vh, 100dvh);
-  margin: auto;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  isolation: isolate;
-  box-shadow: 0 0 90px #47382d1d;
 }
 .rehearsal-app *,
 .rh-sheet * {
@@ -613,29 +603,13 @@
   font-size: 12px;
   color: #7a7a7a;
 }
-.rh-nav {
-  display: flex;
-  flex: none;
-  justify-content: space-around;
-  background: #ffffff;
-  border-top: 1px solid #e8e8e8;
-  padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
-}
+.rh-nav { background: #ffffff; border-top-color: #e8e8e8; }
 .rh-nav > * {
-  flex: 1;
-  min-width: 0;
   text-decoration: none;
   background: none;
   border: 0;
   color: #7a7a7a !important;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
   font-size: 11px;
-  min-height: 49px;
-  min-width: 70px;
 }
 .rh-nav .active {
   color: #54408c !important;
@@ -1760,12 +1734,6 @@
   display: block;
 }
 @media (min-width: 650px) {
-  .rehearsal-app {
-    margin: 20px auto;
-    height: calc(100dvh - 40px);
-    border: 1px solid #d6d6d6;
-    border-radius: 26px;
-  }
   .rh-sheet {
     margin: auto;
     border-bottom: 1px solid #d6d6d6;

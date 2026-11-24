@@ -5,16 +5,19 @@
   --em-border: #e8e8e8;
   --em-plum: #54408c;
   --em-terracotta: #54408c;
+  background: var(--em-paper);
+  color: var(--em-ink);
+  font: 14px/1.45 Inter, "Segoe UI", Arial, sans-serif;
+}
+/* Standalone character-detail screens use the legacy frame until migrated. */
+.em-app:not(.el-mobile-frame) {
   width: min(100%, 520px);
   min-height: 100dvh;
   margin: 0 auto;
-  background: var(--em-paper);
-  color: var(--em-ink);
-  box-shadow: 0 0 65px #261f2020;
   position: relative;
   display: flex;
   flex-direction: column;
-  font: 14px/1.45 Inter, "Segoe UI", Arial, sans-serif;
+  box-shadow: 0 0 65px #261f2020;
 }
 .em-app *, .em-app *::before, .em-app *::after { box-sizing: border-box; }
 .em-app button, .em-app input { font: inherit; }
@@ -86,7 +89,7 @@
 .em-bottom-nav a { flex: 1; min-width: 0; color: #938884; text-align: center; font-size: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .em-bottom-nav a[aria-current="page"] { color: #674b56; font-weight: 700; }
 @media (min-width: 650px) {
- .em-app { margin: 24px auto; min-height: calc(100dvh - 48px); border: 1px solid #e6ded4; }
+ .em-app:not(.el-mobile-frame) { margin: 24px auto; min-height: calc(100dvh - 48px); border: 1px solid #e6ded4; }
  .em-page { padding-left: 30px; padding-right: 30px; }
  .em-hero { padding: 32px; }
 }
@@ -229,7 +232,7 @@
 .em-bottom-nav { background: #FFFFFFF5; border-top-color: #E8E8E8; }
 .em-bottom-nav a { color: #7A7A7A; }
 .em-bottom-nav a[aria-current="page"] { color: #54408C; }
-@media (min-width: 650px) { .em-app { border: 1px solid #E8E8E8; box-shadow: 0 8px 40px #1212120B; } }
+@media (min-width: 650px) { .em-app:not(.el-mobile-frame) { border-color: #E8E8E8; box-shadow: 0 8px 40px #1212120B; } }
 @media (max-width: 360px) { .em-hero h1 { font-size: 27px; } .em-cover-title { font-size: 15px; } }
 
 /* Apply the same portrait crop to every character, including placeholders. */

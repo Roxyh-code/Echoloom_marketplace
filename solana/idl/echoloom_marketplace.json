@@ -1,0 +1,1000 @@
+{
+  "address": "2GKAJH8MWn8qZXB966AGDmbmZztKy5wjRVzLpPuQLjeu",
+  "metadata": {
+    "name": "echoloom_marketplace",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "initialize_marketplace",
+      "discriminator": [
+        47,
+        81,
+        64,
+        0,
+        96,
+        56,
+        105,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "bootstrap_authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  112,
+                  108,
+                  97,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeMarketplaceArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pause_marketplace",
+      "discriminator": [
+        110,
+        211,
+        176,
+        142,
+        101,
+        22,
+        196,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "pause_authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  112,
+                  108,
+                  97,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "address": "SysvarC1ock11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "purchase",
+      "discriminator": [
+        21,
+        93,
+        113,
+        154,
+        193,
+        160,
+        242,
+        168
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  112,
+                  108,
+                  97,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "receipt",
+          "writable": true
+        },
+        {
+          "name": "payment_mint"
+        },
+        {
+          "name": "buyer_source",
+          "writable": true
+        },
+        {
+          "name": "recipient_0",
+          "writable": true
+        },
+        {
+          "name": "recipient_1",
+          "writable": true
+        },
+        {
+          "name": "recipient_2",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar"
+        },
+        {
+          "name": "clock",
+          "address": "SysvarC1ock11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "resume_marketplace",
+      "discriminator": [
+        125,
+        180,
+        141,
+        155,
+        96,
+        18,
+        93,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "config_authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  112,
+                  108,
+                  97,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "address": "SysvarC1ock11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "rotate_authorized_signer",
+      "discriminator": [
+        210,
+        214,
+        216,
+        251,
+        156,
+        63,
+        235,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "config_authority",
+          "signer": true
+        },
+        {
+          "name": "new_signer",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  112,
+                  108,
+                  97,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_signer",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "rotate_config_authority",
+      "discriminator": [
+        65,
+        221,
+        89,
+        80,
+        237,
+        143,
+        229,
+        168
+      ],
+      "accounts": [
+        {
+          "name": "current_authority",
+          "signer": true
+        },
+        {
+          "name": "new_authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  112,
+                  108,
+                  97,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "rotate_pause_authority",
+      "discriminator": [
+        30,
+        65,
+        235,
+        29,
+        171,
+        205,
+        28,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "config_authority",
+          "signer": true
+        },
+        {
+          "name": "new_authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  112,
+                  108,
+                  97,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "update_marketplace_config",
+      "discriminator": [
+        255,
+        146,
+        152,
+        33,
+        80,
+        216,
+        160,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "config_authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116,
+                  112,
+                  108,
+                  97,
+                  99,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_treasury",
+          "type": "pubkey"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "MarketplaceConfig",
+      "discriminator": [
+        169,
+        22,
+        247,
+        131,
+        182,
+        200,
+        81,
+        124
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "MarketplaceConfigUpdated",
+      "discriminator": [
+        126,
+        55,
+        250,
+        58,
+        219,
+        209,
+        181,
+        12
+      ]
+    },
+    {
+      "name": "MarketplaceInitialized",
+      "discriminator": [
+        22,
+        167,
+        42,
+        34,
+        172,
+        55,
+        155,
+        14
+      ]
+    },
+    {
+      "name": "MarketplacePaused",
+      "discriminator": [
+        54,
+        58,
+        186,
+        229,
+        189,
+        17,
+        85,
+        21
+      ]
+    },
+    {
+      "name": "MarketplaceResumed",
+      "discriminator": [
+        190,
+        174,
+        136,
+        191,
+        38,
+        13,
+        3,
+        33
+      ]
+    },
+    {
+      "name": "PurchaseExecuted",
+      "discriminator": [
+        119,
+        106,
+        168,
+        136,
+        190,
+        113,
+        126,
+        104
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized authority."
+    },
+    {
+      "code": 6001,
+      "name": "AlreadyInitialized",
+      "msg": "Marketplace has already been initialized."
+    },
+    {
+      "code": 6002,
+      "name": "InvalidConfiguration",
+      "msg": "Invalid configuration."
+    },
+    {
+      "code": 6003,
+      "name": "InvalidBootstrapAuthority",
+      "msg": "The configured bootstrap authority did not sign."
+    },
+    {
+      "code": 6004,
+      "name": "InvalidMint",
+      "msg": "Invalid or uninitialized payment mint."
+    },
+    {
+      "code": 6005,
+      "name": "InvalidTokenProgram",
+      "msg": "Only the classic SPL Token Program is supported."
+    },
+    {
+      "code": 6006,
+      "name": "InvalidBuyer",
+      "msg": "Invalid buyer."
+    },
+    {
+      "code": 6007,
+      "name": "InvalidBuyerTokenAccount",
+      "msg": "Invalid buyer token account."
+    },
+    {
+      "code": 6008,
+      "name": "InvalidRecipient",
+      "msg": "Invalid payout recipient."
+    },
+    {
+      "code": 6009,
+      "name": "InvalidRecipientAccount",
+      "msg": "Invalid recipient token account."
+    },
+    {
+      "code": 6010,
+      "name": "InvalidRecipientCount",
+      "msg": "Recipient count must be between one and three."
+    },
+    {
+      "code": 6011,
+      "name": "DuplicateRecipient",
+      "msg": "Duplicate payout recipient."
+    },
+    {
+      "code": 6012,
+      "name": "UnsortedRecipients",
+      "msg": "Payout recipients must be sorted by raw public key bytes."
+    },
+    {
+      "code": 6013,
+      "name": "BuyerCannotReceivePayout",
+      "msg": "The buyer cannot receive a payout."
+    },
+    {
+      "code": 6014,
+      "name": "InvalidPayoutAmounts",
+      "msg": "Invalid payout amounts."
+    },
+    {
+      "code": 6015,
+      "name": "InvalidTotalAmount",
+      "msg": "Payout total does not equal the authorized gross amount."
+    },
+    {
+      "code": 6016,
+      "name": "ArithmeticOverflow",
+      "msg": "Checked arithmetic overflow."
+    },
+    {
+      "code": 6017,
+      "name": "InvalidAuthorization",
+      "msg": "Invalid purchase authorization."
+    },
+    {
+      "code": 6018,
+      "name": "InvalidAuthorizationSigner",
+      "msg": "Authorization signer does not match configuration."
+    },
+    {
+      "code": 6019,
+      "name": "InvalidAuthorizationInstruction",
+      "msg": "Required Ed25519 instruction is missing or invalid."
+    },
+    {
+      "code": 6020,
+      "name": "InvalidAuthorizationOffsets",
+      "msg": "Ed25519 instruction contains invalid offsets."
+    },
+    {
+      "code": 6021,
+      "name": "InvalidInstructionStackHeight",
+      "msg": "Purchase must be invoked at transaction level."
+    },
+    {
+      "code": 6022,
+      "name": "ExpiredAuthorization",
+      "msg": "Authorization has expired."
+    },
+    {
+      "code": 6023,
+      "name": "AuthorizationLifetimeExceeded",
+      "msg": "Authorization lifetime exceeds the configured maximum."
+    },
+    {
+      "code": 6024,
+      "name": "InvalidOrderReference",
+      "msg": "Invalid order reference hash."
+    },
+    {
+      "code": 6025,
+      "name": "PurchaseAlreadyProcessed",
+      "msg": "This order has already been processed."
+    },
+    {
+      "code": 6026,
+      "name": "InvalidPda",
+      "msg": "Invalid program-derived address."
+    },
+    {
+      "code": 6027,
+      "name": "InvalidAccountVersion",
+      "msg": "Unsupported account version."
+    },
+    {
+      "code": 6028,
+      "name": "MarketplacePaused",
+      "msg": "Marketplace is paused."
+    },
+    {
+      "code": 6029,
+      "name": "InvalidAuthorityRotation",
+      "msg": "Invalid authority rotation."
+    },
+    {
+      "code": 6030,
+      "name": "TokenTransferFailed",
+      "msg": "SPL Token transfer failed."
+    },
+    {
+      "code": 6031,
+      "name": "UnsupportedTokenProgram",
+      "msg": "Unsupported token program."
+    },
+    {
+      "code": 6032,
+      "name": "PrefundedAccountInitializationFailed",
+      "msg": "PDA initialization failed."
+    }
+  ],
+  "types": [
+    {
+      "name": "InitializeMarketplaceArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "platform_treasury_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "authorization_signer",
+            "type": "pubkey"
+          },
+          {
+            "name": "pause_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "deployment_domain_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketplaceConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "config_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pause_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "authorization_signer",
+            "type": "pubkey"
+          },
+          {
+            "name": "payment_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "platform_treasury_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "deployment_domain_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "config_version",
+            "type": "u32"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketplaceConfigUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "field",
+            "type": "u8"
+          },
+          {
+            "name": "old_value",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_value",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "config_version",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketplaceInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "initializer",
+            "type": "pubkey"
+          },
+          {
+            "name": "config_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "authorization_signer",
+            "type": "pubkey"
+          },
+          {
+            "name": "config_version",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketplacePaused",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "config_version",
+            "type": "u32"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketplaceResumed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "config_version",
+            "type": "u32"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PurchaseExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "receipt",
+            "type": "pubkey"
+          },
+          {
+            "name": "order_reference_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "gross_amount",
+            "type": "u64"
+          },
+          {
+            "name": "recipient_count",
+            "type": "u8"
+          },
+          {
+            "name": "config_version",
+            "type": "u32"
+          }
+        ]
+      }
+    }
+  ]
+}

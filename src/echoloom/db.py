@@ -300,3 +300,4 @@ class RehearsalOperation(Base):
 # Register Marketplace and Scene Access tables with the shared SQLAlchemy metadata.
 from . import marketplace_models  # noqa: F401
 from . import scene_access_models  # noqa: F401
+from .payments import models as payment_models  # noqa: F401

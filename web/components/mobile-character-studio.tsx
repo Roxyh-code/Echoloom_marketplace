@@ -513,14 +513,15 @@ export function MobileCharacterStudio({
             ＋ Create character <span>→</span>
           </button>
           {!picking && !archived && (
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "4px 12px", margin: "8px 0 14px" }}>
-              <button type="button" className="rh-text-button" style={{ minHeight: 44 }}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, margin: "12px 0 18px" }}>
+              <button type="button" className="rh-secondary" style={{ minHeight: 64, width: "100%", padding: "10px 8px", whiteSpace: "normal", textAlign: "center" }}
+                aria-label={ownedListings.length ? "Publish or manage listings" : "Publish a character"}
                 onClick={() => window.location.assign("/characters/publish")}>
-                {ownedListings.length ? "Publish or manage listings →" : "Publish a character →"}
+                {ownedListings.length ? "My listings" : "Publish character"} →
               </button>
-              <button type="button" className="rh-text-button" aria-label="Creator earnings" style={{ minHeight: 44 }}
+              <button type="button" className="rh-secondary" aria-label="Creator earnings" style={{ minHeight: 64, width: "100%", padding: "10px 8px", whiteSpace: "normal", textAlign: "center" }}
                 onClick={() => window.location.assign("/characters/earnings")}>
-                Earnings →
+                Creator earnings →
               </button>
             </div>
           )}

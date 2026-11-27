@@ -1,5 +1,6 @@
 """Owner-scoped reporting from verified payments and immutable attribution."""
-from sqlalchemy import select
+from sqlalchemy import select, and_
+from ..marketplace_models import CharacterListing, ListingRevision, MarketplaceCreator
 
 from .models import CreatorEarningSnapshot, Payment, PaymentOrder
 
@@ -22,6 +23,23 @@ def creator_earnings(db, owner):
             verified_at=payment.verified_at, mint=mint, amount_minor_units=0, characters=[]))
         tx["amount_minor_units"] += line.amount_minor_units
         tx["characters"].append(dict(name=line.character_name, amount_minor_units=line.amount_minor_units))
-    return dict(totals=[dict(mint=mint, amount_minor_units=amount) for mint, amount in totals.items()],
+    creator = db.scalar(select(MarketplaceCreator).where(MarketplaceCreator.account_id == owner))
+    listings = []
+    if creator:
+        for listing, revision in db.execute(select(CharacterListing, ListingRevision)
+            .join(ListingRevision, and_(ListingRevision.listing_id == CharacterListing.id,
+                ListingRevision.revision == CharacterListing.latest_revision))
+            .where(CharacterListing.creator_id == creator.id)
+            .order_by(CharacterListing.updated_at.desc())).all():
+            enabled = bool(listing.status == "published" and listing.monetization_enabled
+                and creator.is_approved and creator.wallet_verified_at and creator.wallet_address
+                and revision.payout_wallet_address == creator.wallet_address)
+            listings.append(dict(character_id=listing.character_id, listing_id=listing.id,
+                name=revision.public_data.get("name", "Character"),
+                status="unpublished" if listing.status != "published" else
+                    ("enabled" if enabled else "setup_required")))
+    return dict(listings=listings,
+        payout_wallet=creator.wallet_address if creator and creator.wallet_verified_at else None,
+        totals=[dict(mint=mint, amount_minor_units=amount) for mint, amount in totals.items()],
         paid_unlocks=len(transactions), characters=list(characters.values()),
         recent_transactions=list(transactions.values())[:50])

@@ -28,3 +28,20 @@ def test_earnings_verified_owner_scoped_and_grouped(setup):
     assert len(data["recent_transactions"]) == 1
     assert data["recent_transactions"][0]["amount_minor_units"] == 900000
     assert data["recent_transactions"][0]["signature"] == "sig"
+
+
+def test_zero_income_published_listings_visible(setup):
+    from test_marketplace import seed_character, publish
+    client, _, _, settings, _ = setup
+    settings.allow_additional_accounts = True
+    owner = register_account(setup)
+    character = seed_character(setup, owner)
+    listing = publish(client, character)
+    data = client.get("/api/payments/creator/earnings").json()
+    assert data["totals"] == [] and data["paid_unlocks"] == 0
+    assert data["listings"] == [{"character_id": character, "listing_id": listing["listing_id"],
+        "name": "Mira", "status": "setup_required"}]
+    assert data["payout_wallet"] is None
+    client.post("/api/account/logout")
+    register_account(setup, "other_creator")
+    assert client.get("/api/payments/creator/earnings").json()["listings"] == []

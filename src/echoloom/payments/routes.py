@@ -38,3 +38,19 @@ def register_payments(app, factory, settings):
     def wallet_verify(body: WalletVerifyRequest, request: Request):
         with factory() as db:
             return verify_challenge(db, settings, getattr(request.state, "user_id", None), body)
+
+
+    @app.get("/api/payments/readiness/{scene_id}")
+    def readiness(scene_id: str, request: Request):
+        from fastapi import HTTPException
+        from ..db import RehearsalScene
+        from .readiness import checkout_readiness
+
+        owner = getattr(request.state, "user_id", None)
+        require_owner(owner)
+        with factory() as db:
+            scene = db.get(RehearsalScene, scene_id)
+            if not scene or scene.owner_id != owner:
+                raise HTTPException(404, "Scene not found")
+            ready, reason = checkout_readiness(db, settings, scene)
+            return {"available": ready, "reason": reason}

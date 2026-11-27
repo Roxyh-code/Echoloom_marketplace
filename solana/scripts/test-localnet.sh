@@ -8,6 +8,17 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SOLANA_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 cd "${SOLANA_DIR}"
 
+# Refuse an occupied port before starting or resetting any local ledger.
+python_bin="${ECHOLOOM_PYTHON:-python3}"
+"${python_bin}" - <<'PY'
+import socket
+with socket.socket() as sock:
+    try:
+        sock.bind(("127.0.0.1", 8899))
+    except OSError as exc:
+        raise SystemExit(f"RPC port 8899 is occupied; stop the existing service: {exc}")
+PY
+
 mkdir -p .local
 chmod 700 .local
 for name in bootstrap-authority test-payer test-buyer cpi-wrapper-keypair; do
@@ -64,6 +75,11 @@ trap cleanup EXIT
 
 ready=0
 for _ in $(seq 1 60); do
+  if ! kill -0 "${validator_pid}" 2>/dev/null; then
+    cat .local/validator.log >&2
+    echo "Our validator exited before readiness." >&2
+    exit 1
+  fi
   if solana cluster-version --url "${ANCHOR_PROVIDER_URL}" >/dev/null 2>&1; then
     ready=1
     break
@@ -73,6 +89,11 @@ done
 if [[ "${ready}" != 1 ]]; then
   cat .local/validator.log >&2
   echo "Local validator did not become ready." >&2
+  exit 1
+fi
+
+if ! kill -0 "${validator_pid}" 2>/dev/null; then
+  echo "Our validator is no longer running." >&2
   exit 1
 fi
 

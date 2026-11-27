@@ -459,6 +459,10 @@ describe("Echoloom Marketplace local validator", () => {
       expect((await getAccount(provider.connection, destinations[i])).amount).eq(BigInt(amount));
     }
     expect(bridge("verify", {order, signature}).verified).eq(true);
+    const ledger = bridge("verify-ledger", {order, signature, creators: owners.map(k => k.toBase58())});
+    expect(ledger).deep.eq({verified:true, before:40, after:80, payments:1, entitlements:1, creator_amounts:[450000,450000]});
+    await fails(sendBuyerTx(provider.connection, new Transaction().add(ed, purchase), buyer), /PurchaseAlreadyProcessed|already been processed/);
+    expect((await getAccount(provider.connection, source)).amount).eq(before - BigInt(1000000));
     expect(() => bridge("verify", {order: {...order, amount_minor_units: 999999}, signature})).to.throw();
   });
 

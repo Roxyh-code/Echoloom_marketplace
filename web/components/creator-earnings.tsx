@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { MobileAppFrame } from "./mobile-app-frame";
+import styles from "./creator-earnings.module.css";
 
 type Amount = { mint: string; amount_minor_units: number };
 type Earnings = {
@@ -35,44 +36,59 @@ export function CreatorEarnings() {
     return () => controller.abort();
   }, [reload]);
 
+  const multiMint = (data?.totals.length ?? 0) > 1;
+  const [expanded, setExpanded] = useState(false);
   return <MobileAppFrame className="rehearsal-app rh-earnings">
     <header className="rh-top">
       <Link className="rh-icon" href="/characters" aria-label="Back to characters">‹</Link>
-      <div><span className="rh-top-title">Creator earnings</span><small>THE CHARACTER LIBRARY</small></div>
+      <div><span className="rh-top-title">Creator earnings</span></div>
       <button className="rh-icon" aria-label="Refresh earnings" onClick={() => {
         setError(""); setData(null); setReload(n => n + 1);
       }}>↻</button>
     </header>
-    <div className="rh-scroll rh-pad mc-library">
-      <span className="rh-eyebrow">CREATOR STUDIO · DEVNET</span>
-      <h1>Your earnings.</h1>
-      <p className="rh-muted">Verified story unlocks only. Test tokens have no cash value.</p>
-      {error && <p role="alert">{error}</p>}
-      {!data && !error && <p role="status">Loading earnings…</p>}
+    <div className={"rh-scroll " + styles.content}>
+      {error && <p role="alert" className={styles.muted}>{error}</p>}
+      {!data && !error && <p role="status" className={styles.muted}>Loading earnings…</p>}
       {data && <>
-        <section className="rh-unlock-plan">
-          <small>Lifetime attributed earnings</small>
-          {!data.totals.length && <strong>0 test tokens</strong>}
-          {data.totals.map(t => <div key={t.mint}><strong>{amount(t.amount_minor_units)} test tokens</strong>
-            <small title={t.mint}>Mint: {short(t.mint)}</small></div>)}
-          <small>{data.paid_unlocks} verified paid story unlocks</small>
+        <section className={styles.summary} aria-label="Lifetime earnings">
+          <div className={styles.summaryLabel}>Lifetime earnings <span>Devnet</span></div>
+          {!data.totals.length && <div className={styles.total}>0 <small>tokens</small></div>}
+          {data.totals.map(t => <div key={t.mint}>
+            <div className={styles.total}>{amount(t.amount_minor_units)} <small>tokens</small></div>
+            <p className={styles.mint} title={t.mint}>Mint: {short(t.mint)}</p>
+          </div>)}
+          <p className={styles.muted}>{data.paid_unlocks} paid story unlock{data.paid_unlocks === 1 ? "" : "s"}</p>
         </section>
-        <h2>Earnings by character</h2>
-        {!data.characters.length && <p className="rh-muted">No verified earnings yet.</p>}
-        {data.characters.map(c => <div className="rh-unlock-plan" key={c.mint + c.character_id}>
-          <strong>{c.name}</strong><small>{amount(c.amount_minor_units)} test tokens · {short(c.mint)}</small>
-        </div>)}
-        <h2>Recent transactions</h2>
-        {!data.recent_transactions.length && <p className="rh-muted">Your verified purchases will appear here.</p>}
-        {data.recent_transactions.map(t => <div className="rh-unlock-plan" key={t.signature}>
-          <strong>+{amount(t.amount_minor_units)} test tokens</strong>
-          <small>{t.characters.map(c => c.name).join(" · ")}</small>
-          <small>{t.verified_at} · Mint: {short(t.mint)}</small>
-          <a href={"https://explorer.solana.com/tx/" + encodeURIComponent(t.signature) + "?cluster=devnet"}
-             target="_blank" rel="noreferrer">View transaction ↗</a>
-        </div>)}
+        {data.characters.length === 0 && data.recent_transactions.length === 0 ? (
+          <section className={styles.empty}>
+            <h2>No earnings yet</h2>
+            <p className={styles.muted}>Verified story payments will appear here.</p>
+          </section>
+        ) : <>
+          <section className={styles.section}>
+            <h2>By character</h2>
+            {data.characters.map(c => <div className={styles.row} key={c.mint + c.character_id}>
+              <div className={styles.detail}><strong>{c.name}</strong>
+                {multiMint && <small title={c.mint}>{short(c.mint)}</small>}</div>
+              <span className={styles.value}>{amount(c.amount_minor_units)}</span>
+            </div>)}
+          </section>
+          <section className={styles.section}>
+            <h2>Transactions</h2>
+            {data.recent_transactions.slice(0, expanded ? 50 : 3).map(t => <a
+              className={styles.row + " " + styles.transaction}
+              key={t.signature} href={"https://explorer.solana.com/tx/" + encodeURIComponent(t.signature) + "?cluster=devnet"}
+              target="_blank" rel="noreferrer" aria-label={"View transaction " + t.signature}>
+              <div className={styles.detail}><strong>{t.characters.map(c => c.name).join(" · ")}</strong>
+                <small>{new Date(t.verified_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}{multiMint ? " · " + short(t.mint) : ""}</small></div>
+              <span className={styles.value}>+{amount(t.amount_minor_units)} <span aria-hidden="true">↗</span></span>
+            </a>)}
+            {data.recent_transactions.length > 3 && <button className={styles.more} type="button"
+              onClick={() => setExpanded(v => !v)}>{expanded ? "Show less" : "View all recent transactions"}</button>}
+          </section>
+        </>}
+        <p className={styles.note}>Verified, attributed earnings only. Test tokens have no cash value; this is not a wallet balance.</p>
       </>}
-      <p className="rh-muted">Only payments with recorded creator attribution are included. This is not a wallet balance.</p>
     </div>
   </MobileAppFrame>;
 }

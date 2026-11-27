@@ -67,3 +67,5 @@ class Settings(BaseSettings):
     solana_platform_wallet: str = ""
     solana_deployment_domain_hash: str = ""
     solana_backend_signer_path: str = ""
+    # Finalized is safest; confirmed is an explicit Devnet demo override.
+    solana_payment_commitment: Literal["confirmed", "finalized"] = "finalized"

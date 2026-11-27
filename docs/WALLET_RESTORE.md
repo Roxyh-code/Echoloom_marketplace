@@ -1,0 +1,3 @@
+# Wallet restoration
+
+Backend binding remains authoritative. On checkout mount query GET /api/payments/wallet and match a live Devnet Wallet Standard account; silent connect only when needed. Manual reconnect skips signing only for the same verified wallet. Account/chain changes invalidate connection and quote; check again before quote and purchase. Never save keys or automatically sign transactions. Wallet extension permissions may require manual reconnect after refresh. Test with Phantom: connect and sign once, close/reopen checkout, reload, switch account, lock wallet, log out and switch Echoloom accounts. CI pending.

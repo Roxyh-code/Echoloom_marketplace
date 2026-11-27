@@ -25,17 +25,28 @@ function feature<T>(wallet: StandardWallet, name: string): T | null {
 
 export function useSolanaWalletProvider() {
   const [wallets, setWallets] = useState<readonly StandardWallet[]>([]);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     const registry = getWallets();
-    const update = () =>
-      setWallets(registry.get() as readonly StandardWallet[]);
+    let unsubscribe: (() => void)[] = [];
+    const update = () => {
+      unsubscribe.forEach(off => off());
+      const list = registry.get() as readonly StandardWallet[];
+      unsubscribe = list.flatMap(wallet => {
+        const events = feature<{on: (event: "change", listener: () => void) => () => void}>(wallet, "standard:events");
+        return events ? [events.on("change", () => setRevision(n => n + 1))] : [];
+      });
+      setWallets([...list]);
+      setRevision(n => n + 1);
+    };
     update();
     const offRegister = registry.on("register", update);
     const offUnregister = registry.on("unregister", update);
     return () => {
       offRegister();
       offUnregister();
+      unsubscribe.forEach(off => off());
     };
   }, []);
 
@@ -60,6 +71,17 @@ export function useSolanaWalletProvider() {
     },
     [],
   );
+
+  // Silent connection only: Wallet Standard implementations may return no
+  // accounts when permission was revoked. Never request a signature here.
+  const restore = useCallback(async (wallet: StandardWallet): Promise<WalletAccount | null> => {
+    if (!wallet.chains.includes(SOLANA_PAYMENT_CHAIN)) return null;
+    const existing = wallet.accounts[0];
+    if (existing) return existing.chains.includes(SOLANA_PAYMENT_CHAIN) ? existing : null;
+    const connectFeature = feature<{connect: (input: {silent: true}) => Promise<ConnectOutput>}>(wallet, "standard:connect");
+    const account = (await connectFeature?.connect({silent: true}))?.accounts[0];
+    return account?.chains.includes(SOLANA_PAYMENT_CHAIN) ? account : null;
+  }, []);
 
   const signMessage = useCallback(
     async (
@@ -116,5 +138,5 @@ export function useSolanaWalletProvider() {
     [],
   );
 
-  return { wallets, connect, signMessage, signAndSendTransaction };
+  return { wallets, revision, connect, restore, signMessage, signAndSendTransaction };
 }

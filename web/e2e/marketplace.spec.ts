@@ -532,8 +532,8 @@ test("Next line stops at 40 for private characters and opens wallet-unlock expla
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: "Your story is just beginning." })).toBeVisible();
   await expect(sheet).toContainText(/wallet/i);
-  await expect(sheet).toContainText("Wallet checkout is not ready in this build. No payment will be requested.");
-  await expect(sheet.getByRole("button", { name: "Connect wallet" })).toBeDisabled();
+  await expect(sheet).toContainText("Payments are not enabled");
+  await expect(sheet.getByRole("button", {name:"Connect wallet"})).toBeDisabled();
   await sheet.getByRole("button", { name: "Return to story" }).click();
 
   const backendScene = await (await page.request.get(backend + "/api/rehearsal/scenes/" + sid)).json();

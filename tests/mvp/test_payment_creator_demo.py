@@ -17,7 +17,8 @@ def wallet():
 
 
 def test_demo_activation_requires_verified_wallets_and_preserves_revisions(setup):
-    client, _, _, _, engine = setup
+    client, _, _, settings, engine = setup
+    settings.allow_additional_accounts = True  # Isolated test app only.
     owners, ids, wallets = [], [], [wallet(), wallet()]
     for name in ("demo_alice", "demo_bob"):
         client.post("/api/account/logout")

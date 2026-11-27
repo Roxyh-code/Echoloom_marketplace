@@ -50,7 +50,10 @@ def test_signed_quote_persisted(setup, tmp_path, monkeypatch):
                         solana_program_id=wallet(5), solana_mint=wallet(6),
                         solana_platform_wallet=wallet(3))
     sid = str(uuid4())
-    monkeypatch.setattr(quote, "creator_wallet", lambda db, actor, owner: actor["wallet"])
+    monkeypatch.setattr(quote, "creator_details", lambda db, actor, owner: dict(
+        wallet=actor["wallet"], creator_account_id="fixture-creator",
+        character_id="fixture-character", listing_id=None, listing_revision=None,
+        character_name="Fixture"))
     monkeypatch.setattr(quote, "load_config", lambda s, k: (wallet(7), sha256(b"test").digest(), 1))
     with sessions(engine)() as db:
         # Real account FK for the test scene.

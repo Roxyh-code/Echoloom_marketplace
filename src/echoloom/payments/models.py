@@ -80,3 +80,18 @@ class WalletChallenge(Base):
     message: Mapped[str] = mapped_column(Text)
     expires_at_unix: Mapped[int] = mapped_column(BigInteger)
     consumed_at: Mapped[str | None] = mapped_column(String(40), default=None)
+
+
+class CreatorEarningSnapshot(Base):
+    """Immutable quote-time attribution, separate from aggregated chain payouts."""
+    __tablename__ = "payment_creator_earning_snapshots"
+    __table_args__ = (CheckConstraint("amount_minor_units > 0", name="ck_creator_earning_amount"),)
+    order_id: Mapped[str] = mapped_column(String(36), ForeignKey("payment_orders.id"), primary_key=True)
+    cast_slot: Mapped[int] = mapped_column(primary_key=True)
+    creator_account_id: Mapped[str] = mapped_column(String(36), index=True)
+    character_id: Mapped[str] = mapped_column(String(36))
+    listing_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    listing_revision: Mapped[int | None] = mapped_column(nullable=True)
+    character_name: Mapped[str] = mapped_column(String(80))
+    wallet: Mapped[str] = mapped_column(String(44))
+    amount_minor_units: Mapped[int] = mapped_column(BigInteger)

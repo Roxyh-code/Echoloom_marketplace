@@ -14,7 +14,7 @@ from ..marketplace_models import CharacterListing, ListingRevision, MarketplaceC
 from .authorization import (
     Authorization, Payout, decode_pubkey, order_reference_hash, serialize_authorization,
 )
-from .models import PaymentOrder
+from .models import PaymentOrder, CreatorEarningSnapshot
 from .schemas import QuoteResponse
 from .signer import AuthorizationSigner
 from .solana_rpc import load_config, pda
@@ -35,7 +35,7 @@ def split_payouts(wallet_a, wallet_b, platform, buyer):
     return tuple(Payout(w, amounts[w]) for w in sorted(amounts, key=decode_pubkey))
 
 
-def creator_wallet(db, actor, owner):
+def creator_details(db, actor, owner):
     if actor.get("source_listing_id"):
         listing = db.get(CharacterListing, actor["source_listing_id"])
         if not listing or not listing.monetization_enabled:
@@ -46,11 +46,14 @@ def creator_wallet(db, actor, owner):
         ))
         creator = db.get(MarketplaceCreator, listing.creator_id)
         if (
-            revision and creator and creator.is_approved and creator.wallet_verified_at
+            revision and creator and creator.account_id and creator.is_approved and creator.wallet_verified_at
             and revision.payout_wallet_address
             and revision.payout_wallet_address == creator.wallet_address
         ):
-            return revision.payout_wallet_address
+            return dict(wallet=revision.payout_wallet_address, creator_account_id=creator.account_id,
+                            character_id=listing.character_id, listing_id=listing.id,
+                            listing_revision=revision.revision,
+                            character_name=str(revision.public_data.get("name") or "Character")[:80])
     else:
         character = db.get(Character, actor.get("source_character_id") or actor.get("id"))
         if character and character.owner_id == owner:
@@ -58,8 +61,14 @@ def creator_wallet(db, actor, owner):
                 MarketplaceCreator.account_id == owner,
             ))
             if creator and creator.is_approved and creator.wallet_verified_at and creator.wallet_address:
-                return creator.wallet_address
+                return dict(wallet=creator.wallet_address, creator_account_id=owner,
+                            character_id=character.id, listing_id=None, listing_revision=None,
+                            character_name=str(actor.get("name") or "Character")[:80])
     raise HTTPException(409, "A creator payout wallet is not verified")
+
+
+def creator_wallet(db, actor, owner):
+    return creator_details(db, actor, owner)["wallet"]
 
 
 def create_quote(db, settings, owner, request, verified_wallet):
@@ -75,7 +84,8 @@ def create_quote(db, settings, owner, request, verified_wallet):
     cast = scene.document.get("cast", [])
     if scene.document.get("demo") or len(cast) != 2:
         raise HTTPException(409, "Scene is not eligible for purchase")
-    wallets = [creator_wallet(db, actor, owner) for actor in cast]
+    attribution = [creator_details(db, actor, owner) for actor in cast]
+    wallets = [line['wallet'] for line in attribution]
     payouts = split_payouts(*wallets, settings.solana_platform_wallet, request.buyer_wallet)
     try:
         signer = AuthorizationSigner.from_keypair_file(settings.solana_backend_signer_path)
@@ -103,6 +113,10 @@ def create_quote(db, settings, owner, request, verified_wallet):
         authorization_signature_b64=base64.b64encode(signature).decode("ascii"),
     )
     db.add(row)
+    db.flush()
+    for slot, line in enumerate(attribution):
+        db.add(CreatorEarningSnapshot(order_id=row.id, cast_slot=slot,
+                                      amount_minor_units=450_000, **line))
     db.commit()
     return QuoteResponse(
         order_id=order_id, expires_at=datetime.fromtimestamp(expiry, UTC).isoformat(),

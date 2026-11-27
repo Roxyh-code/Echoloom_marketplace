@@ -14,6 +14,10 @@ def pda(program_id: str, *seeds: bytes) -> str:
     return str(Pubkey.find_program_address(list(seeds), Pubkey.from_string(program_id))[0])
 
 
+class SolanaRPCError(ValueError):
+    """Remote RPC rejected a request; not proof of a failed transaction."""
+
+
 def rpc_call(url, method, params):
     response = httpx.post(
         url, json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
@@ -22,7 +26,7 @@ def rpc_call(url, method, params):
     response.raise_for_status()
     body = response.json()
     if "error" in body or "result" not in body:
-        raise ValueError("Solana RPC returned an error")
+        raise SolanaRPCError("Solana RPC returned an error")
     return body["result"]
 
 

@@ -107,10 +107,12 @@ function Sheet({
   title,
   close,
   children,
+  closeDisabled = false,
 }: {
   title: string;
   close: () => void;
   children: React.ReactNode;
+  closeDisabled?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -133,7 +135,7 @@ function Sheet({
       <div className="rh-grab" />
       <header>
         <h2>{title}</h2>
-        <button className="rh-icon" aria-label="Close panel" onClick={close}>
+        <button className="rh-icon" aria-label="Close panel" disabled={closeDisabled} onClick={close}>
           ×
         </button>
       </header>
@@ -274,6 +276,8 @@ export function RehearsalApp() {
   const tr = (a: string, b: string) => (lang === "en" ? a : b);
   const [page, setPage] = useState<Page>("list");
   const [panel, setPanel] = useState<Panel>(null);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const checkoutBusyRef = useRef(false);
   const [scene, setScene] = useState<Scene | null>(null);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -374,7 +378,7 @@ export function RehearsalApp() {
   const state =
     readState(nodes, revealed, new Set(Object.keys(doc?.nodes || {}))) ||
     doc?.initial_state;
-  async function refreshSceneAccess(sceneId: string) {
+  async function refreshSceneAccess(sceneId: string, strict = false) {
     try {
       const result = await rehearsal<SceneAccess>("/scenes/" + sceneId + "/access");
       if (current.current?.id === sceneId) {
@@ -385,6 +389,7 @@ export function RehearsalApp() {
       if (current.current?.id === sceneId) {
         setAccessError(cause instanceof Error ? cause.message : "Cannot check story access.");
       }
+      if (strict) throw cause;
     }
   }
   useEffect(() => {
@@ -2234,16 +2239,17 @@ export function RehearsalApp() {
         />
       )}
       {panel && (
-        <Sheet key={panel} title={titles[panel]} close={() => setPanel(null)}>
+        <Sheet key={panel} title={titles[panel]} closeDisabled={panel === "unlock" && checkoutBusy} close={() => { if (panel !== "unlock" || !checkoutBusyRef.current) setPanel(null); }}>
           {panel === "unlock" && scene && (
             <CheckoutPanel key={scene.id} sceneId={scene.id} language={lang}
               available={access?.wallet_checkout_available === true}
+              onBusy={value => { checkoutBusyRef.current = value; setCheckoutBusy(value); }}
               onPaid={async () => {
                 const sid = scene.id;
                 const updated = await rehearsal<Scene>("/scenes/" + sid);
                 if (current.current?.id !== sid) return;
                 accept(updated);
-                await refreshSceneAccess(sid);
+                await refreshSceneAccess(sid, true);
                 if (current.current?.id === sid) {
                   setPanel(null);
                   setNotice(tr("Payment verified. 40 more sentences unlocked.", "付款已核验，额外 40 句已解锁。"));

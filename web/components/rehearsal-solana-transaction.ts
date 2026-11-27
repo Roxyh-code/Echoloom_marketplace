@@ -15,7 +15,7 @@ function b58(bytes: Uint8Array) {
   for(const b of bytes){if(b!==0)break;out="1"+out;} return out;
 }
 export async function purchaseSignedQuote(q: CheckoutQuote, address: string,
-  send: (wire: Uint8Array) => Promise<Uint8Array>): Promise<string> {
+  send: (wire: Uint8Array, kind: "setup" | "purchase") => Promise<Uint8Array>): Promise<string> {
   const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com","confirmed");
   if(await connection.getGenesisHash()!==DEVNET) throw new Error("Expected Solana Devnet");
   if(Date.parse(q.expires_at)<=Date.now()) throw new Error("Quote expired");
@@ -56,7 +56,9 @@ export async function purchaseSignedQuote(q: CheckoutQuote, address: string,
     const tx=new Transaction({feePayer:buyer,recentBlockhash:block.blockhash}).add(...ix);
     const wire=tx.serialize({requireAllSignatures:false,verifySignatures:false});
     if(wire.length>1232) throw new Error("Transaction too large");
-    const result=b58(await send(wire));
+    const rawSignature=await send(wire, wait ? "setup" : "purchase");
+    if(rawSignature.length!==64) throw new Error("Wallet returned an invalid transaction signature");
+    const result=b58(rawSignature);
     if(wait){const status=await connection.confirmTransaction({...block,signature:result},"confirmed");
       if(status.value.err) throw new Error("Token account setup failed");}
     return result;

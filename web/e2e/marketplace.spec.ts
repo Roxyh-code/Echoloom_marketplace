@@ -229,7 +229,7 @@ test("owned published character appears once, opens public detail and supports l
   await page.goto("/characters/publish?character=" + encodeURIComponent(character_id));
   await expect(page.getByRole("heading", { name: "Manage listing" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save listing changes" })).toBeVisible();
-  await expect(page.getByText("Future creator payouts")).toBeVisible();
+  await expect(page.getByText("Earn with your character")).toBeVisible();
   await expect(page.getByText(/Planned test pack:/)).toBeHidden();
   await expect(page.getByLabel("Public description")).toHaveValue("A curious archivist.");
   await page.evaluate(() => document.fonts.ready);

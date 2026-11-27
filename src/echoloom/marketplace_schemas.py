@@ -44,6 +44,8 @@ class ListingPublishRequest(ListingPublicFields):
     character_id: UUID
     rights_basis: Literal["original", "licensed"]
     rights_confirmed: Literal[True]
+    # None preserves an existing enabled listing; True explicitly opts in.
+    enable_earnings: bool | None = None
 
     def public_payload(self) -> dict:
         """Return only fields explicitly allowed in a public revision."""
@@ -71,6 +73,7 @@ class ListingOwnerResponse(MarketplaceSchema):
     character_id: UUID
     status: Literal["published", "unpublished"]
     latest_revision: int = Field(ge=0)
+    monetization_enabled: bool = False
 
 
 class ListingOwnerDetailResponse(ListingOwnerResponse):

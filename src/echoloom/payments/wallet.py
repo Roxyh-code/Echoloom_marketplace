@@ -19,6 +19,8 @@ from .models import BuyerWallet, WalletChallenge
 
 TTL = 300
 MAX_OUTSTANDING = 5
+BUYER_PURPOSE = 'Purpose: Bind buyer wallet to this Echoloom account; no payment is authorized.'
+PAYOUT_PURPOSE = 'Purpose: Set creator payout wallet for this Echoloom account; receive Devnet test tokens; no payment is authorized.'
 
 
 def require_owner(owner):
@@ -31,7 +33,7 @@ def verified_wallet(db, owner):
     return row.wallet if row else None
 
 
-def create_challenge(db, settings, owner, wallet):
+def create_challenge(db, settings, owner, wallet, *, purpose=BUYER_PURPOSE):
     require_owner(owner)
     try:
         raw = decode_pubkey(wallet)
@@ -58,7 +60,7 @@ def create_challenge(db, settings, owner, wallet):
         "Echoloom wallet verification v1\n"
         f"Origin: {settings.app_origin.rstrip('/')}\n"
         "Network: solana:devnet\n"
-        "Purpose: Bind buyer wallet to this Echoloom account; no payment is authorized.\n"
+        f"{purpose}\n"
         f"Account: {owner}\nWallet: {wallet}\nChallenge: {identifier}\n"
         f"Nonce: {secrets.token_hex(32)}\nExpires: {expiry_text}"
     )
@@ -68,7 +70,7 @@ def create_challenge(db, settings, owner, wallet):
     return {"challenge_id": identifier, "message": message, "expires_at": expiry_text}
 
 
-def verify_challenge(db, settings, owner, body):
+def consume_challenge(db, settings, owner, body, *, purpose=BUYER_PURPOSE):
     require_owner(owner)
     row = db.get(WalletChallenge, str(body.challenge_id))
     if not row or row.account_id != owner:
@@ -78,6 +80,8 @@ def verify_challenge(db, settings, owner, body):
         raise HTTPException(409, "Wallet challenge expired or already used")
     if row.message.splitlines()[1] != f"Origin: {settings.app_origin.rstrip('/')}":
         raise HTTPException(409, "Wallet challenge origin changed")
+    if row.message.splitlines()[3] != purpose:
+        raise HTTPException(409, "Wallet challenge purpose mismatch")
     try:
         sig = base64.b64decode(body.signature_b64, validate=True)
         if len(sig) != 64:
@@ -97,6 +101,11 @@ def verify_challenge(db, settings, owner, body):
     if consumed.rowcount != 1:
         db.rollback()
         raise HTTPException(409, "Wallet challenge expired or already used")
+    return wallet
+
+
+def verify_challenge(db, settings, owner, body):
+    wallet = consume_challenge(db, settings, owner, body)
     try:
         binding = db.get(BuyerWallet, owner)
         if binding:

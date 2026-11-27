@@ -378,6 +378,7 @@ def test_owned_listings_are_authenticated_and_allowlisted(setup):
         "character_id": character_id,
         "status": "published",
         "latest_revision": 1,
+        "monetization_enabled": False,
         "name": "Mira",
         "short_description": "A determined art restorer.",
         "tags": ["Mystery", "Adventure"],

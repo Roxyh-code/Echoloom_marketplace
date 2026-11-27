@@ -71,6 +71,7 @@ def _owner_view(listing: CharacterListing) -> ListingOwnerResponse:
         character_id=listing.character_id,
         status=listing.status,
         latest_revision=listing.latest_revision,
+        monetization_enabled=listing.monetization_enabled,
     )
 
 
@@ -187,9 +188,8 @@ def publish_listing(
 ) -> ListingOwnerResponse:
     """Publish an owned character, independent of Solana monetization.
 
-    Every public edit creates a new immutable revision. New/edited revisions
-    are NOT automatically eligible for payment, even if a creator record has
-    a legacy wallet string. Payouts require a separate verified workflow.
+    Every public edit creates a new immutable revision. Explicit opt-in requires
+    an approved, verified payout wallet. Edits preserve existing eligibility.
     """
     if not account_id:
         raise HTTPException(status_code=401, detail="Authentication required.")
@@ -227,6 +227,12 @@ def publish_listing(
     if listing is not None and listing.creator_id != creator.id:
         raise HTTPException(status_code=403, detail="Listing belongs to another creator.")
 
+    enable = body.enable_earnings if body.enable_earnings is not None else bool(
+        listing and listing.status == "published" and listing.monetization_enabled)
+    if enable and not (creator.is_approved and creator.wallet_verified_at and creator.wallet_address):
+        raise HTTPException(409, "Set up a verified creator payout wallet first.")
+    payout_wallet = creator.wallet_address if enable else None
+
     if listing is not None and listing.status == "published":
         previous = db.scalar(
             select(ListingRevision).where(
@@ -239,7 +245,8 @@ def publish_listing(
             and previous.profile_revision_id == profile.id
             and previous.portrait_id == character.current_image_id
             and previous.public_data == public_data
-            and previous.payout_wallet_address is None
+            and previous.payout_wallet_address == payout_wallet
+            and listing.monetization_enabled == enable
             and previous.rights_basis == body.rights_basis
         ):
             # Identical retries do not create extra revisions.
@@ -251,7 +258,7 @@ def publish_listing(
                 character_id=character.id,
                 creator_id=creator.id,
                 status="published",
-                monetization_enabled=False,
+                monetization_enabled=enable,
                 latest_revision=1,
             )
             db.add(listing)
@@ -270,7 +277,7 @@ def publish_listing(
                 .values(
                     latest_revision=next_revision,
                     status="published",
-                    monetization_enabled=False,
+                    monetization_enabled=enable,
                     updated_at=now(),
                 )
             )
@@ -286,8 +293,8 @@ def publish_listing(
                 character_version=profile.version,
                 portrait_id=character.current_image_id,
                 public_data=public_data,
-                # Wallet activation is a separate explicit, signed operation.
-                payout_wallet_address=None,
+                # Never use a caller-supplied payout address.
+                payout_wallet_address=payout_wallet,
                 rights_basis=body.rights_basis,
             )
         )

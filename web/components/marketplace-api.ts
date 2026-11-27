@@ -29,6 +29,7 @@ export type ListingPublishInput = {
   public_personality?: string[];
   rights_basis: "original" | "licensed";
   rights_confirmed: true;
+  enable_earnings?: boolean;
 };
 
 export type OwnedListing = {
@@ -36,6 +37,7 @@ export type OwnedListing = {
   character_id: string;
   status: "published" | "unpublished";
   latest_revision: number;
+  monetization_enabled?: boolean;
 };
 
 /** Owner-only editing data, including currently unpublished snapshots. */

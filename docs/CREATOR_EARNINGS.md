@@ -1,0 +1,3 @@
+# Creator earnings
+
+Owner-only GET /api/payments/creator/earnings reads immutable quote-time per-cast-slot attribution joined to verified paid orders. Separate totals per mint, character totals, unique paid unlock count and latest 50 transactions. Platform revenue is excluded even when a creator wallet equals treasury; two slots owned by one creator aggregate correctly. Historical orders without attribution are intentionally excluded; no speculative backfill from mutable scenes. New migration 0011 required. UI is under Characters > Creator earnings. Devnet test tokens, not cash value or wallet balance. No new chain calls.

@@ -54,3 +54,12 @@ def register_payments(app, factory, settings):
                 raise HTTPException(404, "Scene not found")
             ready, reason = checkout_readiness(db, settings, scene)
             return {"available": ready, "reason": reason}
+
+
+    @app.get("/api/payments/creator/earnings")
+    def earnings(request: Request):
+        from .earnings import creator_earnings
+        owner = getattr(request.state, "user_id", None)
+        require_owner(owner)
+        with factory() as db:
+            return creator_earnings(db, owner)

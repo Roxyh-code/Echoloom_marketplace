@@ -457,7 +457,7 @@ test("any public Marketplace scene is metered by sentences, not by the number of
   expect(before).toHaveLength(1);
   const sid = before[0].id;
   const url = backend + "/api/rehearsal/scenes/" + sid + "/access";
-  await expect(page.getByRole("status", { name: "Story access" })).toContainText("Free story · 0 / 40 sentences");
+  await expect(page.getByRole("status", { name: "Story access" })).toContainText("Story · 0 / 40 sentences");
   await page.getByLabel("What situation are they in?", { exact: false })
     .fill("Mira and Rowan meet at an abandoned railway station after many years.");
   await page.getByRole("button", { name: /Start rehearsal/ }).click();
@@ -522,7 +522,7 @@ test("Next line stops at 40 for private characters and opens wallet-unlock expla
     mode: "metered", generated_sentences: 40,
     free_sentences_remaining: 0, payment_required: true,
   });
-  await expect(page.getByRole("status", { name: "Story access" })).toContainText("40 free sentences reached");
+  await expect(page.getByRole("status", { name: "Story access" })).toContainText("Story allowance reached");
   await expect(page.getByRole("button", { name: "Unlock story" })).toBeVisible();
   const sceneJson = await (await page.request.get(backend + "/api/rehearsal/scenes/" + sid)).text();
   expect(sceneJson).toContain("QA sentence 40.");
@@ -532,7 +532,8 @@ test("Next line stops at 40 for private characters and opens wallet-unlock expla
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: "Your story is just beginning." })).toBeVisible();
   await expect(sheet).toContainText(/wallet/i);
-  await expect(sheet).toContainText("not integrated yet");
+  await expect(sheet).toContainText("Wallet checkout is not ready in this build. No payment will be requested.");
+  await expect(sheet.getByRole("button", { name: "Connect wallet" })).toBeDisabled();
   await sheet.getByRole("button", { name: "Return to story" }).click();
 
   const backendScene = await (await page.request.get(backend + "/api/rehearsal/scenes/" + sid)).json();

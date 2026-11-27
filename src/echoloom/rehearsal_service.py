@@ -112,13 +112,13 @@ def register_rehearsal(app, factory, locks, settings, serialize):
         row.revision += 1
         row.updated_at = now()
 
-    def pack(row):
+    def pack(db, row):
         # Centralized public DTO projection. The original Scene and all hidden
         # future prose stay server-side; no full document in commands/jobs.
         return {
             "id": row.id,
             "revision": row.revision,
-            "document": scene_access.preview(row.document),
+            "document": scene_access.preview(row.document, scene_access.total_limit(db, row)),
             "updated_at": row.updated_at,
         }
 
@@ -160,7 +160,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
 
     def view(db, row):
         jobs = recover(db, row.id)
-        return pack(row) | {"active_job": jobs[0].id if jobs else None}
+        return pack(db, row) | {"active_job": jobs[0].id if jobs else None}
 
     def record(db, oid, owner, kind, payload, sid=None):
         previous = db.get(RehearsalOperation, str(oid))
@@ -379,7 +379,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                     # Bound real persisted AI prose, not just the Reader UI.
                     # A model may produce many sentences in one response.
                     if scene_access.is_metered(d):
-                        budget = scene_access.remaining(d)
+                        budget = scene_access.remaining(d, scene_access.total_limit(db, row))
                         if budget == 0:
                             break
                         units = sentences(b["text"])
@@ -608,7 +608,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                 # A saved result is not a free export of paywalled text into
                 # a new Scene. Preserve older content but require a verified
                 # unlock before it becomes a new story's source material.
-                scene_access.check_generation(parent.document)
+                scene_access.check_generation(parent.document, scene_access.total_limit(db, parent))
                 result = parent.document.get("result")
                 if not result:
                     raise HTTPException(409, "Save the previous scene's result first.")
@@ -799,7 +799,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             if kind == "settle":
                 pass
             elif kind == "read":
-                scene_access.check_read(d, body.revealed)
+                scene_access.check_read(d, body.revealed, scene_access.total_limit(db, row))
                 if body.revealed > line_count(d, v["head"]):
                     raise HTTPException(422, "This line has not been generated yet.")
                 v["revealed"] = body.revealed
@@ -1054,7 +1054,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                 # Reserve after validating the command, before ANY scene/job
                 # write. This same transaction also persists the queued job.
                 if scene_access.is_metered(d):
-                    scene_access.check_generation(d)
+                    scene_access.check_generation(d, scene_access.total_limit(db, row))
                 d["status"] = "saved" if d.get("result") else "rehearsing"
                 op.status = "queued"
                 op.result = {
@@ -1081,7 +1081,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
                 raise
             if generate:
                 launch(op)
-            return pack(row) | {
+            return pack(db, row) | {
                 "job_id": op.id if generate else None,
                 "active_job": op.id if generate else None,
             }
@@ -1097,7 +1097,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             row = own(db, sid, request.state.user_id)
             recover(db, sid)
             j = op_owned(db, oid, request.state.user_id)
-            safe_scene = pack(row)
+            safe_scene = pack(db, row)
             # Historical job records may predate the paywall and contain
             # plaintext beyond sentence 40. Never return those raw events.
             allowed_blocks = {
@@ -1202,7 +1202,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
             # attempt produced nothing, it re-reserves a refunded unit; if a
             # partial block was saved, the root was already charged once.
             if scene_access.is_metered(d):
-                scene_access.check_generation(d)
+                scene_access.check_generation(d, scene_access.total_limit(db, row))
                 result["usage_root"] = result.get("usage_root", j.id)
             retry_job = RehearsalOperation(
                 id=uid(),
@@ -1240,13 +1240,13 @@ def register_rehearsal(app, factory, locks, settings, serialize):
         ):
             row = own(db, sid, owner)
             if kind == "directions":
-                scene_access.check_generation(row.document)
+                scene_access.check_generation(row.document, scene_access.total_limit(db, row))
             op, exists = record(
                 db, body.operation_id, owner, kind, body.model_dump(mode="json"), row.id
             )
             if exists:
                 return op.result
-            doc = scene_access.preview(row.document)
+            doc = scene_access.preview(row.document, scene_access.total_limit(db, row))
             v = version(doc, body.version_id)
             doc, v = reading_view(doc, v)
             if body.node_id:
@@ -1350,7 +1350,7 @@ def register_rehearsal(app, factory, locks, settings, serialize):
         with factory() as db:
             row = own(db, sid, request.state.user_id)
             v = version(row.document, version_id)
-            export_doc = scene_access.preview(row.document)
+            export_doc = scene_access.preview(row.document, scene_access.total_limit(db, row))
             v = version(export_doc, version_id)
             if visible_only:
                 export_doc, v = reading_view(export_doc, v)

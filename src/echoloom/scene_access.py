@@ -1,15 +1,4 @@
-"""Unified prototype story allowance: first 40 generated/revealed sentences.
-
-All non-demo casts (private/private, mixed, public/public) use this rule.
-This file cannot grant paid access: only a future server-verified wallet
-receipt can enable generation and reveal beyond the free allowance.
-
-We meter GENERATED sentences across all versions and retries, not buttons.
-Read/preview/export are server-restricted to the first 40 story sentences.
-Existing Scenes without a stored counter are migrated lazily from their
-distinct already-persisted AI nodes. New Scenes have no account requirement
-for their initial free preview; wallet/auth is required for later paid use.
-"""
+"""Meter generation and reveal using free plus verified per-scene grants."""
 from copy import deepcopy
 
 from fastapi import HTTPException
@@ -17,10 +6,7 @@ from fastapi import HTTPException
 from .rehearsal_domain import history, sentences
 
 FREE_SENTENCE_LIMIT = 40
-UNLOCK_MESSAGE = (
-    "The free story ends at 40 sentences. Connect a wallet and purchase "
-    "a verified unlock to continue. Wallet checkout is not available yet."
-)
+UNLOCK_MESSAGE = "Story allowance exhausted. Purchase a verified unlock to continue."
 
 
 def is_metered(doc):
@@ -60,14 +46,25 @@ def generated(doc):
     return _legacy_used(doc)
 
 
-def remaining(doc):
+def total_limit(db, row):
+    """Never trust a limit stored in the scene document or supplied by a client."""
+    if not is_metered(row.document):
+        return None
+    if not row.owner_id:
+        return FREE_SENTENCE_LIMIT
+    from .payments.orders import paid_sentence_allowance
+
+    return FREE_SENTENCE_LIMIT + paid_sentence_allowance(db, row.id, row.owner_id)
+
+
+def remaining(doc, limit=FREE_SENTENCE_LIMIT):
     if not is_metered(doc):
         return None
-    return max(0, FREE_SENTENCE_LIMIT - generated(doc))
+    return max(0, limit - generated(doc))
 
 
-def check_generation(doc):
-    if is_metered(doc) and remaining(doc) == 0:
+def check_generation(doc, limit=FREE_SENTENCE_LIMIT):
+    if is_metered(doc) and remaining(doc, limit) == 0:
         raise HTTPException(402, UNLOCK_MESSAGE)
 
 
@@ -81,13 +78,13 @@ def mark_generated(doc, block):
     doc["free_generated_sentences"] = previous + len(sentences(block["text"]))
 
 
-def check_read(doc, requested):
-    if is_metered(doc) and requested > FREE_SENTENCE_LIMIT:
+def check_read(doc, requested, limit=FREE_SENTENCE_LIMIT):
+    if is_metered(doc) and requested > limit:
         raise HTTPException(402, UNLOCK_MESSAGE)
 
 
 def reserve(db, row, root_operation_id):
-    check_generation(row.document)
+    check_generation(row.document, total_limit(db, row))
     return is_metered(row.document)
 
 
@@ -108,25 +105,26 @@ def status(db, row):
             "wallet_checkout_available": False,
         }
     used = generated(doc)
+    limit = total_limit(db, row)
     return {
         "mode": "metered",
-        "free_sentence_limit": FREE_SENTENCE_LIMIT,
+        "free_sentence_limit": limit,
         "generated_sentences": used,
-        "free_sentences_remaining": max(0, FREE_SENTENCE_LIMIT - used),
-        "payment_required": used >= FREE_SENTENCE_LIMIT,
+        "free_sentences_remaining": max(0, limit - used),
+        "payment_required": used >= limit,
         "wallet_checkout_available": False,
     }
 
 
-def preview(doc):
+def preview(doc, limit=FREE_SENTENCE_LIMIT):
     """Strip text beyond the free allowance from ALL Scene read DTOs.
 
     Do not trust hiding a Next line button: a raw Scene or old Job event
     could otherwise expose all generated text. This server copy retains
-    only the first 40 sentences of EACH branch and discards unreachable
+    only the authorized sentences of EACH branch and discards unreachable
     nodes/hidden result state. Actual durable documents are untouched.
 
-    For newly generated Scenes the worker itself truncates at sentence 40.
+    For newly generated Scenes the worker itself truncates at the current allowance.
     This projection additionally protects legacy scenes created earlier.
     """
     if not is_metered(doc):
@@ -134,7 +132,7 @@ def preview(doc):
     d = deepcopy(doc)
     safe_nodes = {}
     for v in d.get("versions", {}).values():
-        available = FREE_SENTENCE_LIMIT
+        available = limit
         final = None
         completed_blocks = set()
         for original in history(doc, v["head"]):
@@ -170,14 +168,13 @@ def preview(doc):
             safe_nodes[node["id"]] = node
             final = node["id"]
         v["head"] = final
-        v["revealed"] = min(v.get("revealed", FREE_SENTENCE_LIMIT),
-                            FREE_SENTENCE_LIMIT)
+        v["revealed"] = min(v.get("revealed", limit), limit)
     d["nodes"] = safe_nodes
     # Source excerpt and saved-state metadata can contain unrevealed text.
     if d.get("source"):
         d["source"].pop("excerpt", None)
     if d.get("result"):
         result = d["result"]
-        if result.get("head") not in safe_nodes or generated(doc) > FREE_SENTENCE_LIMIT:
+        if result.get("head") not in safe_nodes or generated(doc) > limit:
             d["result"] = None
     return d

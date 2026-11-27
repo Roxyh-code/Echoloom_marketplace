@@ -598,6 +598,9 @@ def create_app(
     from .marketplace_routes import register_marketplace
 
     register_marketplace(app, factory, settings)
+    from .payments.routes import register_payments
+
+    register_payments(app, factory, settings)
 
     if chat_memory:
         from contextlib import asynccontextmanager

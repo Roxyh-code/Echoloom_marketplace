@@ -57,3 +57,15 @@ class Settings(BaseSettings):
     calendar_encryption_key: SecretStr = SecretStr("")
     companion_worker_enabled: bool = False
     allow_additional_accounts: bool = False
+
+    # Devnet checkout remains opt-in and fails closed without wallet verification.
+    solana_payments_enabled: bool = False
+    solana_rpc_url: str = "https://api.devnet.solana.com"
+    solana_program_id: str = ""
+    solana_mint: str = ""
+    solana_config_pda: str = ""
+    solana_platform_wallet: str = ""
+    solana_deployment_domain_hash: str = ""
+    solana_backend_signer_path: str = ""
+    # Finalized is safest; confirmed is an explicit Devnet demo override.
+    solana_payment_commitment: Literal["confirmed", "finalized"] = "finalized"

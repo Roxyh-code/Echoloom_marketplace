@@ -9,11 +9,12 @@
     <img src="https://img.shields.io/badge/Next.js-16-15131F?logo=nextdotjs" alt="Next.js 16" />
     <img src="https://img.shields.io/badge/FastAPI-Python%203.12%2B-15131F?logo=fastapi" alt="FastAPI / Python 3.12+" />
     <img src="https://img.shields.io/badge/AI-LangGraph-6E52C8" alt="LangGraph" />
+    <img src="https://img.shields.io/badge/Solana-Devnet%20integration-15131F?logo=solana" alt="Solana Devnet integration" />
     <img src="https://img.shields.io/badge/status-hackathon%20prototype-9B73DB" alt="Hackathon prototype" />
   </p>
 </div>
 
-> **Project status:** Working local prototype, not a production or paid marketplace. Public character listings and AI story rehearsal are implemented; wallet authentication, Solana checkout and creator payouts are not. The banner above is an illustration of the flow, not an app screenshot.
+> **Project status:** Local hackathon prototype. Character creation, publishing, interactive rehearsal, wallet verification, creator payout setup, signed checkout, receipt verification and earnings reporting are implemented in code. Standard CI passed for the integration and demo PRs; full local-validator execution and live Devnet payment acceptance remain unverified. Payments are disabled by default. The banner is illustrative, not an app screenshot.
 
 ---
 
@@ -46,6 +47,10 @@ flowchart LR
     F --> G["Read, direct & branch"]
     G --> H["Save & revisit"]
     H --> G
+    G --> I["40 free sentences reached"]
+    I --> J["Verified paid unlock"]
+    J --> G
+    J --> K["Creator earnings"]
 ```
 
 ### A glimpse of the character shelf
@@ -77,50 +82,56 @@ flowchart LR
 | **Two-character casting** | Choose two private characters, two published characters or a mixed pair. The backend verifies access to each source and uses listing revisions for public casts. |
 | **Interactive rehearsal** | Set a premise, cast and scene constraints; generate a scene, reveal the story in sentence-sized steps, give directions, revise, branch and review versions. |
 | **My Stories** | Reopen drafts, inspect versions, save a result and export story text. |
-| **Free preview** | Real scenes currently include **40 free AI-generated sentences per scene**, enforced on the server. The prepared sample demo is exempt. |
+| **Free preview** | 40 free AI-generated sentences per normal scene, enforced on the server. The original built-in sample demo is exempt. |
+| **Wallet connection** | Devnet-compatible Wallet Standard connection, signed ownership verification and restoration of an existing verified binding. |
+| **Creator earnings** | Account-level payout wallet setup, per-listing monetization opt-in, zero-income listings and verified-payment reporting. |
+| **Paid unlock** | Signed quote, client transaction builder, Anchor settlement, server-side receipt verification and 40 additional sentences per verified purchase. Live chain acceptance pending. |
 
 The project uses a consistent, mobile-first **dark fantasy / moonlit violet** interface. Discover, Characters and My Stories share the same app frame and bottom navigation.
 
 ## Architecture
 
-Echoloom separates the character marketplace, scene orchestration and model integrations behind a FastAPI application.
+Echoloom separates creative orchestration from financial settlement. FastAPI is authoritative for scene access, pricing and attribution; the Solana program settles signed purchase terms and creates a durable receipt.
 
 ```mermaid
 flowchart TB
-    subgraph WEB["Frontend · Next.js 16 / React 19 / TypeScript"]
-      UI["Discover · Character Studio · My Stories"]
-    end
-    subgraph API["Backend · FastAPI / Python"]
-      AUTH["Local session & ownership checks"]
-      CREATOR["Character profiles / portrait jobs"]
-      MARKET["Listings / revisions / publishing"]
-      SCENE["Casting / scene access / rehearsal service"]
-    end
-    subgraph AI["AI orchestration"]
-      GRAPH["LangGraph scene workflow"]
-      MODELS["Configured text & image providers"]
-    end
-    DB[("SQLAlchemy · SQLite / Alembic")]
-    UI --> AUTH
-    AUTH --> CREATOR
-    AUTH --> MARKET
-    AUTH --> SCENE
-    CREATOR --> MODELS
-    SCENE --> GRAPH
-    GRAPH --> MODELS
-    CREATOR --> DB
+    UI["Next.js / React · Character Studio · Marketplace · Story Studio"]
+    WALLET["Wallet Standard · Phantom / compatible wallet"]
+    API["FastAPI · session and ownership checks"]
+    MARKET["Character profiles · listing revisions · cast snapshots"]
+    STORY["Rehearsal engine · server-side sentence meter"]
+    GRAPH["LangGraph · configured model adapters"]
+    PAY["Quote · Ed25519 signer · payment verification"]
+    DB[("SQLite · SQLAlchemy · Alembic")]
+    CHAIN["Solana · Anchor marketplace program"]
+    RECEIPT["Purchase receipt · SPL token transfers"]
+    UI --> API
+    UI <--> WALLET
+    API --> MARKET
+    API --> STORY
+    API --> PAY
+    STORY --> GRAPH
     MARKET --> DB
-    SCENE --> DB
+    STORY --> DB
+    PAY --> DB
+    WALLET --> CHAIN
+    CHAIN --> RECEIPT
+    RECEIPT -->|"RPC evidence"| PAY
+    PAY -->|"Verified entitlement"| STORY
 ```
 
 | Layer | Stack |
 | --- | --- |
 | Web app | Next.js 16, React 19, TypeScript, CSS |
 | API / validation | Python 3.12+, FastAPI, Pydantic |
-| Narrative orchestration | LangGraph 1.2.20 |
-| Persistence / migrations | SQLAlchemy, SQLite for the local prototype, Alembic |
-| Model services | Configurable text and image provider adapters |
-| Testing | Pytest, Playwright, GitHub Actions |
+| Narrative orchestration | LangGraph 1.2.20, configurable text/image adapters |
+| Persistence | SQLAlchemy, SQLite, Alembic |
+| Wallet / blockchain | Wallet Standard, @solana/web3.js 1.98.4, Solana classic SPL Token |
+| Smart contract | Rust, Anchor 1.1.2 |
+| Authorization | Ed25519, cryptography, solders |
+| Testing | Pytest, Playwright, GitHub Actions, local validator suite |
+
+See the [architecture and API guide](docs/ARCHITECTURE.md) for module boundaries, payment sequence and trust assumptions.
 
 **Implementation note:** Portrait generation currently uses in-process background work appropriate for a single-worker demo; it is **not** a production-grade distributed task queue.
 
@@ -182,6 +193,43 @@ IMAGE_API_KEY=your-private-key
 
 The web app proxies `/api/*` to `http://127.0.0.1:8000` by default. Set `API_BASE_URL` in the frontend environment only if your API runs at another address. **Never commit API keys, database files or character/customer data.**
 
+## Creator economy
+
+Publishing is free. A creator must verify a payout wallet, satisfy creator approval requirements and opt in a listing before it becomes eligible for paid scenes. A buyer can use a different wallet from their payout wallet.
+
+| Product rule | Implemented demo terms |
+| --- | --- |
+| Free allowance | 40 AI-generated sentences per normal scene |
+| Paid unlock | +40 sentences on the same scene, no calendar expiry |
+| Price | 1 test token (1,000,000 minor units; six decimals) |
+| Creator A | 45% |
+| Creator B | 45% |
+| Platform | 10% |
+
+Free usage creates no payout. If both cast slots have the same recipient wallet, the backend aggregates the two shares. Paid quotes require two eligible payout recipients (which may be the same wallet); the buyer cannot be a recipient. The token is a configured classic SPL test mint, not necessarily USDC. Network fees and token-account rent are separate from the pack price. This is a demo economic model, not a claim of profitable inference economics.
+
+```mermaid
+flowchart LR
+    B["Buyer · 1 test token"] --> S["Anchor purchase"]
+    S --> A["Creator A · 0.45"]
+    S --> C["Creator B · 0.45"]
+    S --> T["Platform · 0.10"]
+    S --> R["Receipt"]
+    R --> V["Backend verification"]
+    V --> E["+40 sentences"]
+    V --> D["Earnings dashboard"]
+```
+
+### Try creator onboarding without a deployed contract
+
+For a disposable local demo only, set `SOLANA_CREATOR_SELF_SERVICE_ENABLED=true` and restart FastAPI. Open Characters → Publish → Set up earnings, verify the payout wallet, return to publishing, enable earnings and save. Leave the flag off for administrator-approved onboarding. Payment itself remains disabled until a verified Devnet configuration is available.
+
+For three prepared accounts, two original listings and a 40-sentence checkout scene, follow the [isolated demo runbook](docs/DEMO_ENVIRONMENT.md). No wallet proofs or payments are fabricated.
+
+### Enable Devnet checkout
+
+Only after the program and config have been deployed and independently checked, configure the values in [.env.example](.env.example) using the [deployment checklist](docs/PAYMENT_DEPLOYMENT_CHECKLIST.md). The backend signer file must stay outside the repository. Keep `SOLANA_PAYMENTS_ENABLED=false` until readiness checks pass. Buyer and recipient wallets must use Devnet test assets, never real funds.
+
 ## Repository map
 
 ```text
@@ -194,7 +242,10 @@ Echoloom_marketplace/
 │   ├── creator_*.py           # Character profiles and portraits
 │   ├── marketplace_*.py       # Public listings and revisions
 │   ├── rehearsal_*.py         # Scene engine and LangGraph workflow
-│   └── scene_access*.py       # Server-enforced reading allowance
+│   ├── scene_access*.py       # Server-enforced reading allowance
+│   └── payments/             # Wallets, quotes, receipts, entitlements, earnings
+├── solana/                    # Anchor program, IDL and validator tests
+├── scripts/                   # Local integration and demo preparation
 ├── tests/mvp/                 # Backend and integration tests
 ├── alembic/                   # Database migrations
 ├── demo/                      # Recorded product walkthrough
@@ -219,22 +270,31 @@ npm run build
 
 Playwright tests cover marketplace publishing, casting, character editing, story rehearsal, navigation and shared mobile-frame geometry. CI provisions a temporary Python test server, a Chromium browser and **fake AI providers**, so normal automated checks do not incur model usage fees. See [.github/workflows/ci.yml](.github/workflows/ci.yml) for the reproducible workflow.
 
-## What's next
+## Validation and remaining work
 
-The product vision includes **creator compensation for stories that use published characters**, but the payment layer is not live.
-
-| Workstream | Status |
+| Workstream | Evidence / status |
 | --- | --- |
-| Character creation, discovery and publishing | Implemented in local prototype |
-| Public/private two-character casting | Implemented in local prototype |
-| Scene editing, branching and saved results | Implemented in local prototype |
-| Server-enforced 40-sentence preview | Implemented in local prototype |
-| Wallet-based sign-in and public multi-user security | Planned |
-| Solana checkout, receipt verification and paid access | Planned |
-| Creator/platform on-chain revenue splits | Proposed; not implemented |
-| Production job queue, operations and licensing review | Required before launch |
+| Character, marketplace and rehearsal flows | Implemented; browser and backend regression tests |
+| Wallet persistence and creator onboarding | Implemented; PRs #49–51 merged with passing standard CI; local user testing reported |
+| Payment integration safeguards | PR #52 merged; standard CI passed |
+| Local validator and ledger acceptance | PR #53 merged; standard CI passed; full validator run not confirmed |
+| Disposable demo environment | PR #54 merged; standard CI passed; actual operator run not confirmed |
+| Devnet settlement and earnings | Deployment parameters and live end-to-end acceptance outstanding |
+| Production readiness | Public authentication hardening, cross-device order reconciliation, concurrency safeguards, job queue, operations and licensing review outstanding |
 
-The monetization split, token details and paid scene packs are **design proposals**, not implemented or deployed functionality. See the [integration contract](docs/HACKATHON_CONTRACT.md) for the decision history and current implementation boundary.
+Run payment regressions from the root:
+
+```bash
+python -m pytest -q tests/mvp -k payment
+```
+
+For real local-validator testing, install the Linux/WSL toolchain and follow [Local payment integration](docs/LOCAL_PAYMENT_INTEGRATION.md):
+
+```bash
+bash scripts/run-local-payment-e2e.sh
+```
+
+The standard CI workflow does not execute that full validator suite. The local bridge uses seeded order attribution and is not a complete browser/HTTP checkout test. The final demo must verify actual balance changes, receipt, 40→80→120 access, repeated verification and both creators' earnings. The [historical integration decision log](docs/HACKATHON_CONTRACT.md) includes superseded proposals; use this README and the current implementation guide for active behavior.
 
 ## Project background & responsible use
 

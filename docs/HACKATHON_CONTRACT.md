@@ -1,6 +1,6 @@
 # Marketplace integration contract (planning only)
 
-**Status: to be agreed by both developers; no Solana or order implementation yet.**
+**Historical planning record:** The original proposals below are preserved for decision history. They do not describe the current implementation. The active demo uses 40 free sentences per normal scene, +40 per verified purchase, 1 six-decimal test token and 45/45/10 split. See [README](../README.md) and [Architecture](ARCHITECTURE.md) for current code and validation status.
 
 ## Roles
 

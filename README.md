@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="docs/assets/readme-hero.svg" alt="Echoloom: discover characters, publish your own, and direct shared stories" width="100%" />
   <h1>Echoloom</h1>
   <p><strong>Your favorite characters. Stories only you can direct.</strong></p>
   <p>A character marketplace and AI-powered story studio where you can create a character, share them with others, and bring two characters into a story of your own.</p>
@@ -14,7 +13,24 @@
   </p>
 </div>
 
-> **Project status:** Local hackathon prototype. Character creation, publishing, interactive rehearsal, wallet verification, creator payout setup, signed checkout, receipt verification and earnings reporting are implemented in code. Standard CI passed for the integration and demo PRs; full local-validator execution and live Devnet payment acceptance remain unverified. Payments are disabled by default. The banner is illustrative, not an app screenshot.
+<table>
+  <tr>
+    <td align="center"><img src="docs/assets/screenshots/editorial-marketplace.png" alt="Actual Discover marketplace screen" width="195" /></td>
+    <td align="center"><img src="docs/assets/screenshots/editorial-character-library.png" alt="Actual character library screen with publishing and earnings entries" width="195" /></td>
+    <td align="center"><img src="docs/assets/screenshots/editorial-character-creation.png" alt="Actual character creation screen" width="195" /></td>
+    <td align="center"><img src="docs/assets/screenshots/editorial-story-reader.png" alt="Actual interactive story reader screen" width="195" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Discover</b></td>
+    <td align="center"><b>Character Studio</b></td>
+    <td align="center"><b>Create</b></td>
+    <td align="center"><b>Story Reader</b></td>
+  </tr>
+</table>
+
+<p align="center"><small>Actual running application screenshots captured by Playwright in <a href="https://github.com/Roxyh-code/Echoloom_marketplace/actions/runs/46083665183">CI run 46083665183</a>, using deterministic demo fixtures. Not design mockups or evidence of live Solana settlement.</small></p>
+
+> **Project status:** Local hackathon prototype. Character creation, publishing, interactive rehearsal, wallet verification, creator payout setup, signed checkout, receipt verification and earnings reporting are implemented in code. Standard CI passed for the integration and demo PRs; full local-validator execution and live Devnet payment acceptance remain unverified. Payments are disabled by default.
 
 ---
 

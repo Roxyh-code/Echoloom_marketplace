@@ -1,0 +1,18 @@
+[package]
+name = "echoloom_purchase_cpi_wrapper"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+custom-heap = []
+custom-panic = []
+no-entrypoint = []
+
+[dependencies]
+anchor-lang = "=1.1.2"

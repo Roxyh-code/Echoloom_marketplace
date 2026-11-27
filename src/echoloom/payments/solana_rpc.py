@@ -44,6 +44,11 @@ def load_config(settings, signer):
         raise ValueError("Config PDA mismatch")
     if rpc_call(url, "getGenesisHash", []) != DEVNET_GENESIS:
         raise ValueError("Only Solana Devnet is supported")
+    deployed = rpc_call(url, "getAccountInfo", [
+        program, {"encoding": "base64", "commitment": "confirmed"},
+    ])["value"]
+    if not deployed or not deployed["executable"]:
+        raise ValueError("Marketplace program is not executable")
     raw = account(url, config, program)
     domain = bytes.fromhex(settings.solana_deployment_domain_hash)
     if len(domain) != 32 or not any(domain):

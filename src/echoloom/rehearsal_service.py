@@ -703,6 +703,9 @@ def register_rehearsal(app, factory, locks, settings, serialize):
         with locks.hold("rehearsal:" + str(sid)), factory() as db:
             row = own(db, sid, request.state.user_id)
             result = scene_access.status(db, row)
+            if result['payment_required']:
+                from .payments.readiness import checkout_readiness
+                result['wallet_checkout_available'] = checkout_readiness(db, settings, row)[0]
             db.commit()
             return result
 

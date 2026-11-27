@@ -4,6 +4,7 @@ import { MobileBottomNav } from "./mobile-bottom-nav";
 import { MobileAppFrame } from "./mobile-app-frame";
 import { countLines, nextPassageEnd, visibleLines, readState } from "./rehearsal-reading";
 import { useEffect, useRef, useState } from "react";
+import { CheckoutPanel } from "./rehearsal-checkout";
 import {
   Actor,
   CastSource,
@@ -334,12 +335,6 @@ export function RehearsalApp() {
   const revealed = Math.min(version?.revealed ?? totalLines, totalLines);
   const visibleNodes = visibleLines(nodes, revealed);
   const waitingLines = totalLines - revealed;
-  // The server still counts individual sentences for the 40-sentence preview.
-  const nextPassage = Math.min(
-    nextPassageEnd(nodes, revealed),
-    doc?.demo ? Infinity : 40,
-    totalLines,
-  );
   const visibleText = visibleNodes
     .map((n) => n.blocks.map((b) => b.text).join(""))
     .join("");
@@ -370,6 +365,8 @@ export function RehearsalApp() {
   const meteredScene = Boolean(scene && !doc?.demo);
   const access = accessSnapshot && accessSnapshot.sceneId === scene?.id ? accessSnapshot.value : null;
   const accessUnavailable = meteredScene && (!access || !!accessError);
+  const nextPassage = Math.min(nextPassageEnd(nodes, revealed),
+    doc?.demo ? Infinity : access?.free_sentence_limit ?? 40, totalLines);
   const paymentRequired = meteredScene && access?.payment_required === true;
   const readingLocked = meteredScene && revealed >= (access?.free_sentence_limit ?? 40);
   const generationBlocked = accessUnavailable || paymentRequired;
@@ -544,8 +541,8 @@ export function RehearsalApp() {
         // the final direction in another tab.
         if (current.current?.id) void refreshSceneAccess(current.current.id);
         setError(tr(
-          "The free 40-sentence story has ended. A verified wallet unlock will be needed to continue.",
-          "本场 40 句免费额度已用完。继续需要绑定钱包并付款解锁。",
+          "Your story allowance has ended. A verified wallet unlock is needed to continue.",
+          "本场剧情额度已用完。继续需要绑定钱包并付款解锁。",
         ));
         return;
       }
@@ -1047,15 +1044,14 @@ export function RehearsalApp() {
       : !access
         ? tr("Checking story allowance…", "正在检查故事额度…")
         : access.payment_required
-          ? tr("40 free sentences reached", "免费 40 句已用完")
-          : tr(`Free story · ${count} / ${limit} sentences`, `免费故事 · ${count} / ${limit} 句`);
+          ? tr("Story allowance reached", "剧情额度已用完")
+          : tr(`Story · ${count} / ${limit} sentences`, `剧情 · ${count} / ${limit} 句`);
     const explanation = accessError
       ? tr("Try checking your allowance again.", "请重试额度查询。")
       : !access
         ? tr("All private and published characters use the same story limit.", "所有私人和公开角色使用相同的故事额度。")
         : access.payment_required
-          ? tr("Connect a wallet to unlock more story. Wallet checkout is coming soon.",
-               "继续阅读或生成需要绑定钱包付费解锁，支付功能尚待接入。")
+          ? tr("Unlock 40 more sentences with a verified payment.", "通过已核验的付款解锁额外 40 句。")
           : tr("Your first 40 AI story sentences are free.", "本场前 40 句 AI 剧情免费。");
     return (
       <div className={"rh-marketplace-access" + (access?.payment_required ? " locked" : "")}
@@ -1064,7 +1060,7 @@ export function RehearsalApp() {
           <strong>{title}</strong>
           <span>{explanation}</span>
           {access && <div className="rh-free-progress" role="progressbar"
-            aria-label="Free story sentences" aria-valuemin={0} aria-valuemax={limit}
+            aria-label="Story sentences" aria-valuemin={0} aria-valuemax={limit}
             aria-valuenow={Math.min(count, limit)}>
             <span style={{ width: `${Math.min(100, count / limit * 100)}%` }} />
           </div>}
@@ -2239,21 +2235,22 @@ export function RehearsalApp() {
       )}
       {panel && (
         <Sheet key={panel} title={titles[panel]} close={() => setPanel(null)}>
-          {panel === "unlock" && (
-            <div className="rh-unlock-sheet">
-              <p className="rh-eyebrow">{tr("40 FREE SENTENCES", "40 句免费剧情")}</p>
-              <h2>{tr("Your story is just beginning.", "故事，才刚刚开始。")}</h2>
-              <p>{tr("The 40-sentence free preview applies to every character combination, including private characters.",
-                "40 句免费上限适用于所有角色组合，包括私人角色。")}</p>
-              <div className="rh-unlock-plan">
-                <strong>{tr("Connect a wallet to unlock more", "绑定钱包，解锁后续剧情")}</strong>
-                <small>{tr("Verified wallet connection and Solana checkout are not integrated yet. No paid credits can be issued in this build.",
-                  "钱包签名及 Solana 支付核验尚未接入，当前版本不能购买或发放付费额度。")}</small>
-              </div>
-              <button className="rh-primary" onClick={() => setPanel(null)}>
-                {tr("Return to story", "返回故事")}
-              </button>
-            </div>
+          {panel === "unlock" && scene && (
+            <CheckoutPanel key={scene.id} sceneId={scene.id} language={lang}
+              available={access?.wallet_checkout_available === true}
+              onPaid={async () => {
+                const sid = scene.id;
+                const updated = await rehearsal<Scene>("/scenes/" + sid);
+                if (current.current?.id !== sid) return;
+                accept(updated);
+                await refreshSceneAccess(sid);
+                if (current.current?.id === sid) {
+                  setPanel(null);
+                  setNotice(tr("Payment verified. 40 more sentences unlocked.", "付款已核验，额外 40 句已解锁。"));
+                }
+              }}
+              onClose={() => setPanel(null)}
+            />
           )}
           {panel === "actor" && actor && (
             <>

@@ -1,23 +1,40 @@
-"""Payment API; wallet binding is deliberately fail-closed until implemented."""
+"""Authenticated payment and buyer-wallet endpoints."""
 from fastapi import Request
 
 from .quote import create_quote
 from .schemas import QuoteRequest, QuoteResponse, VerifyRequest, VerifyResponse
 from .verification import verify_order
+from .schemas import WalletChallengeRequest, WalletChallengeResponse, WalletVerifyRequest, WalletStatus
+from .wallet import create_challenge, verify_challenge, verified_wallet, require_owner
 
 
 def register_payments(app, factory, settings):
     @app.post("/api/payments/quote", response_model=QuoteResponse)
     def quote(body: QuoteRequest, request: Request):
-        # Future wallet binding registers this trusted server-side resolver.
-        # Never accept a wallet as verified based on request JSON or headers.
-        resolver = getattr(app.state, "verified_buyer_wallet", None)
         with factory() as db:
             owner = getattr(request.state, "user_id", None)
-            wallet = resolver(db, request) if resolver and owner else None
-            return create_quote(db, settings, owner, body, wallet)
+            return create_quote(db, settings, owner, body, verified_wallet(db, owner))
 
     @app.post("/api/payments/verify", response_model=VerifyResponse)
     def verify(body: VerifyRequest, request: Request):
         with factory() as db:
             return verify_order(db, settings, getattr(request.state, "user_id", None), body)
+
+
+    @app.get("/api/payments/wallet", response_model=WalletStatus)
+    def wallet_status(request: Request):
+        owner = getattr(request.state, "user_id", None)
+        require_owner(owner)
+        with factory() as db:
+            wallet = verified_wallet(db, owner)
+            return {"wallet": wallet, "verified": bool(wallet)}
+
+    @app.post("/api/payments/wallet/challenge", response_model=WalletChallengeResponse)
+    def wallet_challenge(body: WalletChallengeRequest, request: Request):
+        with factory() as db:
+            return create_challenge(db, settings, getattr(request.state, "user_id", None), body.wallet)
+
+    @app.post("/api/payments/wallet/verify", response_model=WalletStatus)
+    def wallet_verify(body: WalletVerifyRequest, request: Request):
+        with factory() as db:
+            return verify_challenge(db, settings, getattr(request.state, "user_id", None), body)

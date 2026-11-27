@@ -63,3 +63,22 @@ def register_payments(app, factory, settings):
         require_owner(owner)
         with factory() as db:
             return creator_earnings(db, owner)
+
+
+    @app.get("/api/payments/creator/setup")
+    def creator_setup(request: Request):
+        from .creator_onboarding import status
+        with factory() as db:
+            return status(db, settings, getattr(request.state, "user_id", None))
+
+    @app.post("/api/payments/creator/wallet/challenge", response_model=WalletChallengeResponse)
+    def creator_wallet_challenge(body: WalletChallengeRequest, request: Request):
+        from .creator_onboarding import payout_challenge
+        with factory() as db:
+            return payout_challenge(db, settings, getattr(request.state, "user_id", None), body.wallet)
+
+    @app.post("/api/payments/creator/wallet/verify")
+    def creator_wallet_verify(body: WalletVerifyRequest, request: Request):
+        from .creator_onboarding import verify_payout
+        with factory() as db:
+            return verify_payout(db, settings, getattr(request.state, "user_id", None), body)

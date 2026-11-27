@@ -42,6 +42,9 @@ export default function PublishCharacterPage() {
   const [traitsText, setTraitsText] = useState("");
   const [rightsBasis, setRightsBasis] = useState<"original" | "licensed">("original");
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
+  const [earningsReady, setEarningsReady] = useState(false);
+  const [payoutWallet, setPayoutWallet] = useState<string | null>(null);
+  const [enableEarnings, setEnableEarnings] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<OwnedListing | null>(null);
@@ -55,6 +58,7 @@ export default function PublishCharacterPage() {
     setTagsText(existing?.tags.join(", ") ?? "");
     setTraitsText(existing?.public_personality.join(", ") ?? "");
     setRightsConfirmed(false);
+    setEnableEarnings(existing?.monetization_enabled ?? false);
     setRightsBasis(existing?.rights_basis ?? "original");
     setError("");
     setNotice("");
@@ -63,6 +67,10 @@ export default function PublishCharacterPage() {
 
   useEffect(() => {
     let active = true;
+    void fetch("/api/payments/creator/setup", {credentials:"same-origin", cache:"no-store"})
+      .then(r => r.ok ? r.json() : null)
+      .then(s => { if (active && s) { setEarningsReady(s.ready); setPayoutWallet(s.wallet); } })
+      .catch(() => {});
     Promise.all([rehearsal<Character[]>("/characters"), listOwnedListings()])
       .then(([records, listings]) => {
         if (!active) return;
@@ -108,6 +116,7 @@ export default function PublishCharacterPage() {
         public_personality: publicPersonality,
         rights_basis: rightsBasis,
         rights_confirmed: true,
+        enable_earnings: enableEarnings,
       });
       setResult(listing);
       setOwnedListings((old) => [
@@ -250,13 +259,21 @@ export default function PublishCharacterPage() {
             <span>I confirm I have the rights to publicly share this character and its artwork. Publishing makes the preview details and current portrait visible to anyone who opens the Marketplace.</span>
           </label>
 
-          <p className="el-listing-monetization-note" style={{ margin: "18px 0 20px" }}>
-            Free to publish. Paid scenes require wallet verification.
-          </p>
-          <details className="el-listing-payout-details">
-            <summary>Future creator payouts</summary>
-            <p>Planned test pack: 1 USDC. Each creator receives 45%; Echoloom receives 10%. Paid scenes are not available yet.</p>
-          </details>
+          <section style={{ margin: "22px 0", padding: 18, border: "1px solid #665184", borderRadius: 12, background: "#241b35", color: "#eee5fa" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <strong style={{ fontSize: 17 }}>Earn with your character</strong>
+              <strong style={{ fontSize: 26, color: "#cfb8ff" }}>45%</strong>
+            </div>
+            <p style={{ fontSize: 14, lineHeight: 1.5, margin: "8px 0 14px" }}>Receive 45% of each eligible paid story unlock featuring this character. Devnet test tokens only; free usage earns nothing.</p>
+            {earningsReady ? <>
+              <p style={{ fontSize: 13 }}>Verified payout wallet: {payoutWallet?.slice(0,6)}…{payoutWallet?.slice(-4)}</p>
+              <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
+                <input type="checkbox" checked={enableEarnings} onChange={e => setEnableEarnings(e.target.checked)} style={{ width: 18, height: 18 }} />
+                Enable earnings for this character
+              </label>
+            </> : <Link className="button full" href={"/characters/earnings/setup?character=" + encodeURIComponent(characterId)} style={{ marginTop: 8, color: "#e5d6ff" }}>Set up earnings →</Link>}
+            <p style={{ fontSize: 12, margin: "12px 0 0", color: "#c6bad6" }}>You can publish without enabling earnings. Save unsaved listing changes before leaving this page.</p>
+          </section>
 
           {error && <p className="error" role="alert">{error}</p>}
           {notice && <p role="status" style={{ color: accent, marginBottom: 15 }}>{notice}</p>}

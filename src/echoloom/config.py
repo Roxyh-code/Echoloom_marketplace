@@ -60,6 +60,7 @@ class Settings(BaseSettings):
 
     # Devnet checkout remains opt-in and fails closed without wallet verification.
     solana_payments_enabled: bool = False
+    solana_creator_self_service_enabled: bool = False
     solana_rpc_url: str = "https://api.devnet.solana.com"
     solana_program_id: str = ""
     solana_mint: str = ""

@@ -522,6 +522,12 @@ export function MobileCharacterStudio({
               {ownedListings.length ? "Publish or manage listings →" : "Publish a character →"}
             </button>
           )}
+          {!picking && !archived && (
+            <button type="button" className="rh-secondary" style={{ marginBottom: 12 }}
+              onClick={() => window.location.assign("/characters/earnings")}>
+              Creator earnings →
+            </button>
+          )}
           {pending && (
             <button
               className="mc-pending"

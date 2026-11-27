@@ -38,6 +38,13 @@ async function walletWait<T>(promise: Promise<T>): Promise<T> {
     })]);
   } finally { if (timer !== undefined) clearTimeout(timer); }
 }
+type WalletStatus = { wallet: string | null; verified: boolean };
+async function walletStatus(signal?: AbortSignal): Promise<WalletStatus> {
+  const r = await fetch("/api/payments/wallet", { credentials: "same-origin", cache: "no-store", signal });
+  if (!r.ok) throw new Error("Could not check saved wallet.");
+  return r.json();
+}
+
 type Verify = { status: "pending" | "paid" | "rejected"; reason: string | null;
   scene_allowance: { used: number; limit: number } };
 
@@ -77,6 +84,67 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
   const selected = wallets.find(w => w.name === selectedWallet) ?? wallets[0];
   const working = phase === "connecting" || phase === "sending";
   const ready = available && !!connected;
+  const [boundWallet, setBoundWallet] = useState<string | null>(null);
+  const attempted = useRef(new Set<StandardWallet>());
+  const {wallets: registered, revision, restore} = provider;
+  useEffect(() => {
+    if (saved || guard.current || registered.length === 0) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const status = await walletStatus(controller.signal);
+        if (controller.signal.aborted || guard.current) return;
+        setBoundWallet(status.verified ? status.wallet : null);
+        if (!status.verified || !status.wallet) {
+          setConnected(null);
+          return;
+        }
+        const compatible = registered.filter(w => w.chains.includes(SOLANA_PAYMENT_CHAIN)
+          && w.features["solana:signMessage"] && w.features["solana:signAndSendTransaction"]);
+        for (const wallet of compatible) {
+          let account = wallet.accounts[0];
+          if (!account && !attempted.current.has(wallet)) {
+            attempted.current.add(wallet);
+            const restored = await restore(wallet).catch(() => null);
+            if (controller.signal.aborted || guard.current) return;
+            if (restored) account = restored;
+          }
+          if (account?.address === status.wallet && account.chains.includes(SOLANA_PAYMENT_CHAIN)) {
+            setConnected({wallet, account});
+            return;
+          }
+        }
+        setConnected(null);
+      } catch { if (!controller.signal.aborted && !guard.current) setConnected(null); }
+    })();
+    return () => controller.abort();
+  }, [registered, revision, restore, saved]);
+
+  // Wallet change events invalidate stale quotes and connections. Check again
+  // immediately before payment; no transaction may use a stale account.
+  useEffect(() => {
+    if (!connected) return;
+    const live = connected.wallet.accounts[0];
+    if (!registered.includes(connected.wallet) || live?.address !== connected.account.address
+      || !live.chains.includes(SOLANA_PAYMENT_CHAIN)) {
+      setConnected(null);
+      setQuote(null);
+      if (!guard.current && !saved) setPhase("idle");
+    }
+  }, [registered, revision, connected, saved]);
+
+  async function assertCurrent() {
+    if (!connected || connected.wallet.accounts[0]?.address !== connected.account.address
+      || !connected.wallet.accounts[0]?.chains.includes(SOLANA_PAYMENT_CHAIN)) {
+      setConnected(null); setQuote(null);
+      throw new Error("Wallet account changed. Reconnect before continuing.");
+    }
+    const status = await walletStatus();
+    if (!status.verified || status.wallet !== connected.account.address) {
+      setConnected(null); setQuote(null);
+      throw new Error("Wallet binding changed. Verify again.");
+    }
+  }
 
   function persist(value: Saved | null) {
     if (!localPut(key, value)) throw new Error("Cannot save payment recovery data. Enable browser storage before continuing.");
@@ -119,6 +187,14 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
       const account = await walletWait(provider.connect(selected));
       if (!mounted.current) return;
       if (!account.chains.includes(SOLANA_PAYMENT_CHAIN)) throw new Error("Select Solana Devnet in your wallet.");
+      const previous = await walletStatus();
+      if (!mounted.current) return;
+      if (previous.verified && previous.wallet === account.address) {
+        setBoundWallet(account.address);
+        setConnected({wallet:selected,account});
+        setPhase("idle");
+        return;
+      }
       setStep("challenge");
       const challenge = await payment<{challenge_id:string; message:string}>("wallet/challenge", {wallet:account.address});
       if (!mounted.current) return;
@@ -130,6 +206,7 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
       await payment("wallet/verify", {challenge_id:challenge.challenge_id,
         signature_b64:btoa(String.fromCharCode(...signature))});
       if (!mounted.current) return;
+      setBoundWallet(account.address);
       setConnected({wallet:selected,account});
       setPhase("idle");
     });
@@ -140,6 +217,7 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
     void run(async () => {
       setPhase("connecting");
       setStep("quote");
+      await assertCurrent();
       const q = await payment<CheckoutQuote>("quote", {scene_id:sceneId,buyer_wallet:connected.account.address});
       if (!mounted.current) return;
       setQuote(q);
@@ -150,6 +228,7 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
   function purchase() {
     if (!connected || !ready || !quote || saved) return;
     void run(async () => {
+      await assertCurrent();
       if (Date.parse(quote.expires_at) <= Date.now()) {
         setQuote(null);
         setPhase("idle");
@@ -210,6 +289,7 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
       </div>
       {!available && !saved && <p role="status">{tr("Wallet verification is available. Payments are not enabled for this scene or deployment.",
         "可以验证钱包；当前场景或部署尚未开启付款。")}</p>}
+      {!connected && !saved && boundWallet && <p role="status">{tr("Saved verified wallet: ","已保存验证钱包：")}{boundWallet.slice(0,6)}…{boundWallet.slice(-4)}. {tr("Reconnect if locked or disconnected.","如钱包已锁定或断开，请重新连接。")}</p>}
       {!connected && !saved && wallets.length === 0 && <p role="status">{tr("No Devnet-compatible wallet detected. Install or unlock Phantom or Solflare.","未检测到兼容 Devnet 的钱包，请安装或解锁 Phantom 或 Solflare。")}</p>}
       {!connected && !saved && wallets.length > 0 && <label>{tr("Wallet","钱包")}
         <select value={selected?.name ?? ""} onChange={e => setSelectedWallet(e.target.value)}>
@@ -225,6 +305,7 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
         disabled={!selected || working} onClick={connect}>{tr("Connect wallet","连接钱包")}</button>}
       {!saved && connected && phase !== "review" && phase !== "paid" && <button className="rh-primary"
         disabled={!ready || working} onClick={requestQuote}>{tr("Get payment quote","获取付款报价")}</button>}
+      {!saved && connected && !working && phase !== "paid" && <button className="rh-secondary" onClick={() => { setConnected(null); setQuote(null); setPhase("idle"); }}>{tr("Change wallet","更换钱包")}</button>}
       {!saved && phase === "review" && <button className="rh-primary"
         disabled={!ready || working} onClick={purchase}>{tr("Confirm payment","确认付款")}</button>}
       {saved && !saved.tx_signature && !working && <>

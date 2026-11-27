@@ -8,6 +8,8 @@ import styles from "./creator-earnings.module.css";
 type Amount = { mint: string; amount_minor_units: number };
 type Earnings = {
   totals: Amount[];
+  payout_wallet: string | null;
+  listings: { character_id: string; listing_id: string; name: string; status: "enabled" | "setup_required" | "unpublished" }[];
   paid_unlocks: number;
   characters: (Amount & { character_id: string; name: string })[];
   recent_transactions: (Amount & { signature: string; verified_at: string;
@@ -59,22 +61,31 @@ export function CreatorEarnings() {
           </div>)}
           <p className={styles.muted}>{data.paid_unlocks} paid story unlock{data.paid_unlocks === 1 ? "" : "s"}</p>
         </section>
-        {data.characters.length === 0 && data.recent_transactions.length === 0 ? (
+        <div className={styles.walletRow}><div><strong>Payout wallet</strong><p className={styles.muted}>{data.payout_wallet ? short(data.payout_wallet) : "Not configured"}</p></div><Link href="/characters/publish">Manage →</Link></div>
+        {data.listings.length === 0 && data.characters.length === 0 && data.recent_transactions.length === 0 ? (
           <section className={styles.empty}>
-            <h2>No earnings yet</h2>
-            <p className={styles.muted}>Verified story payments will appear here.</p>
+            <h2>No published characters yet</h2>
+            <p className={styles.muted}>Publish a character to get started.</p>
+            <Link href="/characters/publish">Publish a character →</Link>
           </section>
         ) : <>
           <section className={styles.section}>
-            <h2>By character</h2>
-            {data.characters.map(c => <div className={styles.row} key={c.mint + c.character_id}>
-              <div className={styles.detail}><strong>{c.name}</strong>
-                {multiMint && <small title={c.mint}>{short(c.mint)}</small>}</div>
-              <span className={styles.value}>{amount(c.amount_minor_units)}</span>
+            <h2>Your characters</h2>
+            {data.listings.map(l => {
+              const amounts = data.characters.filter(c => c.character_id === l.character_id);
+              return <Link className={styles.row} key={l.listing_id} href={"/characters/publish?character=" + encodeURIComponent(l.character_id)}>
+                <div className={styles.detail}><strong>{l.name}</strong><small className={l.status === "enabled" ? styles.enabled : undefined}>{l.status === "enabled" ? "Monetization enabled" : l.status === "unpublished" ? "Unpublished" : "Setup required"}</small></div>
+                <div className={styles.values}>{amounts.length ? amounts.map(c => <span key={c.mint} title={c.mint}>{amount(c.amount_minor_units)}{multiMint ? " · " + short(c.mint) : ""}</span>) : <span>0.00</span>}<small>tokens</small></div>
+              </Link>;
+            })}
+            {data.characters.filter(c => !data.listings.some(l => l.character_id === c.character_id)).map(c => <div className={styles.row} key={c.mint + c.character_id}>
+              <div className={styles.detail}><strong>{c.name}</strong><small>Historical / private</small></div>
+              <span className={styles.value}>{amount(c.amount_minor_units)}{multiMint ? " · " + short(c.mint) : ""}</span>
             </div>)}
           </section>
           <section className={styles.section}>
             <h2>Transactions</h2>
+            {!data.recent_transactions.length && <p className={styles.muted}>No paid transactions yet.</p>}
             {data.recent_transactions.slice(0, expanded ? 50 : 3).map(t => <a
               className={styles.row + " " + styles.transaction}
               key={t.signature} href={"https://explorer.solana.com/tx/" + encodeURIComponent(t.signature) + "?cluster=devnet"}

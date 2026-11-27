@@ -2,7 +2,8 @@
 from fastapi import Request
 
 from .quote import create_quote
-from .schemas import QuoteRequest, QuoteResponse
+from .schemas import QuoteRequest, QuoteResponse, VerifyRequest, VerifyResponse
+from .verification import verify_order
 
 
 def register_payments(app, factory, settings):
@@ -15,3 +16,8 @@ def register_payments(app, factory, settings):
             owner = getattr(request.state, "user_id", None)
             wallet = resolver(db, request) if resolver and owner else None
             return create_quote(db, settings, owner, body, wallet)
+
+    @app.post("/api/payments/verify", response_model=VerifyResponse)
+    def verify(body: VerifyRequest, request: Request):
+        with factory() as db:
+            return verify_order(db, settings, getattr(request.state, "user_id", None), body)

@@ -269,7 +269,7 @@ export default function PublishCharacterPage() {
               <p style={{ fontSize: 13 }}>Verified payout wallet: {payoutWallet?.slice(0,6)}…{payoutWallet?.slice(-4)}</p>
               <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
                 <input type="checkbox" checked={enableEarnings} onChange={e => setEnableEarnings(e.target.checked)} style={{ width: 18, height: 18 }} />
-                Enable earnings for this character
+                Enable earnings for this character (I have commercial rights)
               </label>
             </> : <Link className="button full" href={"/characters/earnings/setup?character=" + encodeURIComponent(characterId)} style={{ marginTop: 8, color: "#e5d6ff" }}>Set up earnings →</Link>}
             <p style={{ fontSize: 12, margin: "12px 0 0", color: "#c6bad6" }}>You can publish without enabling earnings. Save unsaved listing changes before leaving this page.</p>

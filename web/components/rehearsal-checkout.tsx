@@ -60,9 +60,9 @@ async function payment<T>(path: string, body: unknown): Promise<T> {
   return value as T;
 }
 
-export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
+export function CheckoutPanel({sceneId, language, available, onPaid, onClose, onBusy}: {
   sceneId: string; language: "en" | "zh"; available: boolean;
-  onPaid: () => Promise<void>; onClose: () => void;
+  onPaid: () => Promise<void>; onClose: () => void; onBusy?: (busy: boolean) => void;
 }) {
   const tr = (en: string, zh: string) => language === "zh" ? zh : en;
   const key = "checkout:" + sceneId;
@@ -83,7 +83,8 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
     && w.features["solana:signMessage"] && w.features["solana:signAndSendTransaction"]);
   const selected = wallets.find(w => w.name === selectedWallet) ?? wallets[0];
   const working = phase === "connecting" || phase === "sending";
-  const ready = available && !!connected;
+  const [liveAvailable, setLiveAvailable] = useState<boolean | null>(null);
+  const ready = (liveAvailable ?? available) && !!connected;
   const [boundWallet, setBoundWallet] = useState<string | null>(null);
   const attempted = useRef(new Set<StandardWallet>());
   const {wallets: registered, revision, restore} = provider;
@@ -133,6 +134,20 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
     }
   }, [registered, revision, connected, saved]);
 
+  useEffect(() => {
+    setLiveAvailable(null);
+    if (!connected || saved) return;
+    const controller = new AbortController();
+    void fetch("/api/payments/readiness/" + encodeURIComponent(sceneId), {
+      credentials: "same-origin", cache: "no-store", signal: controller.signal,
+    }).then(async r => {
+      if (!r.ok) throw new Error("Readiness unavailable");
+      const result = await r.json();
+      if (!controller.signal.aborted) setLiveAvailable(result.available === true);
+    }).catch(() => { if (!controller.signal.aborted) setLiveAvailable(false); });
+    return () => controller.abort();
+  }, [sceneId, connected?.account.address, saved]);
+
   async function assertCurrent() {
     if (!connected || connected.wallet.accounts[0]?.address !== connected.account.address
       || !connected.wallet.accounts[0]?.chains.includes(SOLANA_PAYMENT_CHAIN)) {
@@ -140,7 +155,7 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
       throw new Error("Wallet account changed. Reconnect before continuing.");
     }
     const status = await walletStatus();
-    if (!status.verified || status.wallet !== connected.account.address) {
+    if (!status.verified || status.wallet !== connected.account.address || connected.wallet.accounts[0]?.address !== connected.account.address || !connected.wallet.accounts[0]?.chains.includes(SOLANA_PAYMENT_CHAIN)) {
       setConnected(null); setQuote(null);
       throw new Error("Wallet binding changed. Verify again.");
     }
@@ -154,12 +169,13 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
   async function run(fn: () => Promise<void>) {
     if (guard.current) return;
     guard.current = true;
+    onBusy?.(true);
     setError("");
     try { await fn(); }
     catch (e) {
       setError(e instanceof Error ? e.message : "Checkout failed.");
       setPhase("failed");
-    } finally { guard.current = false; }
+    } finally { guard.current = false; onBusy?.(false); }
   }
 
   async function check(order: Saved) {
@@ -239,8 +255,13 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
       // Save the order before requesting a wallet transaction. An ambiguous
       // broadcast must not silently trigger a second purchase.
       const order = {order_id:quote.order_id,tx_signature:null};
-      persist(order);
-      const signature = await purchaseSignedQuote(quote, connected.account.address, wire => {
+      const signature = await purchaseSignedQuote(quote, connected.account.address, async (wire, kind) => {
+        if (!mounted.current) throw new Error("Checkout closed before transaction submission.");
+        await assertCurrent();
+        if (!mounted.current) throw new Error("Checkout closed before transaction submission.");
+        // Setup transactions can create token accounts but cannot purchase.
+        // Only persist ambiguous recovery immediately before the actual send.
+        if (kind === "purchase") persist(order);
         setStep("approve");
         return provider.signAndSendTransaction(connected.wallet, connected.account, SOLANA_PAYMENT_CHAIN, wire,
           {preflightCommitment:"confirmed"});
@@ -287,7 +308,7 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
         {quote && <small>{tr("Quoted amount: ","报价：")}{quote.amount_minor_units / 10 ** quote.decimals}
           {" · "}{tr("Expires: ","到期：")}{new Date(quote.expires_at).toLocaleTimeString()}</small>}
       </div>
-      {!available && !saved && <p role="status">{tr("Wallet verification is available. Payments are not enabled for this scene or deployment.",
+      {!(liveAvailable ?? available) && !saved && <p role="status">{tr("Wallet verification is available. Payments are not enabled for this scene or deployment.",
         "可以验证钱包；当前场景或部署尚未开启付款。")}</p>}
       {!connected && !saved && boundWallet && <p role="status">{tr("Saved verified wallet: ","已保存验证钱包：")}{boundWallet.slice(0,6)}…{boundWallet.slice(-4)}. {tr("Reconnect if locked or disconnected.","如钱包已锁定或断开，请重新连接。")}</p>}
       {!connected && !saved && wallets.length === 0 && <p role="status">{tr("No Devnet-compatible wallet detected. Install or unlock Phantom or Solflare.","未检测到兼容 Devnet 的钱包，请安装或解锁 Phantom 或 Solflare。")}</p>}
@@ -306,7 +327,7 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
       {!saved && connected && phase !== "review" && phase !== "paid" && <button className="rh-primary"
         disabled={!ready || working} onClick={requestQuote}>{tr("Get payment quote","获取付款报价")}</button>}
       {!saved && connected && !working && phase !== "paid" && <button className="rh-secondary" onClick={() => { setConnected(null); setQuote(null); setPhase("idle"); }}>{tr("Change wallet","更换钱包")}</button>}
-      {!saved && phase === "review" && <button className="rh-primary"
+      {!saved && connected && phase === "review" && <button className="rh-primary"
         disabled={!ready || working} onClick={purchase}>{tr("Confirm payment","确认付款")}</button>}
       {saved && !saved.tx_signature && !working && <>
         <p>{tr("If the wallet submitted a transaction, paste its signature to recover this order. Do not pay again.",
@@ -320,8 +341,19 @@ export function CheckoutPanel({sceneId, language, available, onPaid, onClose}: {
           await check(recovered);
         })}>{tr("Recover payment","恢复付款")}</button>
       </>}
-      {saved?.tx_signature && !working && <button className="rh-primary"
-        onClick={() => { setPolls(0); void run(() => check(saved)); }}>{tr("Check payment again","重新核验付款")}</button>}
+      {saved?.tx_signature && !working && <>
+        <button className="rh-primary" onClick={() => { setPolls(0); void run(() => check(saved)); }}>{tr("Check payment again","重新核验付款")}</button>
+        {phase === "failed" && <details>
+          <summary>{tr("Correct transaction signature","更正交易签名")}</summary>
+          <label>{tr("Transaction signature","交易签名")}
+            <input value={signatureInput} onChange={e => setSignatureInput(e.target.value)} />
+          </label>
+          <button className="rh-secondary" disabled={!signatureInput.trim()} onClick={() => void run(async () => {
+            const recovered = {...saved,tx_signature:signatureInput.trim()};
+            persist(recovered); setPolls(0); await check(recovered);
+          })}>{tr("Verify corrected signature","核验更正后的签名")}</button>
+        </details>}
+      </>}
       <button className="rh-secondary" disabled={working} onClick={onClose}>{tr("Return to story","返回故事")}</button>
     </div>
   );

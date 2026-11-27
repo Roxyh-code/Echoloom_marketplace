@@ -17,7 +17,7 @@ from .models import Entitlement, Payment, PaymentOrder
 from .orders import paid_sentence_allowance
 from .receipt import expected_receipt, validate_receipt
 from .signer import verify_signature
-from .solana_rpc import DEVNET_GENESIS, pda, rpc_call
+from .solana_rpc import DEVNET_GENESIS, SolanaRPCError, pda, rpc_call
 
 ED25519 = "Ed25519SigVerify111111111111111111111111111"
 ATA = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
@@ -136,7 +136,7 @@ def chain_evidence(settings, order, signature):
             raise ValueError("Invalid receipt owner")
         validate_receipt(base64.b64decode(receipt["data"][0], validate=True), order, slot)
         return "paid", None, slot
-    except httpx.HTTPError:
+    except (httpx.HTTPError, SolanaRPCError):
         return "pending", "rpc_unavailable", None
     except (ValueError, KeyError, TypeError, IndexError, OverflowError):
         # Malformed RPC/invalid evidence never unlocks; retries with valid evidence remain possible.

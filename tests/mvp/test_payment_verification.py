@@ -133,3 +133,14 @@ def test_atomic_idempotent_grant(setup,evidence,monkeypatch):
         assert db.query(Entitlement).count()==1
         other=VerifyRequest(order_id=order.id,tx_signature=str(Signature.from_bytes(bytes([3])*64)))
         assert v.verify_order(db,settings,"owner",other)["status"]=="rejected"
+
+
+def test_rpc_error_is_retryable(evidence, monkeypatch):
+    from echoloom.payments.solana_rpc import SolanaRPCError
+    order, _, sig, _ = evidence
+    settings = SimpleNamespace(solana_rpc_url="test", solana_payment_commitment="finalized",
+        solana_program_id=order.program_id, solana_mint=order.mint)
+    def unavailable(*args):
+        raise SolanaRPCError("temporary RPC rejection")
+    monkeypatch.setattr(v, "rpc_call", unavailable)
+    assert v.chain_evidence(settings, order, sig) == ("pending", "rpc_unavailable", None)

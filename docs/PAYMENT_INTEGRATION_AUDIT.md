@@ -1,0 +1,4 @@
+# Integration audit (PR 14)
+Reviewed quote attribution, signed authorization, receipt verification, creator onboarding, wallet restore, transaction builder, checkout and access refresh against main ed5dc2bcadadb06dbd914157892aa46ac934adf4.
+Fixed: recoverable order persisted only immediately before purchase broadcast (not ATA setup); wallet binding rechecked before each wallet transaction; refresh readiness after changing buyer; prevent closing checkout sheet during active operation; allow correcting failed recovery signature; require access refresh before clearing recovery record; JSON-RPC error remains pending; local bridge CLI signing smoke test.
+Remaining: true local validator test and Devnet E2E; server-side pending order discovery / receipt reconciliation, cross-tab duplicate payment protection, ambiguous actual purchase submission recovery, wallet rotation, browser wallet acceptance. No claim of live payment verification. No migration.

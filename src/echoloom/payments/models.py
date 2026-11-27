@@ -58,3 +58,25 @@ class Entitlement(Base):
     )
     extra_sentences: Mapped[int] = mapped_column(default=40, server_default="40")
     created_at: Mapped[str] = mapped_column(String(40), default=now)
+
+
+class BuyerWallet(Base):
+    """Verified checkout identity, independent of creator payout credentials."""
+    __tablename__ = "payment_buyer_wallets"
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("user_accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    wallet: Mapped[str] = mapped_column(String(44), unique=True)
+    verified_at: Mapped[str] = mapped_column(String(40), default=now)
+
+
+class WalletChallenge(Base):
+    __tablename__ = "payment_wallet_challenges"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("user_accounts.id", ondelete="CASCADE"), index=True
+    )
+    wallet: Mapped[str] = mapped_column(String(44))
+    message: Mapped[str] = mapped_column(Text)
+    expires_at_unix: Mapped[int] = mapped_column(BigInteger)
+    consumed_at: Mapped[str | None] = mapped_column(String(40), default=None)

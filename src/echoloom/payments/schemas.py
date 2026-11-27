@@ -45,3 +45,25 @@ class VerifyResponse(BaseModel):
     status: Literal["pending", "paid", "rejected"]
     reason: str | None = None
     scene_allowance: SceneAllowance
+
+
+class WalletChallengeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    wallet: str = Field(min_length=32, max_length=44)
+
+
+class WalletChallengeResponse(BaseModel):
+    challenge_id: UUID
+    message: str
+    expires_at: str
+
+
+class WalletVerifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    challenge_id: UUID
+    signature_b64: str = Field(min_length=88, max_length=88)
+
+
+class WalletStatus(BaseModel):
+    wallet: str | None = None
+    verified: bool = False

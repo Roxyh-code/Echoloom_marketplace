@@ -15,6 +15,8 @@ import { localGet, localPut, operation } from "./rehearsal-api";
 type Mode = "library" | "create" | "detail";
 type Person = Character & { archived?: boolean };
 type Creation = { request_id: string; description: string; character_id?: string };
+import { CharacterSourceImport } from "./character-source-import";
+
 function Picture({
   character,
   large = false,
@@ -632,6 +634,7 @@ export function MobileCharacterStudio({
               <br />
               <em>have in mind?</em>
             </h1>
+            {!pending && <CharacterSourceImport disabled={creating || busy} onImport={value => {setDescription(value);localPut("character-description",value);}} />}
             <form
               id="mc-create"
               onSubmit={(e) => {

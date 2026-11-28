@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Set IMAGE_INITIAL_QUALITY=auto to retain provider defaults.
     image_initial_quality: Literal["auto", "low", "medium", "high"] = "medium"
     image_api_key: SecretStr = SecretStr("")
+    firecrawl_api_key: SecretStr = SecretStr("")
     max_profile_input_chars: int = Field(5000, ge=100, le=20000)
     max_chat_context_tokens: int = Field(12000, ge=2000, le=64000)
     max_output_tokens: int = Field(1500, ge=128, le=8000)

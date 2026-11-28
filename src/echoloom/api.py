@@ -598,6 +598,8 @@ def create_app(
     from .marketplace_routes import register_marketplace
 
     register_marketplace(app, factory, settings)
+    from .character_import import register_character_import
+    register_character_import(app, settings)
     from .payments.routes import register_payments
 
     register_payments(app, factory, settings)

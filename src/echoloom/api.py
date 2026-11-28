@@ -144,6 +144,7 @@ def create_app(
             "current_image_id": c.current_image_id,
             "conversation_id": conv.id if conv else None,
             "original_description": c.original_description,
+            "research": c.research_data,
             "created_at": c.created_at,
             "updated_at": c.updated_at,
         }
@@ -204,6 +205,7 @@ def create_app(
                 ),
                 "max_profile_input_chars": settings.max_profile_input_chars,
                 "voice_enabled": settings.elevenlabs_enabled,
+                "research_enabled": bool(settings.firecrawl_enabled and settings.firecrawl_api_key.get_secret_value()),
                 "mode": "local-single-user",
             },
         )

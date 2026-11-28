@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     companion_worker_enabled: bool = False
     allow_additional_accounts: bool = False
 
+    firecrawl_enabled: bool = False
+    firecrawl_api_key: SecretStr = SecretStr("")
+    firecrawl_max_credits: int = Field(100, ge=10, le=500)
+    firecrawl_timeout_seconds: float = Field(90, ge=10, le=150)
+    firecrawl_daily_runs_per_account: int = Field(5, ge=1, le=100)
+    firecrawl_daily_runs_global: int = Field(20, ge=1, le=500)
+
     # Existing ElevenLabs voices only; opt in after reviewing voice rights.
     elevenlabs_enabled: bool = False
     elevenlabs_api_key: SecretStr = SecretStr("")

@@ -41,6 +41,8 @@ from .db import (
     uid,
 )
 from .providers import ProviderError
+from .character_research import CharacterResearch, ResearchIdentity, ResearchError
+from datetime import UTC, datetime
 from .schemas import ImageInput, Profile
 
 
@@ -61,6 +63,7 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
     # A durable queue is required before deploying this with multiple workers.
     active_portraits = {}
     active_portraits_guard = Lock()
+    research_agent = CharacterResearch(settings)
 
     def owner(request):
         return request.state.user_id
@@ -307,6 +310,7 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                 if request_job and request_job.status == "pending":
                     request_job.status = "succeeded"
                     request_job.result = {
+                        **(request_job.result or {}),
                         "character_id": cid,
                         "phase": "portrait_failed" if image_error else "ready",
                         "image_error": image_error,
@@ -328,6 +332,7 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                     if row and row.owner_id == user and row.status == "pending":
                         row.status = "succeeded"
                         row.result = {
+                            **(row.result or {}),
                             "character_id": (row.result or {}).get("character_id"),
                             "phase": "portrait_failed",
                             "image_error": "Portrait generation was interrupted. Your character is saved.",
@@ -360,6 +365,41 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             raise
         return ready
 
+    def research_for_creation(db,row,user,body):
+        if not body.research or not research_agent.enabled() or user is None:
+            return None
+        prior=row.result or {}
+        if prior.get("research_attempted"):
+            return prior.get("research_lore")
+        row.result=prior|{"phase":"identifying"}
+        db.commit()
+        try:
+            identity=ResearchIdentity.model_validate(app.state.text.identify_research_character(body.description))
+            if identity.kind!="existing_fictional" or not identity.name or not identity.work:
+                return None
+            lore=research_agent.cached(identity)
+            if lore is None:
+                with locks.hold("firecrawl-budget"):
+                    today=datetime.now(UTC).date().isoformat()
+                    runs=[r for r in db.scalars(select(CreatorRequest).where(
+                        CreatorRequest.scope=="character",CreatorRequest.created_at>=today))
+                        if (r.result or {}).get("research_attempted")]
+                    if (len(runs)>=settings.firecrawl_daily_runs_global
+                            or sum(r.owner_id==user for r in runs)>=settings.firecrawl_daily_runs_per_account):
+                        row.result=(row.result or {})|{"research_outcome":"budget"}
+                        db.commit()
+                        return None
+                    row.result=(row.result or {})|{"research_attempted":True,"phase":"researching"}
+                    db.commit()
+                lore=research_agent.research(identity)
+            row.result=(row.result or {})|{"research_lore":lore,"research_outcome":"completed"}
+            db.commit()
+            return lore
+        except (ResearchError,ProviderError,ValueError,AttributeError,TypeError):
+            row.result=(row.result or {})|{"research_outcome":"fallback"}
+            db.commit()
+            return None
+
     @app.post("/api/creator/characters", status_code=201)
     def create_character(body: CreatorCharacterInput, request: Request):
         if len(body.description) > settings.max_profile_input_chars:
@@ -370,7 +410,7 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
         rid = str(body.request_id)
         started = time.monotonic()
         with locks.hold("creator-request:" + rid), factory() as db:
-            row = record(db, rid, user, "character", body.model_dump(mode="json"))
+            row = record(db, rid, user, "character", body.model_dump(mode="json", exclude_defaults=True))
             if row.status == "succeeded":
                 return row.result
             cid = (row.result or {}).get("character_id")
@@ -382,17 +422,38 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                         raise HTTPException(
                             401, "Please sign in before saving your character."
                         )
-            # Launch before the Profile LLM call: truly parallel AI requests.
-            ready = start_initial_portrait(rid, user, body.description)
+
+            lore=None
+            profile=None
+            ready=None
             try:
                 if not cid:
-                    try:
-                        profile = Profile.model_validate(
-                            app.state.text.generate(body.description)
-                        )
-                    except ProviderError as exc:
-                        fail(db, rid, str(exc))
-                        raise
+                    lore=research_for_creation(db,row,user,body)
+                    row.result=(row.result or {})|{"phase":"building_profile"}
+                    db.commit()
+                    if lore:
+                        try:
+                            profile=Profile.model_validate(app.state.text.generate_researched(body.description,lore))
+                        except (ProviderError,ValueError,AttributeError,TypeError):
+                            lore=None
+                            row.result=(row.result or {})|{"research_outcome":"fallback","research_lore":None}
+                            db.commit()
+                    if profile is None:
+                        ready=start_initial_portrait(rid,user,body.description)
+                        try:
+                            profile=Profile.model_validate(app.state.text.generate(body.description))
+                        except ProviderError as exc:
+                            saved=dict(row.result or {})
+                            fail(db,rid,str(exc))
+                            row=db.get(CreatorRequest,rid)
+                            row.result=saved|{"detail":str(exc)}
+                            db.commit()
+                            raise
+                    else:
+                        visual=json.dumps({"name":profile.name,"style":profile.visual_style,
+                            "appearance":profile.appearance.model_dump(),
+                            "description":profile.short_description},ensure_ascii=False)
+                        ready=start_initial_portrait(rid,user,visual)
                     with locks.hold("account-bootstrap"):
                         from .companion_models import Account
 
@@ -400,7 +461,8 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                             raise HTTPException(
                                 401, "Please sign in before saving your character."
                             )
-                        c = Character(owner_id=user, original_description=body.description)
+                        c = Character(owner_id=user, original_description=body.description,
+                                      research_data=(lore | {"profile_version":1}) if lore else None)
                         db.add(c)
                         db.flush()
                         db.add(
@@ -412,9 +474,17 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                             )
                         )
                         db.add(Conversation(character_id=c.id))
-                        row.result = {"character_id": c.id, "phase": "portrait_pending"}
+                        row.result = (row.result or {}) | {"character_id": c.id, "phase": "portrait_pending"}
+                        row.result = {k:v for k,v in row.result.items() if k!="research_lore"}
                         db.commit()
                         cid = c.id
+                if ready is None:
+                    c = character(db,cid,user)
+                    if c.research_data:
+                        p = snapshot(db,c)["profile"]
+                        ready = start_initial_portrait(rid,user,json.dumps({"name":p["name"],"appearance":p["appearance"],"description":p["short_description"],"style":p["visual_style"]},ensure_ascii=False))
+                    else:
+                        ready = start_initial_portrait(rid,user,body.description)
                 logger.info(
                     "creator stage=profile response_seconds=%.2f portrait=parallel",
                     time.monotonic() - started,
@@ -423,7 +493,8 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             finally:
                 # Wake the image worker whether Profile succeeded or failed.
                 # A failed profile leaves no character for image attachment.
-                ready.set()
+                if ready is not None:
+                    ready.set()
 
     @app.get("/api/creator/jobs/{rid}")
     def job(rid: UUID, request: Request):
@@ -431,7 +502,8 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             r = db.get(CreatorRequest, str(rid))
             if not r or r.owner_id != owner(request):
                 raise HTTPException(404, "Job not found.")
-            return {"status": r.status, "result": r.result}
+            public_result={k:v for k,v in (r.result or {}).items() if k not in {"research_lore","research_attempted"}}
+            return {"status":r.status,"result":public_result if r.result is not None else None}
 
     @app.post("/api/creator/characters/{cid}/portrait")
     def portrait(cid: UUID, body: CreatorImageInput, request: Request):

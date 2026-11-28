@@ -13,6 +13,7 @@ export type Profile = {
   interaction_preferences: Record<string, string>;
 };
 export type Character = {
+  research?: {sources:string[];profile_version:number}|null;
   id: string;
   profile: Profile;
   profile_version: number;
@@ -54,6 +55,7 @@ export type Revision = {
   profile: Profile;
 };
 export type Health = {
+  research_enabled?: boolean;
   voice_enabled?: boolean;
   creator_database_ready?: boolean;
   text_configured: boolean;

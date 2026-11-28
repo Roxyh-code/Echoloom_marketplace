@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, portraitUrl, type Character } from "@/components/api";
+import { ResearchSources } from "@/components/research-sources";
 import { CharacterDetailArticle } from "@/components/marketplace-character-detail";
 import { addCast, privateChoice, readCast, saveCast } from "@/components/marketplace-casting";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -69,6 +70,7 @@ export default function PrivateCharacterDetailPage() {
             traits={character.profile.personality?.core_traits || []}
             appearance={character.profile.appearance}
             backstory={character.profile.backstory}
+            researchSources={<ResearchSources character={character}/>}
             onAddToCast={addToCast}
           />
         ) : null}

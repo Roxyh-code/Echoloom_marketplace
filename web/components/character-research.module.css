@@ -1,0 +1,15 @@
+.toggle { display:flex !important; align-items:center; gap:10px; padding:12px 0; }
+.toggle button { width:36px !important; height:22px !important; min-height:22px !important; min-width:36px !important; border:1px solid #75668a; border-radius:20px; background:#31283f; padding:2px !important; display:flex; align-items:center; cursor:pointer; }
+.toggle button[aria-checked=true] { background:#7558c6; justify-content:flex-end; }
+.toggle button span { width:16px; height:16px; border-radius:50%; background:#f3e9ff; }
+.toggle button:disabled { opacity:.6; cursor:default; }
+.toggle button:focus-visible { outline:2px solid #c4a4ff; outline-offset:3px; }
+.toggle label { font-size:14px !important; color:#e8d8fa; cursor:pointer; }
+.progress { display:flex; align-items:center; gap:9px; font-size:13px; color:#cbb8ed; padding:14px 0; }
+.dot { width:8px; height:8px; border-radius:50%; background:#b799fc; animation:pulse 1.4s infinite; }
+@keyframes pulse { 50% {opacity:.35;} }
+@media(prefers-reduced-motion:reduce) {.dot{animation:none;}}
+.sources { margin:12px 0; font-size:13px; color:#bca8df; }
+.sources summary { cursor:pointer; padding:7px 0; }
+.sources a { display:block; color:#cfbaff; padding:5px 0; overflow-wrap:anywhere; }
+.sources small { color:#b4a7c4; }

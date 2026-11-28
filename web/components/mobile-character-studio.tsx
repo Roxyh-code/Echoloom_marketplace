@@ -11,11 +11,13 @@ import {
 } from "./api";
 import { creator } from "./creator-api";
 import { CharacterVoice } from "./character-voice";
+import { ResearchSources } from "./research-sources";
+import researchStyles from "./character-research.module.css";
 import { listOwnedListings, type OwnedListingDetail } from "./marketplace-api";
 import { localGet, localPut, operation } from "./rehearsal-api";
 type Mode = "library" | "create" | "detail";
 type Person = Character & { archived?: boolean };
-type Creation = { request_id: string; description: string; character_id?: string };
+type Creation = { request_id: string; description: string; character_id?: string; research?: boolean };
 function Picture({
   character,
   large = false,
@@ -109,6 +111,8 @@ export function MobileCharacterStudio({
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
   const [description, setDescription] = useState("");
+  const [research,setResearch]=useState(true);
+  const [researchPhase,setResearchPhase]=useState("");
   const [pending, setPending] = useState<Creation | null>(null);
   const [imageError, setImageError] = useState("");
   const [health, setHealth] = useState<Health | null>(null);
@@ -263,6 +267,8 @@ export function MobileCharacterStudio({
       localPut("character-creation", null);
     }
     setDescription("");
+    setResearch(true);
+    setResearchPhase("");
     localPut("character-description", "");
     setPerson(null);
     setImageError("");
@@ -277,8 +283,10 @@ export function MobileCharacterStudio({
     const job = retry || {
       request_id: operation(),
       description: description.trim(),
+      ...(health?.research_enabled && research ? {research:true}:{}),
     };
     setPending(job);
+    setResearchPhase(job.research?"identifying":"");
     localPut("character-creation", job);
     try {
       const r = await creator<{
@@ -331,9 +339,11 @@ export function MobileCharacterStudio({
             character_id?: string;
             image_error?: string;
             detail?: string;
+            phase?: string;
           };
         }>("/jobs/" + pending.request_id);
         if (!active || token !== creationEpoch.current) return;
+        if (pending.research && j.result?.phase) setResearchPhase(j.result.phase);
         if (j.result?.character_id) {
           const c = await api<Person>("/characters/" + j.result.character_id);
           if (!active || token !== creationEpoch.current) return;
@@ -652,6 +662,7 @@ export function MobileCharacterStudio({
                 void createCharacter(pending || {
                   request_id: operation(),
                   description: submitted,
+                  ...(health?.research_enabled && research ? {research:true}:{}),
                 });
               }}
             >
@@ -671,6 +682,10 @@ export function MobileCharacterStudio({
                   placeholder="A reserved astronomer with silver hair and a quiet, dry wit. She wants to save her observatory, but hides how much she fears failing…"
                 />
               </label>
+              {health?.research_enabled && <div className={researchStyles.toggle}>
+                <button type="button" role="switch" aria-label="Research character" aria-checked={pending ? !!pending.research : research} disabled={!!pending||creating} onClick={()=>setResearch(v=>!v)}><span/></button>
+                <label onClick={()=>{if(!pending&&!creating)setResearch(v=>!v);}}>Research character</label>
+              </div>}
               {!pending && (
                 <button
                   className="rh-text-button"
@@ -685,7 +700,10 @@ export function MobileCharacterStudio({
                   Try an example description →
                 </button>
               )}
-              {(creating || pending) && (
+              {(creating || pending) && pending?.research && (
+                <div className={researchStyles.progress} role="status"><span className={researchStyles.dot}/>{researchPhase==="researching"?"Researching character · Firecrawl":researchPhase==="building_profile"?"Creating character…":"Identifying character…"}</div>
+              )}
+              {(creating || pending) && !pending?.research && (
                 <div className="mc-creation-progress" role="status">
                   <div className={person ? "done" : ""}>
                     <span>{person ? "✓" : "01"}</span>
@@ -807,7 +825,8 @@ export function MobileCharacterStudio({
               </div>
             )}
             <div className="rh-pad mc-profile-body">
-              {reviewing && <p className="rh-muted">Your profile is saved. Choose a voice while your portrait finishes, or continue without one.</p>}
+              <ResearchSources character={person} />
+              {reviewing && <p className="rh-muted">Profile saved. Choose a voice.</p>}
               {!person.archived && (!picking || reviewing) && <CharacterVoice key={person.id} id={person.id} profileVersion={person.profile_version} />}
               <div className="mc-edit-actions">
                 <button

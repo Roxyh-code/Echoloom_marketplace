@@ -14,6 +14,7 @@ type CharacterDetailProps = {
   appearance?: Record<string, string>;
   backstory?: string;
   onAddToCast: () => void;
+  researchSources?: React.ReactNode;
 };
 
 /** Shared presentation for public Listings and owner-only private Characters.
@@ -21,7 +22,7 @@ type CharacterDetailProps = {
  */
 export function CharacterDetailArticle({
   name, description, image, source, revision, creator, tags = [], traits = [],
-  appearance, backstory, onAddToCast,
+  appearance, backstory, onAddToCast, researchSources,
 }: CharacterDetailProps) {
   const appearanceEntries = Object.entries(appearance || {})
     .filter(([, detail]) => typeof detail === "string" && detail.trim());
@@ -46,6 +47,7 @@ export function CharacterDetailArticle({
           <p className="em-detail-summary">{description}</p>
         </div>
       </div>
+      {source==="private" && researchSources}
       {tags.length > 0 && (
         <section className="em-detail-section" aria-label="Story tags">
           <h2>Story tags</h2>

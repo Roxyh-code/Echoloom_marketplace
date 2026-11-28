@@ -87,6 +87,7 @@ class CreatorAction(Model):
 class CreatorCharacterInput(Model):
     request_id: UUID
     description: str = Field(min_length=1, max_length=5000)
+    research: bool = False
 
 
 class CreatorImageInput(Model):

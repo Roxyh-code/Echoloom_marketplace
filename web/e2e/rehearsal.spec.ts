@@ -364,6 +364,9 @@ test("inline audio controls request only the selected revealed passage", async (
   const narrationButton=narrator.getByRole("button",{name:"Play audio for narration"});
   await expect(dialogueButton).toBeVisible();
   await expect(narrationButton).toBeVisible();
+  await dialogue.scrollIntoViewIfNeeded();
+  await page.evaluate(()=>document.fonts.ready);
+  await page.screenshot({path:"test-results/editorial-voiced-reader.png",fullPage:false});
   await expect(page.getByRole("button",{name:/Listen to story/})).toHaveCount(0);
   expect(requests).toHaveLength(0);
   const blockId=await dialogueButton.getAttribute("data-audio-block");

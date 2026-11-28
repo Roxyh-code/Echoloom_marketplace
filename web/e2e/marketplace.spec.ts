@@ -248,6 +248,12 @@ test("owned published character appears once, opens public detail and supports l
   const restored = await page.request.get(backend + "/api/marketplace/listings/" + listing_id);
   expect(restored.status()).toBe(200);
   expect((await restored.json()).short_description).toBe("A curious archivist returns.");
+  await page.goto("/characters/earnings");
+  await expect(page.getByRole("region",{name:"Lifetime earnings"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Your characters"})).toBeVisible();
+  await expect(page.getByText("Hazel",{exact:true})).toBeVisible();
+  await page.evaluate(()=>document.fonts.ready);
+  await page.screenshot({path:"test-results/editorial-creator-earnings.png",fullPage:false});
 });
 
 test("bottom navigation keeps the same order and column across pages, even on hover", async ({ page }) => {
@@ -534,6 +540,9 @@ test("Next line stops at 40 for private characters and opens wallet-unlock expla
   await expect(sheet).toContainText(/wallet/i);
   await expect(sheet).toContainText("Payments are not enabled");
   await expect(sheet.getByRole("button", {name:"Connect wallet"})).toBeDisabled();
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>document.fonts.ready);
+  await page.screenshot({path:"test-results/editorial-story-unlock.png",fullPage:false});
   await sheet.getByRole("button", { name: "Return to story" }).click();
 
   const backendScene = await (await page.request.get(backend + "/api/rehearsal/scenes/" + sid)).json();

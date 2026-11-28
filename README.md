@@ -15,22 +15,88 @@
   </p>
 </div>
 
+<!-- product-gallery:start -->
+## Product gallery
+
+Explore the actual mobile-first application, from creating a character to directing and monetizing stories.
+
+### Discover & create
+
 <table>
   <tr>
-    <td align="center"><img src="docs/assets/screenshots/editorial-marketplace.png" alt="Actual Discover marketplace screen" width="195" /></td>
-    <td align="center"><img src="docs/assets/screenshots/editorial-character-library.png" alt="Actual character library screen with publishing and earnings entries" width="195" /></td>
-    <td align="center"><img src="docs/assets/screenshots/editorial-character-creation.png" alt="Actual character creation screen" width="195" /></td>
-    <td align="center"><img src="docs/assets/screenshots/editorial-story-reader.png" alt="Actual interactive story reader screen" width="195" /></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-marketplace.png"><img src="docs/assets/screenshots/editorial-marketplace.png" alt="Discover" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-character-library.png"><img src="docs/assets/screenshots/editorial-character-library.png" alt="Character library" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-research-create.png"><img src="docs/assets/screenshots/editorial-research-create.png" alt="Research-enabled creation" width="210" /></a></td>
   </tr>
   <tr>
     <td align="center"><b>Discover</b></td>
-    <td align="center"><b>Character Studio</b></td>
-    <td align="center"><b>Create</b></td>
-    <td align="center"><b>Story Reader</b></td>
+    <td align="center"><b>Character library</b></td>
+    <td align="center"><b>Research-enabled creation</b></td>
   </tr>
 </table>
 
-<p align="center"><small>Actual running application screenshots captured by Playwright in <a href="https://github.com/Roxyh-code/Echoloom_marketplace/actions/runs/46083665183">CI run 46083665183</a>, using deterministic demo fixtures. Captured before the latest research and voice features; not design mockups or evidence of live provider calls or Solana settlement.</small></p>
+### Build a character identity
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/assets/screenshots/editorial-character-detail.png"><img src="docs/assets/screenshots/editorial-character-detail.png" alt="Character profile" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-research-update.png"><img src="docs/assets/screenshots/editorial-research-update.png" alt="Research update" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-voice-selection.png"><img src="docs/assets/screenshots/editorial-voice-selection.png" alt="Voice selection &amp; audition" width="210" /></a></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Character profile</b></td>
+    <td align="center"><b>Research update</b></td>
+    <td align="center"><b>Voice selection &amp; audition</b></td>
+  </tr>
+</table>
+
+### Cast & direct a scene
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/assets/screenshots/editorial-public-listing.png"><img src="docs/assets/screenshots/editorial-public-listing.png" alt="Public character" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-cast.png"><img src="docs/assets/screenshots/editorial-cast.png" alt="Choose a cast" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-story-setup.png"><img src="docs/assets/screenshots/editorial-story-setup.png" alt="Scene setup" width="210" /></a></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Public character</b></td>
+    <td align="center"><b>Choose a cast</b></td>
+    <td align="center"><b>Scene setup</b></td>
+  </tr>
+</table>
+
+### Read, listen & revise
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/assets/screenshots/editorial-voiced-reader.png"><img src="docs/assets/screenshots/editorial-voiced-reader.png" alt="Inline voice playback" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-story-intervention.png"><img src="docs/assets/screenshots/editorial-story-intervention.png" alt="Story direction" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-story-review.png"><img src="docs/assets/screenshots/editorial-story-review.png" alt="Story review" width="210" /></a></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Inline voice playback</b></td>
+    <td align="center"><b>Story direction</b></td>
+    <td align="center"><b>Story review</b></td>
+  </tr>
+</table>
+
+### Creator economy
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/assets/screenshots/editorial-listing-management.png"><img src="docs/assets/screenshots/editorial-listing-management.png" alt="Manage listing" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-story-unlock.png"><img src="docs/assets/screenshots/editorial-story-unlock.png" alt="Story unlock" width="210" /></a></td>
+    <td align="center"><a href="docs/assets/screenshots/editorial-creator-earnings.png"><img src="docs/assets/screenshots/editorial-creator-earnings.png" alt="Creator earnings" width="210" /></a></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Manage listing</b></td>
+    <td align="center"><b>Story unlock</b></td>
+    <td align="center"><b>Creator earnings</b></td>
+  </tr>
+</table>
+
+<p><small>Actual Playwright screenshots of the running application using deterministic test fixtures. Research and voice screens use mocked provider responses; creator earnings shows a zero-income account and checkout is disabled. These images are not evidence of live Firecrawl research, ElevenLabs synthesis, or Solana settlement. <a href="https://github.com/Roxyh-code/Echoloom_marketplace/actions/runs/46099994689">Capture run</a>.</small></p>
+<!-- product-gallery:end -->
 
 > **Project status:** Local hackathon prototype. Character creation, autonomous web research, persistent voice selection, on-demand story audio, publishing, interactive rehearsal, wallet verification, signed checkout and earnings reporting are implemented. Standard CI passed for the research and voice integrations. Live provider acceptance, full local-validator execution and live Devnet settlement remain separate checks. Research, voice synthesis and payments are opt-in server features.
 

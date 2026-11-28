@@ -13,7 +13,7 @@ PROGRAM = "DDNC5iENR2hGuqYUWdng2Yru94YugtJLf37QEqutVH4J"
 CONFIG = "9FcbxfJejy34TDxtQkNPp4R5LsB6q8gfx1dJb2S6PiAa"
 MINT = "8APFzFSd3uFnYSojta6j198bTndRoWCfhx6YxXwu7h2V"
 TREASURY = "2Y6iE7Fev4GzfmEtFXBrgy47T82ATxxib9ViRPiuzMC2"
-SIGNER = "Dj1g1qvkbKtrVzzSuqY4zC7QRxEneU8jh5CYMo36Cxb"
+SIGNER = "Dj1g1qvkbKtrVzzSuYqZ4zC7QRxEneU8jh5CYMo36Cxb"
 
 
 def read_env(path):

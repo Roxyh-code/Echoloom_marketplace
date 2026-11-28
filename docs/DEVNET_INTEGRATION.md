@@ -18,7 +18,7 @@
 | Token Program | `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA` |
 | Treasury wallet | `2Y6iE7Fev4GzfmEtFXBrgy47T82ATxxib9ViRPiuzMC2` |
 | Treasury ATA | `JC6Q8SMGykzJAh9tAcmY8pD5xy8B91qksv1idyhU3HLv` |
-| Authorized backend signer **public** key | `Dj1g1qvkbKtrVzzSuqY4zC7QRxEneU8jh5CYMo36Cxb` |
+| Authorized backend signer **public** key | `Dj1g1qvkbKtrVzzSuYqZ4zC7QRxEneU8jh5CYMo36Cxb` |
 | Deployment domain hash | `7fd12cd1cd604a1789ce37dce563043aaea9f06c0e81f00d851c6cbce92d237a` |
 | Creator A wallet / ATA | `FTkj7J5gVF7CPyk27CE3pbqXDS9KA5TegWC8Wm96aJVR` / `DPVWxWwhGUnqWRiDUtcq4CtupxRUngHsmyk1voFjhxxT` |
 | Creator B wallet / ATA | `9gcWe7HEzjyJ6hZSuq7Ft7tK8EtVjjEMU6EujTrM38XF` / `2SH6N4KER92Vrh2ZNZV9n28StzM4r78shgjxMAjyNTTZ` |
@@ -62,7 +62,7 @@ python scripts/check_devnet_handoff.py
 
 The user-supplied `NEXT_PUBLIC_ECHOOLOOM_PAYMENT_SIGNER` is **a public key only**. It cannot sign payment authorizations.
 
-- The backend needs `SOLANA_BACKEND_SIGNER_PATH` pointing to a securely stored 64-byte Solana CLI JSON keypair whose **public** key equals `Dj1g1qvkbKtrVzzSuqY4zC7QRxEneU8jh5CYMo36Cxb`. `SOLANA_EXPECTED_SIGNER_PUBKEY` pins this identity. It is checked against the on-chain config before quotes are issued.
+- The backend needs `SOLANA_BACKEND_SIGNER_PATH` pointing to a securely stored 64-byte Solana CLI JSON keypair whose **public** key equals `Dj1g1qvkbKtrVzzSuYqZ4zC7QRxEneU8jh5CYMo36Cxb`. `SOLANA_EXPECTED_SIGNER_PUBKEY` pins this identity. It is checked against the on-chain config before quotes are issued.
 - Do **not** request or post private key material, seed phrases or private JSON in chat, GitHub, `.env` or a frontend variable. If the existing signer is held only by the teammate, a safer path is to generate a new backend-controlled signing key in a protected environment and ask the Devnet **Config Authority** to execute the program's `rotate_authorized_signer` instruction. After on-chain confirmation, update the public signer pins and restart the backend. That administrative transaction is not done by this branch.
 - Neither the platform's treasury wallet nor Creator A/B wallets should be stored as private keys by the app.
 

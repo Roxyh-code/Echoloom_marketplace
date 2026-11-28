@@ -322,7 +322,7 @@ def test_image_provider_delay_does_not_block_profile_or_duplicate_calls(setup, m
     assert len(calls) == 1
 
 
-def test_profile_and_portrait_calls_begin_in_parallel_and_profile_is_usable_first(setup, monkeypatch):
+def test_visual_profile_is_committed_before_portrait_and_is_usable_first(setup, monkeypatch):
     client, text, images, *_ = setup
     text_started, image_started = Event(), Event()
     release_text, release_image = Event(), Event()
@@ -335,7 +335,11 @@ def test_profile_and_portrait_calls_begin_in_parallel_and_profile_is_usable_firs
         return original_text(description)
 
     def delayed_image(prompt, source=None):
-        assert "A gentle historian with long auburn hair" in prompt
+        assert "Long silver hair" in prompt
+        assert "Evelyn" in prompt
+        assert "A gentle historian" not in prompt
+        assert "A librarian who loves astronomy" not in prompt
+        assert "Works at a library" not in prompt
         image_started.set()
         assert release_image.wait(timeout=5), "Image model was never released."
         return original_image(prompt, source)
@@ -354,10 +358,10 @@ def test_profile_and_portrait_calls_begin_in_parallel_and_profile_is_usable_firs
     )
     creator.start()
     try:
-        # Both external requests must have started before either finishes.
         assert text_started.wait(timeout=3), "Profile model did not start"
-        assert image_started.wait(timeout=3), "Image model did not start alongside Profile"
+        assert not image_started.wait(timeout=.1), "Portrait must not receive raw description"
         release_text.set()
+        assert image_started.wait(timeout=3), "Portrait did not start after Profile"
         creator.join(timeout=3)
         assert not creator.is_alive(), "HTTP response waited for image completion"
         assert len(responses) == 1
@@ -386,7 +390,7 @@ def test_profile_and_portrait_calls_begin_in_parallel_and_profile_is_usable_firs
     assert len(images.sources) == 1
 
 
-def test_image_finishes_before_profile_without_losing_portrait(setup, monkeypatch):
+def test_portrait_is_not_requested_before_profile_finishes(setup, monkeypatch):
     client, text, images, *_ = setup
     profile_started, permit_profile = Event(), Event()
     original_text = text.generate
@@ -407,12 +411,7 @@ def test_image_finishes_before_profile_without_losing_portrait(setup, monkeypatc
     thread.start()
     try:
         assert profile_started.wait(timeout=3)
-        # Image generation should complete BEFORE the Profile is allowed to
-        # finish; the worker must wait for the DB Profile commit.
-        deadline = time.monotonic() + 3
-        while not images.sources and time.monotonic() < deadline:
-            time.sleep(0.01)
-        assert len(images.sources) == 1
+        assert not images.sources
         assert client.get(f"/api/creator/jobs/{payload['request_id']}").json()["status"] == "pending"
         permit_profile.set()
         thread.join(timeout=3)
@@ -437,6 +436,7 @@ def test_failed_portrait_is_recoverable_without_recreating_profile(setup):
     final = await_portrait_job(client, body["request_id"])
     assert final["result"]["phase"] == "portrait_failed"
     cid = final["result"]["character_id"]
+    assert client.get(f"/api/creator/characters/{cid}/portrait/status").json()["state"] == "missing"
     assert client.get("/api/characters/" + cid).json()["current_image_id"] is None
     images.fail = False
     recovered = client.post(
@@ -807,3 +807,15 @@ def test_migration_0004_preserves_populated_legacy_database(tmp_path, monkeypatc
             "Keep this conversation.",
         )
     command.upgrade(config, "head")
+
+
+def test_visual_prompt_contains_only_identity_and_appearance():
+    from echoloom.portrait_prompt import portrait_prompt
+    from echoloom.schemas import Profile
+    p=Profile(name="Mira", appearance={"hair":"Black hair"}, backstory="PRIVATE_HISTORY",
+              short_description="STORY_SUMMARY", private_information="PRIVATE_SECRET",
+              speech_style={"tone":"VOICE_TONE"})
+    prompt=portrait_prompt(p)
+    assert "Mira" in prompt and "Black hair" in prompt
+    for field in ("PRIVATE_HISTORY","STORY_SUMMARY","PRIVATE_SECRET","VOICE_TONE"):
+        assert field not in prompt

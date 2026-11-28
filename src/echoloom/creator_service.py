@@ -41,6 +41,7 @@ from .db import (
     uid,
 )
 from .providers import ProviderError
+from .portrait_prompt import portrait_prompt
 from .character_research import CharacterResearch, ResearchIdentity, ResearchError
 from datetime import UTC, datetime
 from .schemas import ImageInput, Profile
@@ -181,20 +182,10 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                 )
             ]
 
-    def complete_initial_portrait(rid, user, description, profile_ready):
+    def complete_initial_portrait(rid, user, prompt, profile_ready):
         started = time.monotonic()
         try:
-            # Start the image request from the ORIGINAL user description while
-            # the text model is independently producing a structured Profile.
-            # An image prompt requiring generated Profile fields would force
-            # the two expensive calls to remain sequential.
-            prompt = (
-                "Create one original fictional character portrait. No text or "
-                "watermark. Use the physical features, clothing, age and visual "
-                "style explicitly described here; invent unspecified visual "
-                "details tastefully and keep a coherent character design. "
-                "User's original character description: " + description
-            )
+            # Use the same committed visual profile as regeneration.
             data = None
             image_error = None
             # Recovery: if the same request was completed and the portrait
@@ -345,7 +336,7 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             with active_portraits_guard:
                 active_portraits.pop(rid, None)
 
-    def start_initial_portrait(rid, user, description):
+    def start_initial_portrait(rid, user, prompt):
         # Only one paid image request may be in flight for this request_id.
         with active_portraits_guard:
             if rid in active_portraits:
@@ -355,7 +346,7 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
         try:
             Thread(
                 target=complete_initial_portrait,
-                args=(rid, user, description, ready),
+                args=(rid, user, prompt, ready),
                 name="creator-portrait-" + rid[:8],
                 daemon=True,
             ).start()
@@ -428,6 +419,9 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             ready=None
             try:
                 if not cid:
+                    if row.status == "failed":
+                        row.status = "pending"
+                        db.commit()
                     lore=research_for_creation(db,row,user,body)
                     row.result=(row.result or {})|{"phase":"building_profile"}
                     db.commit()
@@ -439,7 +433,6 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                             row.result=(row.result or {})|{"research_outcome":"fallback","research_lore":None}
                             db.commit()
                     if profile is None:
-                        ready=start_initial_portrait(rid,user,body.description)
                         try:
                             profile=Profile.model_validate(app.state.text.generate(body.description))
                         except ProviderError as exc:
@@ -449,11 +442,6 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                             row.result=saved|{"detail":str(exc)}
                             db.commit()
                             raise
-                    else:
-                        visual=json.dumps({"name":profile.name,"style":profile.visual_style,
-                            "appearance":profile.appearance.model_dump(),
-                            "description":profile.short_description},ensure_ascii=False)
-                        ready=start_initial_portrait(rid,user,visual)
                     with locks.hold("account-bootstrap"):
                         from .companion_models import Account
 
@@ -470,7 +458,7 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                                 character_id=c.id,
                                 version=1,
                                 profile_json=profile.model_dump(),
-                                change_summary="Parallel profile and portrait creation",
+                                change_summary="Character profile creation",
                             )
                         )
                         db.add(Conversation(character_id=c.id))
@@ -480,13 +468,10 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                         cid = c.id
                 if ready is None:
                     c = character(db,cid,user)
-                    if c.research_data:
-                        p = snapshot(db,c)["profile"]
-                        ready = start_initial_portrait(rid,user,json.dumps({"name":p["name"],"appearance":p["appearance"],"description":p["short_description"],"style":p["visual_style"]},ensure_ascii=False))
-                    else:
-                        ready = start_initial_portrait(rid,user,body.description)
+                    p = Profile.model_validate(snapshot(db,c)["profile"])
+                    ready = start_initial_portrait(rid,user,portrait_prompt(p))
                 logger.info(
-                    "creator stage=profile response_seconds=%.2f portrait=parallel",
+                    "creator stage=profile response_seconds=%.2f portrait=background",
                     time.monotonic() - started,
                 )
                 return {"character_id": cid, "phase": "portrait_pending"}
@@ -505,6 +490,26 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             public_result={k:v for k,v in (r.result or {}).items() if k not in {"research_lore","research_attempted"}}
             return {"status":r.status,"result":public_result if r.result is not None else None}
 
+    @app.get("/api/creator/characters/{cid}/portrait/status")
+    def portrait_status(cid: UUID, request: Request):
+        with factory() as db:
+            c = character(db, cid, owner(request))
+            if c.current_image_id:
+                return {"state": "ready", "error": None}
+            jobs = [j for j in db.scalars(select(CreatorRequest).where(
+                CreatorRequest.owner_id == c.owner_id,
+                CreatorRequest.scope == "character"
+            ).order_by(CreatorRequest.created_at.desc()))
+                if (j.result or {}).get("character_id") == c.id]
+            with active_portraits_guard:
+                if any(j.status == "pending" and j.id in active_portraits for j in jobs):
+                    return {"state": "pending", "error": None}
+            if any(j.status == "pending" for j in jobs):
+                return {"state": "missing", "error": "Portrait generation was interrupted."}
+            error = next(((j.result or {}).get("image_error") for j in jobs
+                          if (j.result or {}).get("image_error")), None)
+            return {"state": "missing", "error": error}
+
     @app.post("/api/creator/characters/{cid}/portrait")
     def portrait(cid: UUID, body: CreatorImageInput, request: Request):
         user = owner(request)
@@ -519,8 +524,15 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                 )
             ):
                 if (initial.result or {}).get("character_id") == str(cid):
-                    raise HTTPException(409,
-                        "The initial portrait is still generating. Please wait before requesting another.")
+                    with active_portraits_guard:
+                        if initial.id in active_portraits:
+                            raise HTTPException(409,
+                                "The initial portrait is still generating. Please wait before requesting another.")
+                        initial.status = "succeeded"
+                        initial.result = (initial.result or {}) | {
+                            "phase": "portrait_failed",
+                            "image_error": "Portrait generation was interrupted."}
+                        db.commit()
             row = record(
                 db, rid, user, "portrait:" + str(cid), body.model_dump(mode="json")
             )

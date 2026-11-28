@@ -70,7 +70,7 @@ export default function PrivateCharacterDetailPage() {
             traits={character.profile.personality?.core_traits || []}
             appearance={character.profile.appearance}
             backstory={character.profile.backstory}
-            researchSources={<ResearchSources character={character}/>}
+            researchSources={<><ResearchSources character={character}/>{!character.current_image_id&&<Link className="em-detail-back" href={"/rehearsal?view=characters&character="+encodeURIComponent(character.id)}>Manage portrait →</Link>}</>}
             onAddToCast={addToCast}
           />
         ) : null}

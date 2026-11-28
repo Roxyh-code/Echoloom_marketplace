@@ -14,7 +14,7 @@ pub use events::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("2GKAJH8MWn8qZXB966AGDmbmZztKy5wjRVzLpPuQLjeu");
+declare_id!("DDNC5iENR2hGuqYUWdng2Yru94YugtJLf37QEqutVH4J");
 
 #[program]
 pub mod echoloom_marketplace {

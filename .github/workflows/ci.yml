@@ -21,7 +21,7 @@ jobs:
       - name: Test migrated character and rehearsal functionality
         run: python -m pytest -q tests/mvp/test_creator.py tests/mvp/test_rehearsal.py tests/mvp/test_rehearsal_format.py tests/mvp/test_rehearsal_attribution.py tests/mvp/test_rehearsal_quality.py tests/mvp/test_checkpoint_recovery.py tests/mvp/test_migrations.py tests/mvp/test_providers.py tests/mvp/test_marketplace.py tests/mvp/test_marketplace_scene.py tests/mvp/test_scene_access.py tests/mvp/test_marketplace_live_smoke.py
       - name: Payment regression tests
-        run: python -m pytest -q tests/mvp/test_payment_*.py
+        run: python -m pytest -q tests/mvp/test_payment_*.py tests/mvp/test_devnet_integration.py
       - name: Character research regression tests
         run: python -m pytest -q tests/mvp/test_character_research.py
       - name: Voice catalog regression tests

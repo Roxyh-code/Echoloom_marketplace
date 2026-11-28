@@ -8,6 +8,9 @@ skip-lint = false
 [programs.localnet]
 echoloom_marketplace = "2GKAJH8MWn8qZXB966AGDmbmZztKy5wjRVzLpPuQLjeu"
 
+[programs.devnet]
+echoloom_marketplace = "DDNC5iENR2hGuqYUWdng2Yru94YugtJLf37QEqutVH4J"
+
 [provider]
 cluster = "localnet"
 wallet = ".local/test-payer.json"

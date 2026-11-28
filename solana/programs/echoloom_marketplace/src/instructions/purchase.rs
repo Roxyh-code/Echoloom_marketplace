@@ -4,8 +4,8 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::{
     authorization::{ed25519_verifier::verify_previous_instruction, message::AuthorizationFields},
     constants::{
-        CONFIG_SEED, MAX_AUTHORIZATION_LIFETIME_SECONDS, MAX_RECIPIENTS, RECEIPT_SEED,
-        RECEIPT_SPACE, RECEIPT_VERSION,
+        CONFIG_SEED, MAX_AUTHORIZATION_LIFETIME_SECONDS, MAX_RECIPIENTS, PAYMENT_MINT_DECIMALS,
+        RECEIPT_SEED, RECEIPT_SPACE, RECEIPT_VERSION,
     },
     errors::MarketplaceError,
     events::PurchaseExecuted,
@@ -65,6 +65,10 @@ pub fn handle(ctx: Context<Purchase>) -> Result<()> {
         ctx.accounts.token_program.key(),
         ctx.accounts.config.token_program,
         MarketplaceError::InvalidTokenProgram
+    );
+    require!(
+        ctx.accounts.payment_mint.decimals == PAYMENT_MINT_DECIMALS,
+        MarketplaceError::InvalidMintDecimals
     );
     require!(
         ctx.accounts.buyer_source.owner == ctx.accounts.buyer.key()
@@ -239,6 +243,7 @@ fn validate_payouts(ctx: &Context<Purchase>, authorization: &AuthorizationFields
     ];
     let mut sum = 0u128;
     let mut previous: Option<Pubkey> = None;
+    let mut treasury_recipient_count = 0usize;
     for (index, destination) in destinations.iter().enumerate() {
         let destination = *destination;
         let payout: PayoutEntry = authorization.recipients[index];
@@ -269,6 +274,9 @@ fn validate_payouts(ctx: &Context<Purchase>, authorization: &AuthorizationFields
             );
         }
         previous = Some(payout.owner);
+        if payout.owner == ctx.accounts.config.platform_treasury_owner {
+            treasury_recipient_count += 1;
+        }
         sum = sum
             .checked_add(u128::from(payout.amount))
             .ok_or(MarketplaceError::ArithmeticOverflow)?;
@@ -309,6 +317,10 @@ fn validate_payouts(ctx: &Context<Purchase>, authorization: &AuthorizationFields
     require!(
         sum == u128::from(authorization.gross_amount),
         MarketplaceError::InvalidTotalAmount
+    );
+    require!(
+        treasury_recipient_count == 1,
+        MarketplaceError::MissingTreasuryPayout
     );
     Ok(())
 }

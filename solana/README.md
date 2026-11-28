@@ -1,6 +1,6 @@
 # Echoloom Marketplace Anchor program
 
-This workspace contains the local-only Anchor program that authorizes generic SPL token purchases, pays the exact payout lines approved by the backend signer, and creates a permanent order receipt. It contains no catalog, login, scene, quota, entitlement, escrow, or refund logic.
+This workspace contains the Anchor source aligned with the teammate's Devnet program, and the independent local-validator harness. The Devnet program ID is recorded in `Anchor.toml`; local testing uses disposable keys and `anchor keys sync` in a scratch copy. The program that authorizes generic SPL token purchases, pays the exact payout lines approved by the backend signer, and creates a permanent order receipt. It contains no catalog, login, scene, quota, entitlement, escrow, or refund logic.
 
 ## Toolchain and build
 
@@ -59,7 +59,7 @@ See [`../docs/solana/FASTAPI_SOLANA_IMPLEMENTATION_HANDOFF.md`](../docs/solana/F
 
 ## Design limits to know before integrating
 
-- **Treasury is informational.** `platform_treasury_owner` is stored and can be updated, but `purchase` does not require the treasury to be a recipient. Recipients and amounts come only from the backend-signed authorization. Enforcing "treasury must receive a positive line" would be one extra check in `validate_payouts`; it is deliberately not added until the product owner confirms that the platform is paid in every purchase.
+- **Treasury is mandatory.** `purchase` now requires exactly one positive payout line whose owner equals the configured treasury wallet, matching the teammate's deployed Devnet source. The backend signs the precise 45/45/10 split; the contract checks recipient ownership, totals and treasury presence, but does not itself hardcode percentages. The payment mint must be a six-decimal classic SPL mint.
 - **The buyer cannot be a recipient** (`BuyerCannotReceivePayout`, and the buyer's source account is rejected as an active destination), because inactive recipient slots use the buyer source account as the sentinel. A creator or the platform wallet therefore cannot buy a paid scene with the same wallet that appears in its payout lines. Use separate demo wallets for buying.
 - **Transaction size is tight.** A legacy transaction with the Ed25519 instruction, `purchase` and three distinct recipients is about 1152 bytes (about 1204 with compute-budget instructions) against the 1232-byte limit. Creating one missing recipient ATA in the same legacy transaction already reaches about 1226 bytes; three missing ATAs reach about 1310. Create missing ATAs in a separate earlier transaction, or use a versioned transaction with an address lookup table.
 - **Mint and domain are immutable.** The payment mint cannot be changed after `initialize_marketplace` and there is no close instruction, so a wrong mint requires a new program ID.
@@ -72,7 +72,7 @@ The accepted mint, classic Token Program, and deployment domain hash are immutab
 
 ## Deployment boundary and pending decisions
 
-Do not deploy this program. The exact production program ID, Bootstrap Authority, Upgrade Authority governance, network/genesis, payment mint, finality policy, product, price, payout policy, and signer custody remain owner decisions. The authorization lifetime cap is 1800 seconds and provisional: the program checks `expires_at - now <= cap` at execution time, so it must exceed the 15-minute (900 s) Quote window plus backend/cluster clock skew. The backend signer is trusted to choose commercial terms and exact payout splits; the program checks signatures, bounds, recipient account identity, and conservation only.
+**Devnet handoff:** The teammate reports Program ID `DDNC5iENR2hGuqYUWdng2Yru94YugtJLf37QEqutVH4J` deployed and initialized on Devnet. See [public deployment configuration and acceptance](../docs/DEVNET_INTEGRATION.md). Do not redeploy, rotate authorities or enable payments as a side effect of local tests. Live binary equivalence, actual wallet checkout and signer custody still require authorized verification; this source is not a production audit. Deployment decisions for other networks, upgrade governance, signer custody and finality remain outstanding. The authorization lifetime cap is 1800 seconds and provisional: the program checks `expires_at - now <= cap` at execution time, so it must exceed the 15-minute (900 s) Quote window plus backend/cluster clock skew. The backend signer is trusted to choose commercial terms and exact payout splits; the program checks signatures, bounds, recipient account identity, and conservation only.
 
 No FastAPI/Next.js integration is included. The existing 40 free generated sentences per non-demo Scene across all cast types remains unchanged until a separate paid product and entitlement policy are approved.
 

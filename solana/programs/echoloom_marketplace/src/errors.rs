@@ -68,4 +68,8 @@ pub enum MarketplaceError {
     UnsupportedTokenProgram,
     #[msg("PDA initialization failed.")]
     PrefundedAccountInitializationFailed,
+    #[msg("Payment mint must have exactly six decimals.")]
+    InvalidMintDecimals,
+    #[msg("Payouts must include a positive payment to the configured treasury.")]
+    MissingTreasuryPayout,
 }

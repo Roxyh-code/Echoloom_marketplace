@@ -7,7 +7,8 @@ from solders.pubkey import Pubkey
 
 from .authorization import TOKEN_PROGRAM, decode_pubkey
 
-DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+# Full getGenesisHash() result; the 32-character CAIP-2 reference is NOT the RPC value.
+DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 
 
 def pda(program_id: str, *seeds: bytes) -> str:
@@ -41,6 +42,11 @@ def account(url, address, owner):
 
 def load_config(settings, signer):
     """Validate live configuration instead of signing against stale settings."""
+    # Optional public deployment pin. A mismatched backend signing key cannot
+    # generate valid quotes even if its file is otherwise well-formed.
+    expected = getattr(settings, "solana_expected_signer_pubkey", "")
+    if expected and decode_pubkey(expected) != decode_pubkey(signer.public_key):
+        raise ValueError("Unexpected Devnet authorization signer")
     url = settings.solana_rpc_url
     program = settings.solana_program_id
     config = pda(program, b"marketplace_config")

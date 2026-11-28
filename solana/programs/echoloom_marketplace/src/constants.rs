@@ -14,6 +14,7 @@ pub const AUTHORIZATION_MESSAGE_LEN: usize = 462;
 // at execution time, so the cap must exceed the Quote window plus backend/cluster clock skew.
 pub const MAX_AUTHORIZATION_LIFETIME_SECONDS: i64 = 1800;
 pub const MAX_RECIPIENTS: usize = 3;
+pub const PAYMENT_MINT_DECIMALS: u8 = 6;
 pub const CLASSIC_TOKEN_PROGRAM_ID: Pubkey = anchor_spl::token::ID;
 pub const ASSOCIATED_TOKEN_PROGRAM_ID: Pubkey = anchor_spl::associated_token::ID;
 pub const ED25519_PROGRAM_ID: Pubkey = pubkey!("Ed25519SigVerify111111111111111111111111111");

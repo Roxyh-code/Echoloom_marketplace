@@ -3,6 +3,7 @@ import { Program } from "@anchor-lang/core";
 import {
   createAccount,
   createAssociatedTokenAccount,
+  createAssociatedTokenAccountIdempotent,
   createMint,
   freezeAccount,
   getAccount,
@@ -21,7 +22,6 @@ import {
 } from "@solana/web3.js";
 import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
 import nacl from "tweetnacl";
 import { expect } from "chai";
 import { EcholoomMarketplace } from "../target/types/echoloom_marketplace";
@@ -176,6 +176,8 @@ describe("Echoloom Marketplace local validator", () => {
   let config: PublicKey;
   let source: PublicKey;
   let buyerOwner: PublicKey;
+  let treasuryOwner: PublicKey;
+  let originalTreasuryOwner: PublicKey;
   // Updated by the rotation test; later tests need it to resume after a pause.
   let configAdmin: Keypair = bootstrap;
 
@@ -259,11 +261,15 @@ describe("Echoloom Marketplace local validator", () => {
       freezeAuthority.publicKey,
       6
     );
-    const airdropSignature = await provider.connection.requestAirdrop(
-      buyer.publicKey,
-      2 * anchor.web3.LAMPORTS_PER_SOL
+    await provider.sendAndConfirm(
+      new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: provider.wallet.publicKey,
+          toPubkey: buyer.publicKey,
+          lamports: 2 * anchor.web3.LAMPORTS_PER_SOL,
+        })
+      )
     );
-    await provider.connection.confirmTransaction(airdropSignature, "confirmed");
     source = await createAssociatedTokenAccount(
       provider.connection,
       provider.wallet.payer,
@@ -297,6 +303,8 @@ describe("Echoloom Marketplace local validator", () => {
       pauseAuthority: initialPauseSigner.publicKey,
       deploymentDomainHash: Array.from(deploymentDomainHash),
     };
+    treasuryOwner = initArgs.platformTreasuryOwner;
+    originalTreasuryOwner = treasuryOwner;
     await fails(
       program.methods
         .initializeMarketplace(initArgs)
@@ -311,6 +319,33 @@ describe("Echoloom Marketplace local validator", () => {
         .rpc(),
       /InvalidBootstrapAuthority/
     );
+
+    for (const decimals of [5, 9]) {
+      const invalidMint = await createMint(
+        provider.connection,
+        provider.wallet.payer,
+        mintAuthority.publicKey,
+        freezeAuthority.publicKey,
+        decimals
+      );
+      await fails(
+        program.methods
+          .initializeMarketplace(initArgs)
+          .accountsPartial({
+            bootstrapAuthority: bootstrap.publicKey,
+            config,
+            paymentMint: invalidMint,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([bootstrap])
+          .rpc(),
+        /InvalidMintDecimals/
+      );
+      const unchanged = await provider.connection.getAccountInfo(config);
+      expect(unchanged?.owner.equals(SystemProgram.programId)).eq(true);
+      expect(unchanged?.data.length).eq(0);
+    }
 
     await program.methods
       .initializeMarketplace(initArgs)
@@ -351,6 +386,7 @@ describe("Echoloom Marketplace local validator", () => {
       .accountsPartial({ configAuthority: bootstrap.publicKey, config })
       .signers([bootstrap])
       .rpc();
+    treasuryOwner = newTreasury;
     expect(
       (await program.account.marketplaceConfig.fetch(config)).configVersion
     ).eq(2);
@@ -412,60 +448,6 @@ describe("Echoloom Marketplace local validator", () => {
     );
   });
 
-  (process.env.ECHOLOOM_PYTHON_BRIDGE === "1" ? it : it.skip)("accepts Python signed 45/45/10 purchase and verifies real RPC receipt in Python", async () => {
-    expect(provider.connection.rpcEndpoint).eq("http://127.0.0.1:8899");
-    const python = process.env.ECHOLOOM_PYTHON || "python3";
-    function bridge(action: string, input: unknown) {
-      return JSON.parse(execFileSync(python, ["../scripts/localnet_payment_bridge.py", action], {
-        input: JSON.stringify(input), encoding: "utf8", timeout: 30000,
-      }));
-    }
-    const state = await program.account.marketplaceConfig.fetch(config);
-    const owners = [Keypair.generate().publicKey, Keypair.generate().publicKey];
-    const treasury = state.platformTreasuryOwner;
-    const order = bridge("sign", {
-      test_seed: Array.from(backendSigner.secretKey.slice(0, 32)),
-      domain: deploymentDomainHash.toString("hex"), program: program.programId.toBase58(),
-      config: config.toBase58(), mint: mint.toBase58(), buyer: buyer.publicKey.toBase58(),
-      creators: owners.map(k => k.toBase58()), treasury: treasury.toBase58(),
-      version: state.configVersion,
-    });
-    expect(order.signer_pubkey).eq(backendSigner.publicKey.toBase58());
-    expect(order.payout_lines).to.have.length(3);
-    const destinations: PublicKey[] = [];
-    for (const line of order.payout_lines) {
-      destinations.push(await createAssociatedTokenAccount(provider.connection,
-        provider.wallet.payer, mint, new PublicKey(line.wallet)));
-    }
-    const before = (await getAccount(provider.connection, source)).amount;
-    const ed = Ed25519Program.createInstructionWithPublicKey({
-      publicKey: backendSigner.publicKey.toBytes(),
-      message: Buffer.from(order.authorization_message_b64, "base64"),
-      signature: Buffer.from(order.authorization_signature_b64, "base64"),
-    });
-    const purchase = await program.methods.purchase().accountsPartial({
-      buyer: buyer.publicKey, config, receipt: new PublicKey(order.receipt_pda),
-      paymentMint: mint, buyerSource: source, recipient0: destinations[0],
-      recipient1: destinations[1], recipient2: destinations[2], tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: SystemProgram.programId, instructionsSysvar: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-      clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
-    }).instruction();
-    const signature = await sendBuyerTx(provider.connection, new Transaction().add(ed, purchase), buyer);
-    expect((await getAccount(provider.connection, source)).amount).eq(before - BigInt(1000000));
-    for (let i = 0; i < destinations.length; i++) {
-      const line = order.payout_lines[i];
-      const amount = line.wallet === treasury.toBase58() ? 100000 : 450000;
-      expect(line.amount_minor_units).eq(amount);
-      expect((await getAccount(provider.connection, destinations[i])).amount).eq(BigInt(amount));
-    }
-    expect(bridge("verify", {order, signature}).verified).eq(true);
-    const ledger = bridge("verify-ledger", {order, signature, creators: owners.map(k => k.toBase58())});
-    expect(ledger).deep.eq({verified:true, before:40, after:80, payments:1, entitlements:1, creator_amounts:[450000,450000]});
-    await fails(sendBuyerTx(provider.connection, new Transaction().add(ed, purchase), buyer), /PurchaseAlreadyProcessed|already been processed/);
-    expect((await getAccount(provider.connection, source)).amount).eq(before - BigInt(1000000));
-    expect(() => bridge("verify", {order: {...order, amount_minor_units: 999999}, signature})).to.throw();
-  });
-
   it("executes one authorized payout and stores its durable fixed-size receipt", async () => {
     const recipientOwner = Keypair.generate();
     const recipientAta = await createAssociatedTokenAccount(
@@ -474,7 +456,25 @@ describe("Echoloom Marketplace local validator", () => {
       mint,
       recipientOwner.publicKey
     );
+    const treasuryAta = await createAssociatedTokenAccount(
+      provider.connection,
+      provider.wallet.payer,
+      mint,
+      treasuryOwner
+    );
     const stored = await program.account.marketplaceConfig.fetch(config);
+    expect(stored.platformTreasuryOwner.equals(treasuryOwner)).eq(true);
+    const payoutLines = [
+      { owner: recipientOwner.publicKey, amount: 900_003 },
+      { owner: stored.platformTreasuryOwner, amount: 100_000 },
+    ].sort((a, b) => Buffer.compare(a.owner.toBuffer(), b.owner.toBuffer()));
+    const destinationByOwner = new Map([
+      [recipientOwner.publicKey.toBase58(), recipientAta],
+      [stored.platformTreasuryOwner.toBase58(), treasuryAta],
+    ]);
+    const payoutDestinations = payoutLines.map(
+      (line) => destinationByOwner.get(line.owner.toBase58())!
+    );
     const uuid = randomBytes(16);
     const orderReferenceHash = orderHash(uuid);
     const [receipt] = PublicKey.findProgramAddressSync(
@@ -492,10 +492,12 @@ describe("Echoloom Marketplace local validator", () => {
         )
       ),
       grossAmount: new anchor.BN(1_000_003),
-      recipientCount: 1,
+      recipientCount: payoutLines.length,
       recipients: [
-        { owner: recipientOwner.publicKey, amount: new anchor.BN(1_000_003) },
-        { owner: PublicKey.default, amount: new anchor.BN(0) },
+        ...payoutLines.map((line) => ({
+          owner: line.owner,
+          amount: new anchor.BN(line.amount),
+        })),
         { owner: PublicKey.default, amount: new anchor.BN(0) },
       ],
       configVersion: stored.configVersion,
@@ -523,8 +525,8 @@ describe("Echoloom Marketplace local validator", () => {
         receipt,
         paymentMint: mint,
         buyerSource: source,
-        recipient0: recipientAta,
-        recipient1: source,
+        recipient0: payoutDestinations[0],
+        recipient1: payoutDestinations[1],
         recipient2: source,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -532,8 +534,8 @@ describe("Echoloom Marketplace local validator", () => {
         clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
       })
       .instruction();
-    expect(purchase.keys[5].pubkey.equals(recipientAta)).eq(true);
-    expect(purchase.keys[6].pubkey.equals(source)).eq(true);
+    expect(purchase.keys[5].pubkey.equals(payoutDestinations[0])).eq(true);
+    expect(purchase.keys[6].pubkey.equals(payoutDestinations[1])).eq(true);
     expect(purchase.keys[7].pubkey.equals(source)).eq(true);
     const recipientInfo = await provider.connection.getAccountInfo(
       recipientAta
@@ -561,16 +563,24 @@ describe("Echoloom Marketplace local validator", () => {
     );
     expect(receiptData.subarray(42, 74).equals(orderReferenceHash)).eq(true);
     expect(receiptData.readBigUInt64LE(138)).eq(BigInt(1_000_003));
-    expect(receiptData[146]).eq(1);
-    expect(
-      receiptData.subarray(147, 179).equals(recipientOwner.publicKey.toBuffer())
-    ).eq(true);
-    expect(receiptData.readBigUInt64LE(179)).eq(BigInt(1_000_003));
+    expect(receiptData[146]).eq(2);
+    payoutLines.forEach((line, index) => {
+      const offset = 147 + index * 40;
+      expect(
+        receiptData.subarray(offset, offset + 32).equals(line.owner.toBuffer())
+      ).eq(true);
+      expect(receiptData.readBigUInt64LE(offset + 32)).eq(BigInt(line.amount));
+    });
     expect(
       await provider.connection
         .getTokenAccountBalance(recipientAta)
         .then((b) => b.value.amount)
-    ).eq("1000003");
+    ).eq("900003");
+    expect(
+      await provider.connection
+        .getTokenAccountBalance(treasuryAta)
+        .then((b) => b.value.amount)
+    ).eq("100000");
     await fails(
       sendBuyerTx(
         provider.connection,
@@ -583,20 +593,18 @@ describe("Echoloom Marketplace local validator", () => {
 
   it("rolls back earlier payouts and leaves the receipt uncreated when a later payout fails", async () => {
     const owners = [
-      Keypair.generate(),
-      Keypair.generate(),
-      Keypair.generate(),
-    ].sort((a, b) =>
-      Buffer.compare(a.publicKey.toBuffer(), b.publicKey.toBuffer())
-    );
+      treasuryOwner,
+      Keypair.generate().publicKey,
+      Keypair.generate().publicKey,
+    ].sort((a, b) => Buffer.compare(a.toBuffer(), b.toBuffer()));
     const destinations: PublicKey[] = [];
     for (const owner of owners) {
       destinations.push(
-        await createAssociatedTokenAccount(
+        await createAssociatedTokenAccountIdempotent(
           provider.connection,
           provider.wallet.payer,
           mint,
-          owner.publicKey
+          owner
         )
       );
     }
@@ -615,7 +623,7 @@ describe("Echoloom Marketplace local validator", () => {
       grossAmount: new anchor.BN(gross),
       recipientCount: 3,
       recipients: owners.map((owner, i) => ({
-        owner: owner.publicKey,
+        owner,
         amount: new anchor.BN(payoutAmounts[i]),
       })),
       configVersion: configState.configVersion,
@@ -922,9 +930,14 @@ describe("Echoloom Marketplace local validator", () => {
 
     async function buildPurchase(o: Overrides = {}) {
       const state = await program.account.marketplaceConfig.fetch(config);
-      const lines: Line[] = o.lines ?? [
-        { owner: recipients[0].owner, amount: 1_000_000 },
-      ];
+      const lines: Line[] =
+        o.lines ??
+        [
+          { owner: recipients[0].owner, amount: 900_000 },
+          { owner: state.platformTreasuryOwner, amount: 100_000 },
+        ].sort((a, b) =>
+          Buffer.compare(a.owner.toBuffer(), b.owner.toBuffer())
+        );
       const gross =
         o.grossAmount ?? lines.reduce((sum, line) => sum + line.amount, 0);
       const orderReferenceHash = orderHash(randomBytes(16));
@@ -1000,6 +1013,12 @@ describe("Echoloom Marketplace local validator", () => {
     async function expectRejected(o: Overrides, pattern?: RegExp) {
       const beforeBuyer = await tokenAmount(source);
       const beforeRecipient = await tokenAmount(recipients[0].ata);
+      const state = await program.account.marketplaceConfig.fetch(config);
+      const treasuryAta = getAssociatedTokenAddressSync(
+        mint,
+        state.platformTreasuryOwner
+      );
+      const beforeTreasury = await tokenAmount(treasuryAta);
       const { transaction, receipt } = await buildPurchase(o);
       await fails(
         sendBuyerTx(provider.connection, transaction, buyer),
@@ -1009,6 +1028,7 @@ describe("Echoloom Marketplace local validator", () => {
       expect(await provider.connection.getAccountInfo(receipt)).eq(null);
       expect(await tokenAmount(source)).eq(beforeBuyer);
       expect(await tokenAmount(recipients[0].ata)).eq(beforeRecipient);
+      expect(await tokenAmount(treasuryAta)).eq(beforeTreasury);
     }
 
     before(async () => {
@@ -1082,20 +1102,79 @@ describe("Echoloom Marketplace local validator", () => {
 
     it("accepts an authorization valid for 25 minutes", async () => {
       const amount = 500_000;
+      const configState = await program.account.marketplaceConfig.fetch(config);
+      const successfulLines = [
+        { owner: recipients[0].owner, amount: 450_000 },
+        { owner: configState.platformTreasuryOwner, amount: 50_000 },
+      ].sort((a, b) => Buffer.compare(a.owner.toBuffer(), b.owner.toBuffer()));
       const beforeBuyer = await tokenAmount(source);
       const beforeRecipient = await tokenAmount(recipients[0].ata);
       const { transaction, receipt } = await buildPurchase({
-        lines: [{ owner: recipients[0].owner, amount }],
+        lines: successfulLines,
         expiresIn: 1500,
       });
       await sendBuyerTx(provider.connection, transaction, buyer);
-      expect((await provider.connection.getAccountInfo(receipt))?.data.length).eq(
-        287
-      );
+      expect(
+        (await provider.connection.getAccountInfo(receipt))?.data.length
+      ).eq(287);
       expect(await tokenAmount(source)).eq(beforeBuyer - BigInt(amount));
       expect(await tokenAmount(recipients[0].ata)).eq(
-        beforeRecipient + BigInt(amount)
+        beforeRecipient + BigInt(450_000)
       );
+    });
+
+    it("rejects otherwise valid payouts that omit the configured treasury", async () => {
+      await expectRejected(
+        { lines: [{ owner: recipients[0].owner, amount: 1_000_000 }] },
+        /MissingTreasuryPayout/
+      );
+    });
+
+    it("rejects a zero treasury payout with the existing positive-amount error", async () => {
+      const state = await program.account.marketplaceConfig.fetch(config);
+      const lines = [
+        { owner: recipients[0].owner, amount: 1_000_000 },
+        { owner: state.platformTreasuryOwner, amount: 0 },
+      ].sort((a, b) => Buffer.compare(a.owner.toBuffer(), b.owner.toBuffer()));
+      await expectRejected({ lines }, /InvalidPayoutAmounts/);
+    });
+
+    it("requires the current treasury owner after a treasury update", async () => {
+      const state = await program.account.marketplaceConfig.fetch(config);
+      expect(state.platformTreasuryOwner.equals(treasuryOwner)).eq(true);
+      expect(state.platformTreasuryOwner.equals(originalTreasuryOwner)).eq(
+        false
+      );
+      const oldTreasury = await makeRecipient(originalTreasuryOwner);
+      const lines = [
+        { owner: recipients[0].owner, amount: 900_000 },
+        { owner: oldTreasury.owner, amount: 100_000 },
+      ].sort((a, b) => Buffer.compare(a.owner.toBuffer(), b.owner.toBuffer()));
+      await expectRejected(
+        {
+          lines,
+          destinations: lines.map((line) =>
+            line.owner.equals(oldTreasury.owner)
+              ? oldTreasury.ata
+              : recipients[0].ata
+          ),
+        },
+        /MissingTreasuryPayout/
+      );
+    });
+
+    it("validates the treasury payout destination as its canonical token account", async () => {
+      const state = await program.account.marketplaceConfig.fetch(config);
+      const lines = [
+        { owner: recipients[0].owner, amount: 500_000 },
+        { owner: state.platformTreasuryOwner, amount: 500_000 },
+      ].sort((a, b) => Buffer.compare(a.owner.toBuffer(), b.owner.toBuffer()));
+      const destinations = lines.map((line) =>
+        line.owner.equals(state.platformTreasuryOwner)
+          ? attacker.ata
+          : recipients[0].ata
+      );
+      await expectRejected({ lines, destinations }, /InvalidRecipientAccount/);
     });
 
     it("rejects a purchase whose signed buyer differs from the transaction buyer", async () => {
@@ -1113,10 +1192,7 @@ describe("Echoloom Marketplace local validator", () => {
     });
 
     it("rejects a signed mint that differs from the configured mint", async () => {
-      await expectRejected(
-        { messageMint: otherMint },
-        /InvalidMint/
-      );
+      await expectRejected({ messageMint: otherMint }, /InvalidMint/);
     });
 
     it("rejects a payment mint account that differs from the configured mint", async () => {
@@ -1185,8 +1261,9 @@ describe("Echoloom Marketplace local validator", () => {
     });
 
     it("rejects an unused recipient slot that is not the buyer source sentinel", async () => {
+      const lines = [{ owner: recipients[0].owner, amount: 1_000_000 }];
       await expectRejected(
-        { destinations: [recipients[0].ata, recipients[1].ata] },
+        { lines, destinations: [recipients[0].ata, recipients[1].ata] },
         /InvalidRecipientAccount/
       );
     });
@@ -1209,8 +1286,9 @@ describe("Echoloom Marketplace local validator", () => {
     });
 
     it("rejects an authorization signed for a config version that pause/resume replaced", async () => {
-      const staleVersion = (await program.account.marketplaceConfig.fetch(config))
-        .configVersion;
+      const staleVersion = (
+        await program.account.marketplaceConfig.fetch(config)
+      ).configVersion;
       await program.methods
         .pauseMarketplace()
         .accountsPartial({ pauseAuthority: pauseSigner.publicKey, config })

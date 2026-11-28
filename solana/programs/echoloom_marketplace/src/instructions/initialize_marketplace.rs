@@ -2,7 +2,9 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token};
 
 use crate::{
-    constants::{bootstrap_authority, CONFIG_SEED, CONFIG_SPACE, CONFIG_VERSION},
+    constants::{
+        bootstrap_authority, CONFIG_SEED, CONFIG_SPACE, CONFIG_VERSION, PAYMENT_MINT_DECIMALS,
+    },
     errors::MarketplaceError,
     events::MarketplaceInitialized,
     state::MarketplaceConfig,
@@ -43,6 +45,10 @@ pub fn handle(ctx: Context<InitializeMarketplace>, args: InitializeMarketplaceAr
         ctx.accounts.token_program.key(),
         anchor_spl::token::ID,
         MarketplaceError::InvalidTokenProgram
+    );
+    require!(
+        ctx.accounts.payment_mint.decimals == PAYMENT_MINT_DECIMALS,
+        MarketplaceError::InvalidMintDecimals
     );
     require!(
         args.platform_treasury_owner != Pubkey::default()

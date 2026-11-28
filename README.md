@@ -8,6 +8,8 @@
     <img src="https://img.shields.io/badge/Next.js-16-15131F?logo=nextdotjs" alt="Next.js 16" />
     <img src="https://img.shields.io/badge/FastAPI-Python%203.12%2B-15131F?logo=fastapi" alt="FastAPI / Python 3.12+" />
     <img src="https://img.shields.io/badge/AI-LangGraph-6E52C8" alt="LangGraph" />
+    <img src="https://img.shields.io/badge/Firecrawl-Autonomous%20research-FF6B35" alt="Firecrawl Agent and Search" />
+    <img src="https://img.shields.io/badge/ElevenLabs-Character%20voice-15131F" alt="ElevenLabs voice matching and TTS" />
     <img src="https://img.shields.io/badge/Solana-Devnet%20integration-15131F?logo=solana" alt="Solana Devnet integration" />
     <img src="https://img.shields.io/badge/status-hackathon%20prototype-9B73DB" alt="Hackathon prototype" />
   </p>
@@ -28,9 +30,9 @@
   </tr>
 </table>
 
-<p align="center"><small>Actual running application screenshots captured by Playwright in <a href="https://github.com/Roxyh-code/Echoloom_marketplace/actions/runs/46083665183">CI run 46083665183</a>, using deterministic demo fixtures. Not design mockups or evidence of live Solana settlement.</small></p>
+<p align="center"><small>Actual running application screenshots captured by Playwright in <a href="https://github.com/Roxyh-code/Echoloom_marketplace/actions/runs/46083665183">CI run 46083665183</a>, using deterministic demo fixtures. Captured before the latest research and voice features; not design mockups or evidence of live provider calls or Solana settlement.</small></p>
 
-> **Project status:** Local hackathon prototype. Character creation, publishing, interactive rehearsal, wallet verification, creator payout setup, signed checkout, receipt verification and earnings reporting are implemented in code. Standard CI passed for the integration and demo PRs; full local-validator execution and live Devnet payment acceptance remain unverified. Payments are disabled by default.
+> **Project status:** Local hackathon prototype. Character creation, autonomous web research, persistent voice selection, on-demand story audio, publishing, interactive rehearsal, wallet verification, signed checkout and earnings reporting are implemented. Standard CI passed for the research and voice integrations. Live provider acceptance, full local-validator execution and live Devnet settlement remain separate checks. Research, voice synthesis and payments are opt-in server features.
 
 ---
 
@@ -48,14 +50,16 @@ Unlike a single-character chat interface, Echoloom is designed around **two-char
 
 [**▶ Watch the recorded character-to-marketplace walkthrough (MP4)**](demo/Echoloom_Character_Marketplace_Demo.mp4)
 
-The video shows the running app's character creation, profile editing, publishing, listing updates and entry into a two-character scene. It was recorded using deterministic AI demo fixtures and the real frontend/API workflow, not a live paid-model session. See [demo/README.md](demo/README.md) for the recording scope.
+This earlier video shows the running app's character creation, profile editing, publishing, listing updates and entry into a two-character scene. It was recorded using deterministic AI demo fixtures and the real frontend/API workflow, not a live paid-model session. It predates Firecrawl research and ElevenLabs dialogue playback. See [demo/README.md](demo/README.md) for the recording scope.
 
 ### From character to story
 
 ```mermaid
 flowchart LR
     A["Discover characters"] --> B["Create or choose a character"]
-    B --> C["Edit profile & portrait"]
+    B --> C["Profile · portrait · voice"]
+    B -.-> R["Optional background research"]
+    R -.-> C
     C --> D["Publish a public listing"]
     D --> E["Cast two characters"]
     A --> E
@@ -94,6 +98,9 @@ flowchart LR
 | --- | --- |
 | **Discover** | Browse published characters, search and filter the character catalog, and open public or private character details. |
 | **Character Studio** | Create an AI-assisted character profile, generate a portrait, edit/refine the profile and manage portrait versions. The profile can appear while the initial portrait finishes asynchronously. |
+| **Intelligent Character Research** | Firecrawl Search + Scrape and Agent discover public fictional-character lore from a short description. The initial profile is usable first; research produces a reviewable update with source references. |
+| **Character Voice Identity** | Three candidates from an approved ElevenLabs voice catalog, matched to the profile; audition an original dialogue line and confirm a persistent voice. |
+| **Voiced storytelling** | Tap the speaker beside a revealed dialogue or narration block to hear it with the pinned character voice or configured narrator. |
 | **Creator publishing** | Publish an owned character with a public profile and rights confirmation; edit listing details, retain listing revisions, or unpublish. |
 | **Two-character casting** | Choose two private characters, two published characters or a mixed pair. The backend verifies access to each source and uses listing revisions for public casts. |
 | **Interactive rehearsal** | Set a premise, cast and scene constraints; generate a scene, reveal the story in sentence-sized steps, give directions, revise, branch and review versions. |
@@ -105,6 +112,51 @@ flowchart LR
 
 The project uses a consistent, mobile-first **dark fantasy / moonlit violet** interface. Discover, Characters and My Stories share the same app frame and bottom navigation.
 
+## From a character idea to a living story
+
+Three integrations address different parts of the creative experience: **Firecrawl** enriches character knowledge, **ElevenLabs** gives a character a consistent voice, and **Solana** supports creator compensation through verified story unlocks.
+
+### Intelligent character research · Firecrawl
+
+A user can start with just a character name or short description. The studio saves a baseline profile first and continues research in the background, rather than making the reader wait for a deep-research job.
+
+```mermaid
+flowchart LR
+    A["Short description"] --> B["Save baseline profile"]
+    B --> C["Portrait and voice selection"]
+    B --> D["Identify existing fictional character"]
+    D --> E["Firecrawl Search + Scrape"]
+    E --> F["Firecrawl Agent"]
+    F --> G["Structured lore and sources"]
+    G --> H["Review and apply update"]
+    H --> I["New profile revision"]
+```
+
+- **Autonomous discovery:** no URL entry or manual source collection. Search discovers up to three sources and passes source hints to Firecrawl Agent, which returns structured facts covering identity, history, personality, motivation, relationships, speech, abilities and knowledge.
+- **Nonblocking creation:** original or ambiguous characters skip paid research; provider failures leave the baseline character usable. An explicit, version-checked update preserves name, appearance and visual style, and does not overwrite intervening edits or existing story snapshots.
+- **Responsible research:** source links are agent-reported, not independently fact-checked. Public availability does not establish commercialization rights. Paid research is owner-scoped and budgeted; the cache is process-local.
+
+See [Character Research](docs/CHARACTER_RESEARCH.md) and [background research implementation](docs/CHARACTER_RESEARCH_BACKGROUND.md).
+
+### Character voice identity · ElevenLabs
+
+Rather than assigning a random generic narrator, Echoloom matches a character to existing, operator-approved voices using age, personality and speaking-style metadata. Each candidate can read the same short original dialogue line before the user confirms a voice.
+
+```mermaid
+flowchart LR
+    A["Character profile"] --> B["Approved ElevenLabs voice catalog"]
+    B --> C["Rank three candidates"]
+    C --> D["Audition and confirm"]
+    D --> E["Persistent voice identity"]
+    E --> F["Published revision / cast snapshot"]
+    F --> G["Revealed story dialogue"]
+    G --> H["Tap speaker · ElevenLabs TTS"]
+```
+
+Voice selection is independent of ordinary profile edits. Public listing revisions and story casts pin the selected voice, so playback does not silently change when a creator rematches a character. The reader synthesizes only the requested, authorized revealed passage; narration is optional. Cache and per-account/global daily character limits control synthesis cost. No voice cloning, custom voice design or automatic billable audio is implemented.
+
+See [Voice Identity](docs/VOICE_IDENTITY.md) for catalog, audition, playback and configuration details.
+
 ## Architecture
 
 Echoloom separates creative orchestration from financial settlement. FastAPI is authoritative for scene access, pricing and attribution; the Solana program settles signed purchase terms and creates a durable receipt.
@@ -115,6 +167,10 @@ flowchart TB
     WALLET["Wallet Standard · Phantom / compatible wallet"]
     API["FastAPI · session and ownership checks"]
     MARKET["Character profiles · listing revisions · cast snapshots"]
+    CREATE["Character Studio · visual profile · background research"]
+    FIRE["Firecrawl · Search / Scrape / Agent"]
+    VOICE["Voice matching · authorized per-block playback"]
+    ELEVEN["ElevenLabs · voice catalog / TTS"]
     STORY["Rehearsal engine · server-side sentence meter"]
     GRAPH["LangGraph · configured model adapters"]
     PAY["Quote · Ed25519 signer · payment verification"]
@@ -124,6 +180,14 @@ flowchart TB
     UI --> API
     UI <--> WALLET
     API --> MARKET
+    API --> CREATE
+    API --> VOICE
+    CREATE --> FIRE
+    CREATE --> DB
+    VOICE --> ELEVEN
+    VOICE --> DB
+    MARKET --> VOICE
+    STORY --> VOICE
     API --> STORY
     API --> PAY
     STORY --> GRAPH
@@ -141,6 +205,8 @@ flowchart TB
 | Web app | Next.js 16, React 19, TypeScript, CSS |
 | API / validation | Python 3.12+, FastAPI, Pydantic |
 | Narrative orchestration | LangGraph 1.2.20, configurable text/image adapters |
+| Character research | Firecrawl v2 Search, Scrape and Agent; structured evidence and reviewable profile updates |
+| Voice & audio | ElevenLabs existing voice catalog, profile-conditioned ranking, on-demand text-to-speech |
 | Persistence | SQLAlchemy, SQLite, Alembic |
 | Wallet / blockchain | Wallet Standard, @solana/web3.js 1.98.4, Solana classic SPL Token |
 | Smart contract | Rust, Anchor 1.1.2 |
@@ -149,7 +215,7 @@ flowchart TB
 
 See the [architecture and API guide](docs/ARCHITECTURE.md) for module boundaries, payment sequence and trust assumptions.
 
-**Implementation note:** Portrait generation currently uses in-process background work appropriate for a single-worker demo; it is **not** a production-grade distributed task queue.
+**Implementation note:** Portrait and research workers run in-process for a single-worker demo, not a production-grade distributed task queue. A restart can interrupt research. Portraits use only the committed visual profile; provider safety decisions are respected and an illustrated placeholder remains available if generation fails.
 
 ## Quick start
 
@@ -209,6 +275,48 @@ IMAGE_API_KEY=your-private-key
 
 The web app proxies `/api/*` to `http://127.0.0.1:8000` by default. Set `API_BASE_URL` in the frontend environment only if your API runs at another address. **Never commit API keys, database files or character/customer data.**
 
+### Optional: enable Firecrawl research
+
+Sign in to Echoloom and configure the [Firecrawl API key](https://www.firecrawl.dev/app) in the root `.env`:
+
+```dotenv
+FIRECRAWL_ENABLED=true
+FIRECRAWL_API_KEY=your-private-key
+FIRECRAWL_MAX_CREDITS=100
+FIRECRAWL_TIMEOUT_SECONDS=90
+FIRECRAWL_DAILY_RUNS_PER_ACCOUNT=5
+FIRECRAWL_DAILY_RUNS_GLOBAL=20
+```
+
+Restart FastAPI and confirm `research_enabled: true` at `/api/health`. In Characters → Create, leave **Research character** enabled. Create normally, then review the Firecrawl sources and choose **Apply update** when research is ready. The Agent credit cap does not include the separate Search request. Actual latency and credit consumption depend on the provider and task.
+
+### Optional: enable ElevenLabs voices
+
+Create a server-side API key with voice-read and (for synthesis) text-to-speech access. Inventory accessible voices using `python scripts/list_elevenlabs_voices.py`, then allowlist IDs whose usage rights you have reviewed. The app does not require or create voice clones.
+
+```dotenv
+ELEVENLABS_ENABLED=true
+ELEVENLABS_API_KEY=your-private-key
+ELEVENLABS_VOICE_IDS=comma-separated-approved-voice-ids
+ELEVENLABS_AUDIO_ENABLED=true
+ELEVENLABS_TTS_MODEL=eleven_multilingual_v2
+ELEVENLABS_NARRATOR_VOICE_ID=
+ELEVENLABS_AUDIO_DAILY_CHARS=5000
+ELEVENLABS_AUDIO_GLOBAL_DAILY_CHARS=20000
+```
+
+Restart FastAPI. Create or open a character, audition and confirm a recommended voice. Enable audio only when you intend to incur synthesis usage. Configure an approved narrator ID to voice narration/action; otherwise those blocks remain text-only. Republish/recast older listings or scenes as needed to pin selected voices. All provider keys remain on the server.
+
+### Updating an existing checkout
+
+```bash
+git switch main
+git pull --ff-only origin main
+python -m alembic upgrade head
+```
+
+Preserve your existing `.env` and add only missing settings. Restart the backend and frontend. The voice and research migrations are included in Alembic head.
+
 ## Creator economy
 
 Publishing is free. A creator must verify a payout wallet, satisfy creator approval requirements and opt in a listing before it becomes eligible for paid scenes. A buyer can use a different wallet from their payout wallet.
@@ -255,7 +363,10 @@ Echoloom_marketplace/
 │   ├── components/            # Discover, Character Studio, Story Studio
 │   └── e2e/                   # Playwright browser tests
 ├── src/echoloom/
-│   ├── creator_*.py           # Character profiles and portraits
+│   ├── creator_*.py           # Character profiles and background workers
+│   ├── character_research.py  # Firecrawl Search / Scrape / Agent
+│   ├── portrait_prompt.py     # Task-scoped visual profile
+│   ├── voice/                 # ElevenLabs catalog, ranking, auditions and audio
 │   ├── marketplace_*.py       # Public listings and revisions
 │   ├── rehearsal_*.py         # Scene engine and LangGraph workflow
 │   ├── scene_access*.py       # Server-enforced reading allowance
@@ -284,13 +395,16 @@ npm run typecheck
 npm run build
 ```
 
-Playwright tests cover marketplace publishing, casting, character editing, story rehearsal, navigation and shared mobile-frame geometry. CI provisions a temporary Python test server, a Chromium browser and **fake AI providers**, so normal automated checks do not incur model usage fees. See [.github/workflows/ci.yml](.github/workflows/ci.yml) for the reproducible workflow.
+Pytest covers research discovery, background execution and explicit revision application, voice catalog/selection/audio, and visual-profile isolation. Playwright covers marketplace publishing, casting, character editing, story rehearsal, inline voice controls, navigation and shared mobile-frame geometry. CI provisions a temporary Python test server, a Chromium browser and **fake AI providers**, so normal automated checks do not incur model usage fees. See [.github/workflows/ci.yml](.github/workflows/ci.yml) for the reproducible workflow.
 
 ## Validation and remaining work
 
 | Workstream | Evidence / status |
 | --- | --- |
 | Character, marketplace and rehearsal flows | Implemented; browser and backend regression tests |
+| Firecrawl autonomous research | PR #65 and nonblocking update #67 merged; standard CI passed ([#67 run](https://github.com/Roxyh-code/Echoloom_marketplace/actions/runs/46098152199)); live latency, source quality and credit usage not independently measured |
+| ElevenLabs voice identity and inline playback | PRs #59–63 merged; mocked provider regression tests; live synthesis and playback acceptance remain separate |
+| Visual profile and portrait fallback | PRs #66–67 merged; standard CI passed; provider approval is not guaranteed |
 | Wallet persistence and creator onboarding | Implemented; PRs #49–51 merged with passing standard CI; local user testing reported |
 | Payment integration safeguards | PR #52 merged; standard CI passed |
 | Local validator and ledger acceptance | PR #53 merged; standard CI passed; full validator run not confirmed |

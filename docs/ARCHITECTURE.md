@@ -8,6 +8,8 @@ Status: hackathon prototype; application and settlement code integrated, live De
 | --- | --- |
 | `web/app/`, `web/components/` | Mobile-first character, marketplace, rehearsal, publishing and earnings views; checkout and Wallet Standard integration |
 | `src/echoloom/local_accounts.py` | Password-based account sessions and owner checks; wallet ownership is separate from login |
+| `creator_service.py`, `character_research.py`, `portrait_prompt.py` | Save baseline profile, independent background portrait/research workers, evidence-backed update proposals and task-scoped visual input |
+| `voice/` | Approved ElevenLabs catalog, profile-conditioned ranking, persistent identity, audition and authorized story audio |
 | `marketplace_service.py`, `marketplace_models.py` | Public allowlisted listing data, immutable revisions, approval and payout snapshots |
 | `scene_casting.py` | Resolve private and public cast sources; pin current listing revision without exposing private profiles |
 | `rehearsal_service.py`, `rehearsal_domain.py` | Scene commands, immutable history nodes, versions, generation and reading |
@@ -35,6 +37,31 @@ flowchart LR
 ```
 
 The scene stores distinct actor knowledge, narrative blocks, sourced state and version history. The model receives the scene context and current user direction, not other users' private conversations. Branches preserve history and do not reset consumed allowance. Configurable providers supply generation; the optional memory experiments are not required for the demo. In-process workers are intended for a local single-worker prototype.
+
+### Character enrichment and voice pipeline
+
+```mermaid
+flowchart TB
+    INPUT["User description"] --> PROFILE["Committed baseline profile"]
+    PROFILE --> VISUAL["Name, appearance, style"]
+    VISUAL --> IMAGE["OpenAI image adapter"]
+    PROFILE --> RANK["Rank approved voices"]
+    RANK --> CATALOG["ElevenLabs catalog / audition"]
+    CATALOG --> PIN["Explicitly selected voice"]
+    PROFILE --> ID["Background identity classification"]
+    ID --> SEARCH["Firecrawl Search + Scrape"]
+    SEARCH --> AGENT["Firecrawl Agent · structured lore"]
+    AGENT --> REVIEW["Owner review · base-version check"]
+    REVIEW --> VERSION["New profile revision"]
+    PIN --> SNAPSHOT["Listing revision / cast snapshot"]
+    VERSION --> SNAPSHOT
+    SNAPSHOT --> READER["Revealed passage"]
+    READER --> TTS["Authorized on-demand ElevenLabs TTS"]
+```
+
+Only recognized existing fictional identities are eligible for paid research; the configured text model classifies the input and synthesizes a proposed profile. Firecrawl receives classifier-derived public identifiers and public search hints, not conversations or account data. Sources are agent-reported. The explicit apply operation preserves initial visual identity and refuses to overwrite a changed base revision. No silent updates to existing stories. Current job workers and cache are single-process; interruption is reported rather than automatically restarting paid research. The initial portrait is generated from visual fields only; moderation errors remain explicit.
+
+ElevenLabs candidates come from an operator-approved catalog, not invented voice IDs. Selection persists separately from profile revisions, and publication and scene creation snapshot the chosen identity. The server derives TTS text from an allowed revealed block, checks owner and scene access, uses the pinned voice (or optional narrator), and enforces daily attempted-character budgets and exact-text caching. No arbitrary client TTS text or automatic synthesis on reading.
 
 ## 3. Payment sequence
 
@@ -103,6 +130,17 @@ All payment endpoints require an authenticated local account. Public marketplace
 
 | Method | Route | Purpose |
 | --- | --- | --- |
+| GET | /api/health | Research and voice feature flags |
+| POST | /api/creator/characters | Save profile; optional background research |
+| GET | /api/creator/characters/{cid}/research | Owner research state and proposal |
+| POST | /api/creator/characters/{cid}/research/apply | Explicit, version-checked revision update |
+| GET | /api/creator/characters/{cid}/portrait/status | Owner portrait status |
+| GET | /api/voice/catalog | Approved voice metadata |
+| POST | /api/voice/characters/{cid}/recommend | Rank candidate voices |
+| POST | /api/voice/characters/{cid}/preview | Audition candidate |
+| PUT | /api/voice/characters/{cid} | Confirm persistent voice |
+| GET | /api/voice/audio/status | Audio availability |
+| POST | /api/voice/scenes/{scene_id}/audio | Authorized revealed-block playback |
 | GET | /api/payments/wallet | Saved buyer binding |
 | POST | /api/payments/wallet/challenge | Buyer ownership challenge |
 | POST | /api/payments/wallet/verify | Verify signature and bind |
@@ -131,6 +169,9 @@ See FastAPI schemas and route implementations for precise field validation.
 
 ## 7. Operational references
 
+- [Character research](CHARACTER_RESEARCH.md) and [background research](CHARACTER_RESEARCH_BACKGROUND.md)
+- [Voice identity and playback](VOICE_IDENTITY.md)
+- [Portrait pipeline](PORTRAIT_PIPELINE.md)
 - [Creator onboarding](CREATOR_ONBOARDING.md)
 - [Wallet restore](WALLET_RESTORE.md)
 - [Deployment checklist](PAYMENT_DEPLOYMENT_CHECKLIST.md)

@@ -112,6 +112,8 @@ export function MobileCharacterStudio({
   const [pending, setPending] = useState<Creation | null>(null);
   const [imageError, setImageError] = useState("");
   const [health, setHealth] = useState<Health | null>(null);
+  const voiceEnabled = useRef(false);
+  const [reviewId, setReviewId] = useState<string | null>(null);
   const [panel, setPanel] = useState<
     "profile" | "refine" | "portrait" | "history" | "more" | null
   >(null);
@@ -133,7 +135,8 @@ export function MobileCharacterStudio({
     q.delete("create");
     q.delete("character");
     if (next === "create") q.set("create", "1");
-    if (next === "detail" && cid) q.set("character", cid);
+    if ((next === "detail" || next === "create") && cid) q.set("character", cid);
+    setReviewId(next === "create" && cid ? cid : null);
     history[replace ? "replaceState" : "pushState"](
       null,
       "",
@@ -149,7 +152,7 @@ export function MobileCharacterStudio({
     if (alive.current) setList(cs);
     return cs;
   }
-  async function open(cid: string, replace = false) {
+  async function open(cid: string, replace = false, next: Mode = "detail") {
     const n = ++epoch.current;
     setLoading(true);
     try {
@@ -157,7 +160,7 @@ export function MobileCharacterStudio({
       if (alive.current && n === epoch.current) {
         setPerson(c);
         setImageError("");
-        url("detail", c.id, replace);
+        url(next, c.id, replace);
       }
     } catch (e) {
       if (alive.current) setError((e as Error).message);
@@ -183,7 +186,7 @@ export function MobileCharacterStudio({
     // portrait-only job from the new form; its image still completes server-side.
     // Retain an unfinished Profile (no character_id) for explicit recovery.
     const newCharacter = initialCreate || q.has("create");
-    if (newCharacter && job?.character_id) {
+    if (newCharacter && !q.get("character") && job?.character_id) {
       creationEpoch.current++;
       setDescription("");
       localPut("character-description", "");
@@ -194,12 +197,12 @@ export function MobileCharacterStudio({
       setPending(job);
     }
     api<Health>("/health")
-      .then(setHealth)
+      .then(h => { voiceEnabled.current = !!h.voice_enabled; setHealth(h); })
       .catch(() => {});
     void refresh()
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-    if (q.get("character")) void open(q.get("character")!, true);
+    if (q.get("character")) void open(q.get("character")!, true, q.has("create") ? "create" : "detail");
     else if (initialCreate || q.has("create")) {
       setMode("create");
       onMode("create");
@@ -207,10 +210,12 @@ export function MobileCharacterStudio({
     const pop = () => {
       const q = new URLSearchParams(location.search);
       if (q.get("view") !== "characters") return;
-      if (q.get("character")) void open(q.get("character")!, true);
+      if (q.get("character")) void open(q.get("character")!, true, q.has("create") ? "create" : "detail");
       else {
         const next = q.has("create") ? "create" : "library";
         setMode(next);
+        setReviewId(null);
+        if (next === "create") setPerson(null);
         setPanel(null);
         onMode(next);
       }
@@ -297,7 +302,7 @@ export function MobileCharacterStudio({
       // The new Profile should be interactive IMMEDIATELY. Do not await
       // library/Scene refresh before navigating: those unrelated network
       // calls can be slower or fail while the Character itself is saved.
-      if (modeRef.current === "create") url("detail", c.id);
+      if (modeRef.current === "create") url(voiceEnabled.current ? "create" : "detail", c.id, voiceEnabled.current);
       else setNotice(c.profile.name + " is saved in your characters.");
       void changed().catch(() => {
         if (alive.current)
@@ -339,7 +344,7 @@ export function MobileCharacterStudio({
             setPending((previous) => previous?.request_id === tracked.request_id
               ? tracked : previous);
             localPut("character-creation", tracked);
-            if (modeRef.current === "create") url("detail", c.id, true);
+            if (modeRef.current === "create") url(voiceEnabled.current ? "create" : "detail", c.id, true);
           }
           if (j.status === "succeeded") {
             setImageError(j.result.image_error || "");
@@ -349,7 +354,7 @@ export function MobileCharacterStudio({
             localPut("character-description", "");
             setDescription("");
             if (alive.current && modeRef.current === "create")
-              url("detail", c.id, true);
+              url(voiceEnabled.current ? "create" : "detail", c.id, true);
             void changed().catch(() => {
               if (alive.current)
                 setNotice("Character saved. Refresh to update the library.");
@@ -439,6 +444,7 @@ export function MobileCharacterStudio({
       void refresh().catch((e) => setError(e.message));
     }
   }
+  const reviewing = mode === "create" && !!person && reviewId === person.id;
   const buttonDisabled = busy || creating;
   const portraitGenerating = !!(pending?.character_id && person?.id === pending.character_id &&
     !person.current_image_id);
@@ -459,7 +465,7 @@ export function MobileCharacterStudio({
           </span>
           <small>
             {mode === "create"
-              ? "A PERSONALITY. A PORTRAIT."
+              ? "A PERSONALITY. A PORTRAIT. A VOICE."
               : picking
                 ? "CHOOSE YOUR CAST"
                 : "THE CHARACTER LIBRARY"}
@@ -624,7 +630,7 @@ export function MobileCharacterStudio({
           )}
         </div>
       )}
-      {mode === "create" && (
+      {mode === "create" && !reviewing && (
         <>
           <div className="rh-scroll rh-pad mc-create">
             <span className="rh-eyebrow">YOUR CHARACTER · A NEW STORY</span>
@@ -753,7 +759,7 @@ export function MobileCharacterStudio({
           </footer>
         </>
       )}
-      {mode === "detail" && person && (
+      {(mode === "detail" || reviewing) && person && (
         <>
           <div className="rh-scroll mc-detail">
             <div className="mc-character-cover">
@@ -761,7 +767,7 @@ export function MobileCharacterStudio({
               <div className="mc-cover-shade" />
               <div className="mc-cover-title">
                 <span className="rh-eyebrow">
-                  YOUR CHARACTER · VERSION {person.profile_version}
+                  {reviewing ? "YOUR CHARACTER · CREATION PREVIEW" : "YOUR CHARACTER · VERSION " + person.profile_version}
                 </span>
                 <h1>{person.profile.name}</h1>
                 <p>{person.profile.short_description}</p>
@@ -779,7 +785,7 @@ export function MobileCharacterStudio({
                 <div>
                   <strong>Portrait generating in the background</strong>
                   <p>Your character is saved and ready to use. You can explore the
-                    profile or start a story while the portrait finishes.</p>
+                    profile or choose a voice while the portrait finishes.</p>
                 </div>
               </div>
             )}
@@ -801,6 +807,8 @@ export function MobileCharacterStudio({
               </div>
             )}
             <div className="rh-pad mc-profile-body">
+              {reviewing && <p className="rh-muted">Your profile is saved. Choose a voice while your portrait finishes, or continue without one.</p>}
+              {!person.archived && (!picking || reviewing) && <CharacterVoice key={person.id} id={person.id} profileVersion={person.profile_version} />}
               <div className="mc-edit-actions">
                 <button
                   className="rh-secondary"
@@ -835,7 +843,7 @@ export function MobileCharacterStudio({
                     </section>
                   ))}
               </div>
-              {!person.archived && !picking && <CharacterVoice key={person.id} id={person.id} profileVersion={person.profile_version} />}
+
               <details className="rh-details">
                 <summary>
                   Background & private details <span>＋</span>
@@ -869,6 +877,7 @@ export function MobileCharacterStudio({
               disabled={buttonDisabled}
               onClick={() =>
                 run(async () => {
+                  if (reviewing) { url("detail", person.id, true); return; }
                   let c = person;
                   if (person.archived) {
                     await creator(
@@ -884,14 +893,14 @@ export function MobileCharacterStudio({
                 })
               }
             >
-              {person.archived
+              {reviewing ? "Finish character creation" : person.archived
                 ? "Unarchive & rehearse"
                 : picking
                   ? "Use in this scene"
                   : "Rehearse with " + person.profile.name}
               <span>→</span>
             </button>
-            {!picking && !person.archived && (
+            {!reviewing && !picking && !person.archived && (
               <button
                 type="button"
                 className="rh-secondary"
@@ -911,7 +920,7 @@ export function MobileCharacterStudio({
                       : "Publish to Marketplace →"}
               </button>
             )}
-            {ownedError && !picking && !person.archived && (
+            {ownedError && !reviewing && !picking && !person.archived && (
               <p className="rh-muted" role="alert">{ownedError}</p>
             )}
           </footer>

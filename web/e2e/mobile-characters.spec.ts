@@ -189,3 +189,43 @@ test("lost creation response recovers both profile and portrait after refresh", 
   expect(portraits).toHaveLength(1);
 });
 
+
+
+test("voice-enabled creation keeps portrait and voice selection in one creation view", async ({page}) => {
+  await page.setViewportSize({width: 390,height:844});
+  let selectedVoice: {provider:string;voice_id:string;name:string}|null=null;
+  const choices=["a","b","c"].map((id,i)=>({provider:"elevenlabs",voice_id:id,name:"Voice "+id,preview_url:"https://example.com/sample.mp3",reason:"Fits the character",labels:{}}));
+  await page.route("**/api/health",async route=>{
+    const response=await route.fetch();
+    await route.fulfill({response,json:{...await response.json(),voice_enabled:true}});
+  });
+  await page.route("**/api/voice/characters/**",async route=>{
+    const req=route.request();
+    if(req.url().endsWith("/recommend")){
+      await route.fulfill({json:{reason:"ai",choices,profile_version:1,sample_text:"The stars have not forgotten us.",sample_id:"a".repeat(64)}});
+    }else if(req.method()==="PUT"){
+      const id=req.postDataJSON().voice_id;
+      selectedVoice={provider:"elevenlabs",voice_id:id,name:"Voice "+id};
+      await route.fulfill({json:{voice:selectedVoice}});
+    }else{
+      await route.fulfill({json:{enabled:true,preview_synthesis:true,voice:selectedVoice,profile_version:1}});
+    }
+  });
+  await page.goto("/characters/new");
+  await page.getByLabel("Describe your character").fill("A reserved astronomer with a quiet voice.");
+  await page.getByRole("button",{name:/^Create character/}).last().click();
+  await expect(page.getByRole("heading",{name:"Evelyn"})).toBeVisible();
+  await expect(page).toHaveURL(/create=1.*character=/);
+  await expect(page.getByLabel("Shared dialogue sample")).toContainText("The stars have not forgotten us.");
+  const candidate=page.getByRole("button",{name:/ALTERNATIVE Voice b/});
+  await candidate.click();
+  await expect(candidate).toHaveAttribute("aria-pressed","true");
+  const mark=candidate.locator("span[aria-hidden=true]");
+  const bounds=await mark.boundingBox();
+  expect(bounds?.width).toBeCloseTo(bounds?.height||0,0);
+  await page.getByRole("button",{name:"Confirm voice"}).click();
+  await expect(page.getByText("Saved voice")).toBeVisible();
+  await page.getByRole("button",{name:"Finish character creation"}).click();
+  await expect(page).not.toHaveURL(/create=1/);
+  await expect(page.getByRole("button",{name:/Rehearse with Evelyn/})).toBeVisible();
+});

@@ -1,3 +1,4 @@
+import hashlib
 from collections import OrderedDict
 from threading import Lock
 from uuid import UUID
@@ -6,7 +7,7 @@ from sqlalchemy import select, update
 from ..db import Character, ProfileRevision, now
 from ..schemas import Profile
 from .elevenlabs import ElevenLabsCatalog, VoiceProviderError
-from .schemas import VoiceCatalogResponse, VoiceIdentity, VoiceSelection, AudioRequest
+from .schemas import VoiceCatalogResponse, VoiceIdentity, VoiceSelection, AudioRequest, VoicePreviewRequest
 from .audio import AudioService
 from .matching import recommend
 
@@ -46,7 +47,7 @@ def register_voice(app, settings, factory):
         with factory() as db:
             char = own(db, request, cid)
             return {"enabled": settings.elevenlabs_enabled, "voice": char.voice_identity,
-                    "profile_version": char.current_profile_version}
+                    "profile_version": char.current_profile_version, "preview_synthesis": audio.enabled()}
 
     @app.post("/api/voice/characters/{cid}/recommend")
     def recommendations(cid: UUID, request: Request):
@@ -65,12 +66,32 @@ def register_voice(app, settings, factory):
         # Single-process demo cache avoids re-running ranking on refresh.
         with gate:
             if key not in cache:
-                choices, method = recommend(data, available.voices, app.state.text)
-                cache[key] = {"reason": method, "choices": choices, "profile_version": current}
+                choices, method, sample = recommend(data, available.voices, app.state.text, with_sample=True)
+                sample_id = hashlib.sha256(sample.encode("utf-8")).hexdigest()
+                cache[key] = {"reason": method, "choices": choices, "profile_version": current,
+                              "sample_text": sample, "sample_id": sample_id}
                 if len(cache) > 256:
                     cache.popitem(last=False)
             cache.move_to_end(key)
             return cache[key]
+
+    @app.post("/api/voice/characters/{cid}/preview")
+    def preview_voice(cid: UUID, body: VoicePreviewRequest, request: Request):
+        # No arbitrary text from the client. Same server-authored line for each
+        # of the three approved candidates; profile version and sample hash bind it.
+        if not audio.enabled():
+            raise HTTPException(503, "Dialogue preview is disabled.")
+        rec = recommendations(cid, request)
+        if rec.get("profile_version") != body.expected_profile_version or rec.get("sample_id") != body.sample_id:
+            raise HTTPException(409, "Voice suggestions changed. Match voices again.")
+        if body.voice_id not in {v["voice_id"] for v in rec["choices"]}:
+            raise HTTPException(422, "Choose a recommended voice.")
+        try:
+            data, cached = audio.cached_audio(owner(request), "audition:" + str(cid), body.voice_id, rec["sample_text"])
+            return Response(content=data, media_type="audio/mpeg", headers={
+                "Cache-Control": "private, no-store", "X-Audio-Cache": "hit" if cached else "miss"})
+        except VoiceProviderError as exc:
+            raise HTTPException(503, str(exc)) from None
 
     @app.put("/api/voice/characters/{cid}")
     def select_voice(cid: UUID, body: VoiceSelection, request: Request):

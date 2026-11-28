@@ -97,10 +97,16 @@ class AudioService:
             raise HTTPException(503,"Story audio is disabled.")
         with self.factory() as db:
             voice,text=visible_block(db,owner,scene_id,body,self.settings.elevenlabs_narrator_voice_id)
+        return self.cached_audio(owner, str(scene_id), voice, text)
+
+    def cached_audio(self, owner, scope, voice, text):
+        """Shared quota and cache; callers authorize text and scope first."""
+        if not self.enabled():
+            raise HTTPException(503, "Voice synthesis is disabled.")
         catalog=self.catalog.catalog()
         if not catalog.enabled or voice not in {v.voice_id for v in catalog.voices}:
             raise HTTPException(409,"This voice is no longer approved.")
-        digest=hashlib.sha256(json.dumps([owner,str(scene_id),voice,text,self.settings.elevenlabs_tts_model,
+        digest=hashlib.sha256(json.dumps([owner,scope,voice,text,self.settings.elevenlabs_tts_model,
                 "mp3_44100_128"],ensure_ascii=False).encode()).hexdigest()
         target=Path(self.settings.elevenlabs_audio_directory)/(digest+".mp3")
         with self.lock:

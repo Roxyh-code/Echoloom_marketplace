@@ -5,7 +5,8 @@ import type { CheckoutQuote } from "./rehearsal-checkout";
 
 const TOKEN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ATA = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
-const DEVNET = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1";
+// getGenesisHash() returns the full hash, not the 32-character CAIP-2 network reference.
+const DEVNET = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 const ata = (owner: PublicKey, mint: PublicKey) =>
   PublicKey.findProgramAddressSync([owner.toBuffer(), TOKEN.toBuffer(), mint.toBuffer()], ATA)[0];
 function b58(bytes: Uint8Array) {
@@ -29,6 +30,32 @@ export async function purchaseSignedQuote(q: CheckoutQuote, address: string,
     throw new Error("Invalid quote");
   const count=message[297];
   if(count<1 || count>3 || count!==q.payout_lines.length) throw new Error("Invalid payout count");
+  // Optional deployment pins: fail closed if the frontend was built for a
+  // different Devnet contract than the signed quote returned by FastAPI.
+  // These public values are not a substitute for on-chain config validation.
+  if (process.env.NEXT_PUBLIC_SOLANA_CLUSTER && process.env.NEXT_PUBLIC_SOLANA_CLUSTER !== "devnet")
+    throw new Error("Checkout is only supported on Solana Devnet");
+  const pins: Array<[string | undefined, string, string]> = [
+    [process.env.NEXT_PUBLIC_ECHOOLOOM_PROGRAM_ID, q.program_id, "program"],
+    [process.env.NEXT_PUBLIC_ECHOOLOOM_CONFIG_PDA, q.config_pda, "config PDA"],
+    [process.env.NEXT_PUBLIC_ECHOOLOOM_TOKEN_MINT, q.mint, "token mint"],
+    [process.env.NEXT_PUBLIC_ECHOOLOOM_PAYMENT_SIGNER, q.signer_pubkey, "authorization signer"],
+    [process.env.NEXT_PUBLIC_ECHOOLOOM_TOKEN_PROGRAM_ID, TOKEN.toBase58(), "token program"],
+    [process.env.NEXT_PUBLIC_ECHOOLOOM_TOKEN_DECIMALS, String(q.decimals), "token decimals"],
+  ];
+  for (const [expected, actual, field] of pins) {
+    if (expected && expected !== actual) throw new Error("Devnet " + field + " differs from the backend quote");
+  }
+  const expectedDomain = process.env.NEXT_PUBLIC_ECHOOLOOM_DOMAIN_HASH;
+  if (expectedDomain && (!/^[a-f0-9]{64}$/i.test(expectedDomain)
+      || message.subarray(33,65).toString("hex") !== expectedDomain.toLowerCase()))
+    throw new Error("Devnet deployment domain differs from the backend quote");
+  const treasury = process.env.NEXT_PUBLIC_ECHOOLOOM_TREASURY_WALLET;
+  if (treasury && !q.payout_lines.some(p => p.wallet === treasury))
+    throw new Error("Devnet treasury is missing from the backend quote");
+  const expectedTreasuryAta = process.env.NEXT_PUBLIC_ECHOOLOOM_TREASURY_ATA;
+  if (treasury && expectedTreasuryAta && ata(new PublicKey(treasury), mint).toBase58() !== expectedTreasuryAta)
+    throw new Error("Configured Devnet treasury token account does not match its mint and owner");
   const source=ata(buyer,mint);
   const owners=q.payout_lines.map(p=>new PublicKey(p.wallet));
   const dest=owners.map(o=>ata(o,mint));

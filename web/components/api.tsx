@@ -13,7 +13,7 @@ export type Profile = {
   interaction_preferences: Record<string, string>;
 };
 export type Character = {
-  research?: {sources:string[];profile_version:number}|null;
+  research?: {sources?:string[];profile_version?:number;status?:string;base_version?:number;discovered_sources?:string[];proposal?:Profile;reason?:string}|null;
   id: string;
   profile: Profile;
   profile_version: number;

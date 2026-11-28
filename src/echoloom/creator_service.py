@@ -65,6 +65,8 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
     active_portraits = {}
     active_portraits_guard = Lock()
     research_agent = CharacterResearch(settings)
+    active_research = set()
+    research_guard = Lock()
 
     def owner(request):
         return request.state.user_id
@@ -356,40 +358,108 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
             raise
         return ready
 
-    def research_for_creation(db,row,user,body):
-        if not body.research or not research_agent.enabled() or user is None:
-            return None
-        prior=row.result or {}
-        if prior.get("research_attempted"):
-            return prior.get("research_lore")
-        row.result=prior|{"phase":"identifying"}
-        db.commit()
+    def update_research(cid, user, state):
+        with locks.hold(str(cid)), factory() as db:
+            c=db.get(Character,str(cid))
+            if not c or c.owner_id!=user or c.archived:
+                return False
+            current=c.research_data or {}
+            if current.get("status") not in {"queued","identifying","searching","researching"}:
+                return False
+            c.research_data=current|state
+            db.commit()
+            return True
+
+    def research_worker(cid,user,description,base_version,base_profile):
+        # Separate from the portrait request record: the two workers never
+        # overwrite one another's result. Existing profile stays usable.
         try:
-            identity=ResearchIdentity.model_validate(app.state.text.identify_research_character(body.description))
+            if not update_research(cid,user,{"status":"identifying"}):return
+            identity=ResearchIdentity.model_validate(app.state.text.identify_research_character(description))
             if identity.kind!="existing_fictional" or not identity.name or not identity.work:
-                return None
+                update_research(cid,user,{"status":"skipped"})
+                return
             lore=research_agent.cached(identity)
             if lore is None:
-                with locks.hold("firecrawl-budget"):
+                with locks.hold("firecrawl-budget"), factory() as db:
                     today=datetime.now(UTC).date().isoformat()
                     runs=[r for r in db.scalars(select(CreatorRequest).where(
-                        CreatorRequest.scope=="character",CreatorRequest.created_at>=today))
+                        CreatorRequest.scope.in_(["character","character-research"]),
+                        CreatorRequest.created_at>=today))
                         if (r.result or {}).get("research_attempted")]
                     if (len(runs)>=settings.firecrawl_daily_runs_global
                             or sum(r.owner_id==user for r in runs)>=settings.firecrawl_daily_runs_per_account):
-                        row.result=(row.result or {})|{"research_outcome":"budget"}
-                        db.commit()
-                        return None
-                    row.result=(row.result or {})|{"research_attempted":True,"phase":"researching"}
+                        update_research(cid,user,{"status":"unavailable","reason":"Daily research limit reached."})
+                        return
+                    db.add(CreatorRequest(id=uid(),owner_id=user,scope="character-research",
+                        payload={"character_id":cid},status="succeeded",
+                        result={"research_attempted":True}))
                     db.commit()
-                lore=research_agent.research(identity)
-            row.result=(row.result or {})|{"research_lore":lore,"research_outcome":"completed"}
+                if not update_research(cid,user,{"status":"searching"}):return
+                discovered=research_agent.discover(identity)
+                if not update_research(cid,user,{"status":"researching",
+                        "discovered_sources":[d["url"] for d in discovered]}):return
+                lore=research_agent.research(identity,discovered=discovered)
+            proposed=Profile.model_validate(app.state.text.generate_researched(description,lore))
+            # The initial visual identity is already used for the portrait.
+            # Research is a reviewable update, not a silent identity change.
+            proposal=proposed.model_dump()
+            for key in ("name","appearance","visual_style"):
+                proposal[key]=base_profile[key]
+            update_research(cid,user,lore|{"status":"proposal","base_version":base_version,
+                "proposal":Profile.model_validate(proposal).model_dump()})
+        except Exception as exc:
+            logger.warning("character research worker failed type=%s",type(exc).__name__)
+            try:
+                update_research(cid,user,{"status":"unavailable","reason":"Research unavailable. Your character is ready."})
+            except Exception:
+                logger.warning("character research state update failed")
+        finally:
+            with research_guard:
+                active_research.discard(cid)
+
+    def start_research(cid,user,description,version,profile):
+        with research_guard:
+            if cid in active_research:return
+            active_research.add(cid)
+        try:
+            Thread(target=research_worker,args=(cid,user,description,version,profile),
+                   name="character-research-"+cid[:8],daemon=True).start()
+        except Exception:
+            with research_guard:active_research.discard(cid)
+            update_research(cid,user,{"status":"unavailable"})
+
+    @app.get("/api/creator/characters/{cid}/research")
+    def read_research(cid: UUID,request: Request):
+        with factory() as db:
+            c=character(db,cid,owner(request))
+            data=c.research_data
+            if data and data.get("status") in {"queued","identifying","searching","researching"}:
+                with research_guard:
+                    if c.id not in active_research:
+                        return data|{"status":"unavailable","reason":"Research interrupted by server restart."}
+            return data
+
+    @app.post("/api/creator/characters/{cid}/research/apply")
+    def apply_research(cid: UUID,request: Request):
+        with locks.hold(str(cid)),factory() as db:
+            c=character(db,cid,owner(request))
+            data=c.research_data or {}
+            if data.get("status")=="applied":
+                return serialize_character(db,c)
+            if c.archived or data.get("status")!="proposal":
+                raise HTTPException(409,"No research update available.")
+            if c.current_profile_version!=data.get("base_version"):
+                raise HTTPException(409,"Profile has changed. Review the research sources without overwriting your edits.")
+            p=Profile.model_validate(data["proposal"])
+            version=c.current_profile_version+1
+            db.add(ProfileRevision(character_id=c.id,version=version,
+                profile_json=p.model_dump(),change_summary="Accepted Firecrawl research update"))
+            c.current_profile_version=version
+            c.updated_at=now()
+            c.research_data={k:v for k,v in data.items() if k!="proposal"}|{"status":"applied","profile_version":version}
             db.commit()
-            return lore
-        except (ResearchError,ProviderError,ValueError,AttributeError,TypeError):
-            row.result=(row.result or {})|{"research_outcome":"fallback"}
-            db.commit()
-            return None
+            return serialize_character(db,c)
 
     @app.post("/api/creator/characters", status_code=201)
     def create_character(body: CreatorCharacterInput, request: Request):
@@ -414,7 +484,6 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                             401, "Please sign in before saving your character."
                         )
 
-            lore=None
             profile=None
             ready=None
             try:
@@ -422,26 +491,17 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                     if row.status == "failed":
                         row.status = "pending"
                         db.commit()
-                    lore=research_for_creation(db,row,user,body)
                     row.result=(row.result or {})|{"phase":"building_profile"}
                     db.commit()
-                    if lore:
-                        try:
-                            profile=Profile.model_validate(app.state.text.generate_researched(body.description,lore))
-                        except (ProviderError,ValueError,AttributeError,TypeError):
-                            lore=None
-                            row.result=(row.result or {})|{"research_outcome":"fallback","research_lore":None}
-                            db.commit()
-                    if profile is None:
-                        try:
-                            profile=Profile.model_validate(app.state.text.generate(body.description))
-                        except ProviderError as exc:
-                            saved=dict(row.result or {})
-                            fail(db,rid,str(exc))
-                            row=db.get(CreatorRequest,rid)
-                            row.result=saved|{"detail":str(exc)}
-                            db.commit()
-                            raise
+                    try:
+                        profile=Profile.model_validate(app.state.text.generate(body.description))
+                    except ProviderError as exc:
+                        saved=dict(row.result or {})
+                        fail(db,rid,str(exc))
+                        row=db.get(CreatorRequest,rid)
+                        row.result=saved|{"detail":str(exc)}
+                        db.commit()
+                        raise
                     with locks.hold("account-bootstrap"):
                         from .companion_models import Account
 
@@ -450,7 +510,8 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                                 401, "Please sign in before saving your character."
                             )
                         c = Character(owner_id=user, original_description=body.description,
-                                      research_data=(lore | {"profile_version":1}) if lore else None)
+                                      research_data={"status":"queued","base_version":1}
+                                      if body.research and user is not None and research_agent.enabled() else None)
                         db.add(c)
                         db.flush()
                         db.add(
@@ -470,6 +531,8 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                     c = character(db,cid,user)
                     p = Profile.model_validate(snapshot(db,c)["profile"])
                     ready = start_initial_portrait(rid,user,portrait_prompt(p))
+                    if (c.research_data or {}).get("status")=="queued":
+                        start_research(cid,user,c.original_description,c.current_profile_version,p.model_dump())
                 logger.info(
                     "creator stage=profile response_seconds=%.2f portrait=background",
                     time.monotonic() - started,

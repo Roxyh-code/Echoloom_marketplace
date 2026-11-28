@@ -12,6 +12,7 @@ import {
 import { creator } from "./creator-api";
 import { CharacterVoice } from "./character-voice";
 import { ResearchSources } from "./research-sources";
+import { PortraitPlaceholder } from "./portrait-placeholder";
 import researchStyles from "./character-research.module.css";
 import { listOwnedListings, type OwnedListingDetail } from "./marketplace-api";
 import { localGet, localPut, operation } from "./rehearsal-api";
@@ -37,7 +38,7 @@ function Picture({
           onError={() => setBad(true)}
         />
       ) : (
-        <span>{character.profile.name.slice(0, 1)}</span>
+        large ? <PortraitPlaceholder name={character.profile.name}/> : <span>{character.profile.name.slice(0, 1)}</span>
       )}
     </div>
   );
@@ -288,7 +289,7 @@ export function MobileCharacterStudio({
       ...(health?.research_enabled && research ? {research:true}:{}),
     };
     setPending(job);
-    setResearchPhase(job.research?"identifying":"");
+    setResearchPhase(job.research?"building_profile":"");
     localPut("character-creation", job);
     try {
       const r = await creator<{
@@ -704,7 +705,7 @@ export function MobileCharacterStudio({
                     setDescription(e.target.value);
                     localPut("character-description", e.target.value);
                   }}
-                  rows={8}
+                  rows={4}
                   required
                   maxLength={health?.max_profile_input_chars || 5000}
                   disabled={!!pending || creating}
@@ -712,8 +713,8 @@ export function MobileCharacterStudio({
                 />
               </label>
               {health?.research_enabled && <div className={researchStyles.toggle}>
-                <button type="button" role="switch" aria-label="Research character" aria-checked={pending ? !!pending.research : research} disabled={!!pending||creating} onClick={()=>setResearch(v=>!v)}><span/></button>
-                <label onClick={()=>{if(!pending&&!creating)setResearch(v=>!v);}}>Research character</label>
+                <label htmlFor="character-research-switch">Research character</label>
+                <button id="character-research-switch" type="button" role="switch" aria-label="Research character" aria-checked={pending ? !!pending.research : research} disabled={!!pending||creating} onClick={()=>setResearch(v=>!v)}><span/></button>
               </div>}
               {!pending && (
                 <button
@@ -730,7 +731,7 @@ export function MobileCharacterStudio({
                 </button>
               )}
               {(creating || pending) && pending?.research && (
-                <div className={researchStyles.progress} role="status"><span className={researchStyles.dot}/>{researchPhase==="researching"?"Researching character · Firecrawl":researchPhase==="building_profile"?"Creating character…":"Identifying character…"}</div>
+                <div className={researchStyles.progress} role="status"><span className={researchStyles.dot}/>Creating character…</div>
               )}
               {(creating || pending) && !pending?.research && (
                 <div className="mc-creation-progress" role="status">
@@ -785,7 +786,7 @@ export function MobileCharacterStudio({
               }
             >
               {creating
-                ? "Creating character & portrait…"
+                ? "Creating…"
                 : pending
                   ? "Resume creation"
                   : "Create character"}
@@ -831,8 +832,6 @@ export function MobileCharacterStudio({
                 <span className="mc-portrait-spinner" aria-hidden="true">✧</span>
                 <div>
                   <strong>Portrait generating in the background</strong>
-                  <p>Your character is saved and ready to use. You can explore the
-                    profile or choose a voice while the portrait finishes.</p>
                 </div>
               </div>
             )}
@@ -852,7 +851,7 @@ export function MobileCharacterStudio({
               </div>
             )}
             <div className="rh-pad mc-profile-body">
-              <ResearchSources character={person} />
+              <ResearchSources key={person.id} character={person} onApplied={c=>{if(personRef.current?.id===c.id){setPerson(c);void changed().catch(()=>{});}}} />
               {reviewing && <p className="rh-muted">Profile saved. Choose a voice.</p>}
               {!person.archived && (!picking || reviewing) && <CharacterVoice key={person.id} id={person.id} profileVersion={person.profile_version} />}
               <div className="mc-edit-actions">

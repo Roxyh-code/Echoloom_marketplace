@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import {useEffect,useState} from "react";
+import {PortraitPlaceholder} from "./portrait-placeholder";
 
 type CharacterDetailProps = {
   name: string;
@@ -24,6 +26,8 @@ export function CharacterDetailArticle({
   name, description, image, source, revision, creator, tags = [], traits = [],
   appearance, backstory, onAddToCast, researchSources,
 }: CharacterDetailProps) {
+  const [bad,setBad]=useState(false);
+  useEffect(()=>setBad(false),[image]);
   const appearanceEntries = Object.entries(appearance || {})
     .filter(([, detail]) => typeof detail === "string" && detail.trim());
   return (
@@ -33,10 +37,10 @@ export function CharacterDetailArticle({
       </span>
       <div className="em-character-intro">
         <div className="em-detail-portrait">
-          {image ? (
-            <img src={image} alt={"Portrait of " + name} />
+          {image && !bad ? (
+            <img src={image} alt={"Portrait of " + name} onError={()=>setBad(true)}/>
           ) : (
-            <span className="em-cover-monogram">{name.slice(0, 1)}</span>
+            <PortraitPlaceholder name={name}/>
           )}
         </div>
         <div className="em-character-description">

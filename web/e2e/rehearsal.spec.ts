@@ -326,3 +326,57 @@ test("one paragraph at a time → refresh preserves complete passage and unseen 
     fullPage: true,
   });
 });
+
+
+test("inline audio controls request only the selected revealed passage", async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  // Inject voice identities only into deterministic fixture responses, never the database.
+  await page.route("**/api/rehearsal/**", async route=>{
+    if(route.request().url().includes("/audio")){await route.continue();return;}
+    const response=await route.fetch();
+    const type=response.headers()["content-type"]||"";
+    if(!type.includes("application/json")){await route.fulfill({response});return;}
+    const data=await response.json();
+    function addVoices(value:any){
+      if(!value||typeof value!=="object")return;
+      if(Array.isArray(value)){value.forEach(addVoices);return;}
+      if(value.document&&Array.isArray(value.document.cast)){
+        value.document.cast.forEach((actor:any,i:number)=>{actor.voice_identity={provider:"elevenlabs",voice_id:"demo-"+i,name:"Voice "+i};});
+      }
+      Object.values(value).forEach(addVoices);
+    }
+    addVoices(data);
+    await route.fulfill({response,json:data});
+  });
+  await page.route("**/api/voice/audio/status",route=>route.fulfill({json:{enabled:true,narration:true}}));
+  const requests:any[]=[];
+  await page.route("**/api/voice/scenes/*/audio",async route=>{
+    requests.push(route.request().postDataJSON());
+    await route.fulfill({status:503,json:{detail:"Test audio unavailable."}});
+  });
+  await page.goto("/rehearsal");
+  await page.locator(".rh-example").click();
+  await page.getByRole("button",{name:/Start rehearsal/}).click();
+  await readCurrentSegment(page);
+  const dialogue=page.locator(".rh-block.dialogue").first();
+  const narrator=page.locator(".rh-block.narration").first();
+  const dialogueButton=dialogue.getByRole("button",{name:/Play audio for/});
+  const narrationButton=narrator.getByRole("button",{name:"Play audio for narration"});
+  await expect(dialogueButton).toBeVisible();
+  await expect(narrationButton).toBeVisible();
+  await expect(page.getByRole("button",{name:/Listen to story/})).toHaveCount(0);
+  expect(requests).toHaveLength(0);
+  const blockId=await dialogueButton.getAttribute("data-audio-block");
+  await dialogueButton.click();
+  await expect(dialogue.getByRole("alert")).toContainText("Test audio unavailable.");
+  expect(requests).toHaveLength(1);
+  expect(requests[0].block_id).toBe(blockId);
+  expect(Object.keys(requests[0]).sort()).toEqual(["block_id","node_id","version_id"]);
+  await expect(dialogue.getByRole("button",{name:/Paragraph options/})).toBeVisible();
+  const narrationId=await narrationButton.getAttribute("data-audio-block");
+  await narrationButton.click();
+  await expect(narrator.getByRole("alert")).toContainText("Test audio unavailable.");
+  expect(requests).toHaveLength(2);
+  expect(requests[1].block_id).toBe(narrationId);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+});

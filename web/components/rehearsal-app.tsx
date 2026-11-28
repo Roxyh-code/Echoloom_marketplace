@@ -5,7 +5,7 @@ import { MobileAppFrame } from "./mobile-app-frame";
 import { countLines, nextPassageEnd, visibleLines, readState } from "./rehearsal-reading";
 import { useEffect, useRef, useState } from "react";
 import { CheckoutPanel } from "./rehearsal-checkout";
-import { StoryAudio } from "./story-audio";
+import { useStoryAudio } from "./story-audio";
 import {
   Actor,
   CastSource,
@@ -366,6 +366,8 @@ export function RehearsalApp() {
     else setUnread(true);
   }, [page, scene?.id, version?.id, visibleText]);
   const actors = doc?.cast || [];
+  const storyAudio = useStoryAudio({sceneId:scene?.id,versionId:version?.id,nodes:visibleNodes,actors,
+    language:version?.setup.language||"en",enabled:page==="stage"&&online});
   const marketplaceCast = actors.some((a) => Boolean(a.source_listing_id));
   const meteredScene = Boolean(scene && !doc?.demo);
   const access = accessSnapshot && accessSnapshot.sceneId === scene?.id ? accessSnapshot.value : null;
@@ -1097,6 +1099,7 @@ export function RehearsalApp() {
                 <div className="rh-speaker">
                   <Avatar actor={who} size="tiny" />
                   <strong>{who.name}</strong>
+                  {!readOnly && b.type === "dialogue" && storyAudio.button(n.id,b)}
                   {b.locked && (
                     <small>
                       {tr("Your words · locked", "你的文字 · 已锁定")}
@@ -1104,7 +1107,8 @@ export function RehearsalApp() {
                   )}
                 </div>
               )}
-              <p>{b.text}</p>
+              <p>{b.text}{!readOnly && b.type !== "dialogue" && <>{" "}{storyAudio.button(n.id,b)}</>}</p>
+              {!readOnly && storyAudio.message(n.id,b)}
               {!readOnly && (
                 <button
                   className="rh-block-menu"
@@ -1886,7 +1890,6 @@ export function RehearsalApp() {
                   <p>{version.setup.premise}</p>
                   <span className="rh-reading-divider">✧</span>
                 </div>
-                <StoryAudio key={scene.id} sceneId={scene.id} versionId={version.id} nodes={visibleNodes} actors={actors} language={version.setup.language} />
                 {bodyBlocks(visibleNodes)}
                 {!nodes.length && !job && (
                   <div className="rh-empty">

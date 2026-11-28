@@ -1,81 +1,122 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
-import type {Actor,Node} from "./rehearsal-api";
-type Passage={node_id:string;block_id:string;name:string;text:string};
+import type {Actor,Node,Block} from "./rehearsal-api";
+import styles from "./story-audio.module.css";
+
 type Status={enabled:boolean;narration:boolean};
-export function StoryAudio({sceneId,versionId,nodes,actors,language}:{sceneId:string;versionId:string;nodes:Node[];actors:Actor[];language:"en"|"zh"}){
+type Playback={key:string;phase:"loading"|"playing";text:string};
+type Failure={key:string;message:string};
+const passageKey=(nodeId:string,blockId:string)=>nodeId+":"+blockId;
+
+/** One player for the entire reader. Only a user's explicit click requests audio. */
+export function useStoryAudio({sceneId,versionId,nodes,actors,language,enabled}:{
+  sceneId?:string;versionId?:string;nodes:Node[];actors:Actor[];language:"en"|"zh";enabled:boolean;
+}){
   const [status,setStatus]=useState<Status|null>(null);
-  const [active,setActive]=useState("");
-  const [phase,setPhase]=useState<"idle"|"loading"|"playing">("idle");
-  const [error,setError]=useState("");
+  const [active,setActive]=useState<Playback|null>(null);
+  const [error,setError]=useState<Failure|null>(null);
   const current=useRef<HTMLAudioElement|null>(null);
   const url=useRef("");
   const controller=useRef<AbortController|null>(null);
   const token=useRef(0);
+  const activeRef=useRef<Playback|null>(null);
   const tr=(en:string,zh:string)=>language==="zh"?zh:en;
-  const passages:Passage[]=nodes.flatMap(n=>n.blocks.flatMap(b=>{
-    const actor=actors.find(a=>a.id===b.character_id);
-    return (b.type==="dialogue"?actor?.voice_identity:status?.narration)?[{
-      node_id:n.id,block_id:b.id,name:b.type==="dialogue"?actor?.name||"":tr("Narrator","旁白"),text:b.text
-    }]:[];
-  }));
-  const signature=JSON.stringify([sceneId,versionId,passages,actors.map(a=>a.voice_identity)]);
+  const scope=enabled&&sceneId&&versionId?sceneId+":"+versionId:"";
+  const scopeRef=useRef(scope);
+  scopeRef.current=scope;
+
   function release(){
     controller.current?.abort();controller.current=null;
     const player=current.current;current.current=null;
     if(player){player.onended=null;player.onerror=null;player.pause();}
     if(url.current){URL.revokeObjectURL(url.current);url.current="";}
   }
-  function stop(){token.current++;release();setActive("");setPhase("idle");}
+  function stop(){
+    token.current++;release();activeRef.current=null;setActive(null);
+  }
   useEffect(()=>{
+    setStatus(null);
+    if(!scope)return;
     const c=new AbortController();
-    fetch("/api/voice/audio/status",{cache:"no-store",signal:c.signal}).then(r=>r.ok?r.json():null)
+    fetch("/api/voice/audio/status",{cache:"no-store",signal:c.signal})
+      .then(r=>r.ok?r.json():null)
       .then(s=>{if(!c.signal.aborted)setStatus(s);}).catch(()=>{});
     return ()=>c.abort();
-  },[]);
-  useEffect(()=>{stop();setError("");return ()=>{token.current++;release();};},[signature]);
-  async function play(queue:Passage[]){
-    stop();setError("");const id=token.current;
-    for(const p of queue){
-      if(id!==token.current)return;
-      setActive(p.block_id);setPhase("loading");
-      const c=new AbortController();controller.current=c;
-      try{
-        const r=await fetch("/api/voice/scenes/"+encodeURIComponent(sceneId)+"/audio",{
-          method:"POST",headers:{"Content-Type":"application/json"},signal:c.signal,
-          body:JSON.stringify({version_id:versionId,node_id:p.node_id,block_id:p.block_id})
-        });
-        if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(typeof d.detail==="string"?d.detail:"Audio unavailable.");}
-        const blob=await r.blob();if(id!==token.current)return;
-        url.current=URL.createObjectURL(blob);
-        const player=new Audio(url.current);current.current=player;
-        setPhase("playing");
-        await new Promise<void>((resolve,reject)=>{
-          player.onended=()=>resolve();player.onerror=()=>reject(new Error("Audio playback failed."));
-          c.signal.addEventListener("abort",()=>resolve(),{once:true});
-          void player.play().catch(reject);
-        });
-        if(id!==token.current)return;
-        release();
-      }catch(e){if(id===token.current){setError(e instanceof Error?e.message:"Audio unavailable.");stop();}return;}
+  },[scope]);
+  useEffect(()=>{
+    stop();setError(null);
+    return ()=>{token.current++;release();activeRef.current=null;};
+  },[scope]);
+
+  const available=(block:Block)=>{
+    const actor=actors.find(a=>a.id===block.character_id);
+    return !!(scope&&status?.enabled&&block.text.trim()&&
+      (block.type==="dialogue"?actor?.voice_identity:status.narration));
+  };
+  // Continuing the story does not interrupt an unchanged paragraph; an edit,
+  // reveal change to this paragraph, or removal from the visible branch does.
+  const activeBlock=active?nodes.flatMap(n=>n.blocks.map(b=>({key:passageKey(n.id,b.id),block:b})))
+    .find(p=>p.key===active.key)?.block:undefined;
+  useEffect(()=>{
+    if(active&&(!activeBlock||activeBlock.text!==active.text||!available(activeBlock)))stop();
+  },[active?.key,active?.text,activeBlock?.text,!!activeBlock,status,scope]);
+
+  async function toggle(nodeId:string,block:Block){
+    if(!available(block)||!sceneId||!versionId)return;
+    const key=passageKey(nodeId,block.id);
+    if(activeRef.current?.key===key){stop();return;}
+    stop();setError(null);
+    const id=token.current, startingScope=scope;
+    const isCurrent=()=>id===token.current&&scopeRef.current===startingScope;
+    const update=(phase:Playback["phase"])=>{
+      const state={key,phase,text:block.text};
+      activeRef.current=state;setActive(state);
+    };
+    const fail=(message:string)=>{if(isCurrent()){stop();setError({key,message});}};
+    update("loading");
+    const c=new AbortController();controller.current=c;
+    try{
+      const r=await fetch("/api/voice/scenes/"+encodeURIComponent(sceneId)+"/audio",{
+        method:"POST",headers:{"Content-Type":"application/json"},signal:c.signal,
+        body:JSON.stringify({version_id:versionId,node_id:nodeId,block_id:block.id})
+      });
+      if(!r.ok){
+        const d=await r.json().catch(()=>({}));
+        throw new Error(typeof d.detail==="string"?d.detail:tr("Audio unavailable.","语音暂时不可用。"));
+      }
+      const blob=await r.blob();if(!isCurrent())return;
+      url.current=URL.createObjectURL(blob);
+      const player=new Audio(url.current);current.current=player;
+      player.onended=()=>{if(isCurrent())stop();};
+      player.onerror=()=>fail(tr("Audio playback failed.","语音播放失败。"));
+      await player.play();
+      if(isCurrent())update("playing");
+    }catch(e){
+      if(isCurrent())fail(e instanceof Error?e.message:tr("Audio unavailable.","语音暂时不可用。"));
     }
-    if(id===token.current)stop();
   }
-  if(!status?.enabled||!passages.length)return null;
-  return <section style={{margin:"10px 0 16px",padding:14,border:"1px solid #665477",borderRadius:12}} aria-label="Story audio">
-    <span className="rh-eyebrow">ELEVENLABS · {tr("AUDIO STORY","有声剧情")}</span>
-    <p className="rh-muted">{tr("Listen to revealed passages using saved character voices. Audio is generated only when played.","使用角色已保存的声音播放已读片段，仅在点击播放时生成语音。")}</p>
-    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-      <button type="button" className="rh-secondary" onClick={()=>phase==="idle"?void play(passages):stop()}>
-        {phase==="idle"?tr("▶ Listen to story","▶ 播放故事"):tr("Stop","停止")}
-      </button>
-      {phase!=="idle"&&<small role="status">{phase==="loading"?tr("Preparing audio…","正在准备语音…"):tr("Playing","播放中")} · {passages.find(p=>p.block_id===active)?.name}</small>}
-    </div>
-    <details style={{marginTop:10}}><summary>{tr("Choose a passage","选择片段")}</summary>
-      {passages.map(p=><button key={p.node_id+":"+p.block_id} type="button" className="rh-secondary" style={{display:"block",width:"100%",marginTop:6,textAlign:"left"}} onClick={()=>void play([p])}>
-        {p.name} · {p.text.slice(0,60)}{p.text.length>60?"…":""}
-      </button>)}
-    </details>
-    {error&&<p role="alert">{error}</p>}
-  </section>;
+
+  function button(nodeId:string,block:Block){
+    if(!available(block))return null;
+    const key=passageKey(nodeId,block.id);
+    const phase=active?.key===key?active.phase:"idle";
+    const name=block.type==="dialogue"?actors.find(a=>a.id===block.character_id)?.name||tr("character","角色"):tr("narration","旁白");
+    const label=phase==="loading"?tr("Cancel audio for ","取消语音：")+name:
+      phase==="playing"?tr("Stop audio for ","停止语音：")+name:tr("Play audio for ","播放语音：")+name;
+    return <button type="button" className={styles.speaker+(phase!=="idle"?" "+styles.active:"")}
+      aria-label={label} title={label} aria-pressed={phase!=="idle"}
+      data-audio-phase={phase} data-audio-block={block.id}
+      onClick={()=>void toggle(nodeId,block)}>
+      {phase==="loading"?<span className={styles.spinner} aria-hidden="true"/>:
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {phase==="playing"?<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>:
+            <><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/></>}
+        </svg>}
+    </button>;
+  }
+  function message(nodeId:string,block:Block){
+    const key=passageKey(nodeId,block.id);
+    return error?.key===key?<div className={styles.error} role="alert">{error.message}</div>:null;
+  }
+  return {button,message};
 }

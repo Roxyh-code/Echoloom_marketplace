@@ -52,6 +52,8 @@ type Panel =
   | null;
 const example =
   "Years after a betrayal, Lin and Xu meet at a railway station. Lin knows what Xu did, but Xu believes the secret is still safe.";
+import { useStoryAudio } from "./story-audio";
+
 function Glyph({ name }: { name: string }) {
   const paths: Record<string, string> = {
     star: "M12 2l2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7z",
@@ -1077,6 +1079,7 @@ export function RehearsalApp() {
       </div>
     );
   }
+  const voicePlayback = useStoryAudio((scene?.id ?? "") + ":" + (version?.id ?? "") + ":" + page);
   function bodyBlocks(list: Node[], readOnly = false) {
     return list.map((n, i) => (
       <section className="rh-segment" key={n.id}>
@@ -1104,6 +1107,7 @@ export function RehearsalApp() {
                 </div>
               )}
               <p>{b.text}</p>
+              {!readOnly && voicePlayback.available && scene && version && !job && <button type="button" className="rh-text-button" style={{fontSize:12,marginTop:6}} aria-label={"Listen to passage " + b.id} onClick={() => void voicePlayback.play(scene.id, version.id, b.id, countLines([{...n, blocks:[b]}]))}>{voicePlayback.playing === b.id ? "■ Stop audio" : "▶ Listen · ElevenLabs"}</button>}
               {!readOnly && (
                 <button
                   className="rh-block-menu"
@@ -1191,6 +1195,7 @@ export function RehearsalApp() {
           </header>
         </>
       )}
+      {voicePlayback.error && <div className="rh-alert error" role="alert">{voicePlayback.error}</div>}
       {(error || notice || !online) && (
         <div
           className={"rh-alert " + (error ? "error" : "")}

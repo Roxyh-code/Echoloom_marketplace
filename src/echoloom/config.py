@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     story_max_output_tokens: int = Field(3500, ge=1000, le=8000)
     story_max_context_tokens: int = Field(24000, ge=6000, le=64000)
 
+    elevenlabs_api_key: SecretStr = SecretStr("")
+    elevenlabs_voice_a: str = "JBFqnCBsd6RMkjVDRZzb"
+    elevenlabs_voice_b: str = ""
+    elevenlabs_voice_narrator: str = ""
+    elevenlabs_model: str = "eleven_multilingual_v2"
     # Off by default for baseline comparison and existing deployments.
     rehearsal_consistency_enabled: bool = False
     rehearsal_quality_timeout_seconds: float = Field(150, ge=60, le=300)

@@ -115,6 +115,8 @@ export function MobileCharacterStudio({
   const [researchPhase,setResearchPhase]=useState("");
   const [pending, setPending] = useState<Creation | null>(null);
   const [imageError, setImageError] = useState("");
+  const [reviewPortrait,setReviewPortrait]=useState(false);
+  const [serverPortraitPending,setServerPortraitPending]=useState(false);
   const [health, setHealth] = useState<Health | null>(null);
   const voiceEnabled = useRef(false);
   const [reviewId, setReviewId] = useState<string | null>(null);
@@ -396,6 +398,27 @@ export function MobileCharacterStudio({
     );
     if (alive.current) setPortraits(ps);
   }
+  useEffect(()=>{
+    setServerPortraitPending(false);
+    if(!person || person.current_image_id || person.archived || mode==="library")return;
+    const cid=person.id;
+    let active=true;
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    async function check(){
+      try {
+        const status=await creator<{state:string;error?:string|null}>("/characters/"+cid+"/portrait/status");
+        if(!active)return;
+        setServerPortraitPending(status.state==="pending");
+        if(status.state==="pending")timer=setTimeout(check,2000);
+        else if(status.state==="ready") {
+          const fresh=await api<Person>("/characters/"+cid);
+          if(active&&personRef.current?.id===cid)setPerson(fresh);
+        } else if(status.error)setImageError(status.error);
+      } catch {}
+    }
+    void check();
+    return ()=>{active=false;if(timer)clearTimeout(timer);};
+  },[person?.id,person?.current_image_id,mode]);
   async function makePortrait(edit: boolean, instruction = "") {
     const c = personRef.current!;
     const payload = {
@@ -422,9 +445,9 @@ export function MobileCharacterStudio({
       localPut(key, null);
       await loadPortraits();
       const fresh = await reloadPerson();
-      if (!fresh.current_image_id && portraits.length === 0) {
+      if (!fresh.current_image_id) {
         const ps = await api<Portrait[]>("/characters/" + c.id + "/images");
-        if (ps.length === 1) {
+        if (ps.length) {
           await api(`/characters/${c.id}/images/${ps[0].id}/select`, {});
           await reloadPerson();
         }
@@ -434,6 +457,11 @@ export function MobileCharacterStudio({
       await changed();
     } catch (e) {
       await loadPortraits().catch(() => {});
+      const message=e instanceof Error?e.message:"Portrait generation failed.";
+      if(alive.current && personRef.current?.id===c.id){
+        setImageError(message);
+        if(/content moderation|moderation_blocked|content_policy_violation|safety_violations/i.test(message))setPanel(null);
+      }
       throw e;
     }
   }
@@ -456,8 +484,9 @@ export function MobileCharacterStudio({
   }
   const reviewing = mode === "create" && !!person && reviewId === person.id;
   const buttonDisabled = busy || creating;
-  const portraitGenerating = !!(pending?.character_id && person?.id === pending.character_id &&
+  const portraitGenerating = serverPortraitPending || !!(pending?.character_id && person?.id === pending.character_id &&
     !person.current_image_id);
+  const moderationBlocked=/content moderation|moderation_blocked|content_policy_violation|safety_violations/i.test(imageError);
   const field = (f: FormData, k: string) => String(f.get(k) || "").trim();
   return (
     <>
@@ -725,12 +754,12 @@ export function MobileCharacterStudio({
                           ? "Portrait ready"
                           : person
                             ? "Creating the portrait"
-                            : "Portrait and profile generate in parallel"}
+                            : "Preparing visual profile"}
                       </strong>
                       <small>
                         {person
                           ? "Your character is safe while the portrait is generated."
-                          : "No second Generate button needed."}
+                          : "Portrait starts after the profile is saved."}
                       </small>
                     </p>
                   </div>
@@ -792,9 +821,9 @@ export function MobileCharacterStudio({
               </div>
               <button
                 className="mc-cover-edit"
-                onClick={() => setPanel("portrait")}
+                onClick={() => {if(moderationBlocked&&!person.current_image_id){setReviewPortrait(true);setPanel("profile");}else setPanel("portrait");}}
               >
-                Edit portrait →
+                {moderationBlocked&&!person.current_image_id?"Review portrait →":"Edit portrait →"}
               </button>
             </div>
             {portraitGenerating && (
@@ -807,20 +836,18 @@ export function MobileCharacterStudio({
                 </div>
               </div>
             )}
-            {imageError && (
+            {imageError && !person.current_image_id && !portraitGenerating && (
               <div className="rh-alert error" role="alert">
                 <span>{imageError}</span>
-                <p>Your character is saved. Retry only the portrait.</p>
+                <p>{moderationBlocked?"Your character is saved. Review the portrait requirements against platform rules.":"Your character is saved. Retry only the portrait."}</p>
                 <button
                   disabled={busy}
-                  onClick={() =>
-                    run(async () => {
-                      setPanel("portrait");
-                      await makePortrait(false);
-                    })
-                  }
+                  onClick={() => {
+                    if(moderationBlocked){setReviewPortrait(true);setPanel("profile");return;}
+                    void run(async () => {setPanel("portrait");await makePortrait(false);});
+                  }}
                 >
-                  Retry portrait
+                  {moderationBlocked?"Review portrait description":"Retry portrait"}
                 </button>
               </div>
             )}
@@ -831,7 +858,7 @@ export function MobileCharacterStudio({
               <div className="mc-edit-actions">
                 <button
                   className="rh-secondary"
-                  onClick={() => setPanel("profile")}
+                  onClick={() => {setReviewPortrait(false);setPanel("profile");}}
                 >
                   Edit character
                 </button>
@@ -1013,10 +1040,8 @@ export function MobileCharacterStudio({
                   );
                   setPerson(c);
                   await changed();
-                  setPanel(null);
-                  setNotice(
-                    "Character saved. Existing scenes keep their snapshots.",
-                  );
+                  if(reviewPortrait){setReviewPortrait(false);setPanel("portrait");setNotice("Appearance saved. Review it before requesting a new portrait.");}
+                  else {setPanel(null);setNotice("Character saved. Existing scenes keep their snapshots.");}
                 });
               }}
             >
@@ -1070,7 +1095,7 @@ export function MobileCharacterStudio({
                   )}
                 </label>
               ))}
-              <details className="rh-details">
+              <details className="rh-details" open={reviewPortrait||undefined}>
                 <summary>
                   Appearance & portrait style <span>＋</span>
                 </summary>

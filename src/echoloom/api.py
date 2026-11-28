@@ -28,6 +28,7 @@ from .db import (
     sessions,
     uid,
 )
+from .portrait_prompt import portrait_prompt
 from .providers import (
     OpenAIImages,
     OpenAIText,
@@ -460,12 +461,7 @@ def create_app(
                 "Edit this existing fictional character portrait. Preserve identity and all details except "
                 "the following requested changes: " + body.instruction
                 if editing
-                else "Create one fictional character portrait. No text or watermark. Style: "
-                + profile.visual_style
-                + ". Character appearance: "
-                + profile.appearance.model_dump_json()
-                + ". Description: "
-                + profile.short_description
+                else portrait_prompt(profile)
             )
             db.add(ImageRequest(character_id=c.id))
             db.commit()  # Failed requests also count toward the paid-call budget.

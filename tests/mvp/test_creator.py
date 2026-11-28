@@ -577,13 +577,18 @@ def test_player_dialogue_is_verbatim_and_model_cannot_write_player(setup):
     from echoloom.creator_schemas import CreatorOutput
 
     client, text, *_ = setup
+    portrait_request_id = str(uuid4())
     c = client.post(
         "/api/creator/characters",
         json={
-            "request_id": str(uuid4()),
+            "request_id": portrait_request_id,
             "description": "A quiet librarian with silver hair.",
         },
     ).json()
+    # The portrait finishes asynchronously. Stabilize its snapshotted metadata
+    # before asserting a rejected story command leaves the draft unchanged.
+    # Otherwise this assertion can race a legitimate portrait completion.
+    await_portrait_job(client, portrait_request_id)
     w = client.post(
         "/api/creator/works",
         json={

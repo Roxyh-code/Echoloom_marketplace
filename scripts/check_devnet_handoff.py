@@ -18,7 +18,7 @@ PROGRAM = "DDNC5iENR2hGuqYUWdng2Yru94YugtJLf37QEqutVH4J"
 CONFIG = "9FcbxfJejy34TDxtQkNPp4R5LsB6q8gfx1dJb2S6PiAa"
 MINT = "8APFzFSd3uFnYSojta6j198bTndRoWCfhx6YxXwu7h2V"
 TREASURY = "2Y6iE7Fev4GzfmEtFXBrgy47T82ATxxib9ViRPiuzMC2"
-SIGNER = "Dj1g1qvkbKtrVzzSuqY4zC7QRxEneU8jh5CYMo36Cxb"
+SIGNER = "Dj1g1qvkbKtrVzzSuYqZ4zC7QRxEneU8jh5CYMo36Cxb"
 DOMAIN = "7fd12cd1cd604a1789ce37dce563043aaea9f06c0e81f00d851c6cbce92d237a"
 ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 RECIPIENTS = {
@@ -58,7 +58,10 @@ def check_live_deployment(url: str) -> dict:
     assert len(raw) == 239, "Unexpected marketplace config account size"
     assert raw[:8] == sha256(b"account:MarketplaceConfig").digest()[:8], "Invalid account discriminator"
     assert raw[8] == 1, "Unsupported marketplace config version"
-    assert raw[74:106] == decode_pubkey(SIGNER), "Deployed backend signer differs"
+    assert raw[74:106] == decode_pubkey(SIGNER), (
+        f"Deployed backend signer differs: expected {SIGNER}, "
+        f"on-chain {Pubkey.from_bytes(raw[74:106])}"
+    )
     assert raw[106:138] == decode_pubkey(MINT), "Deployed payment mint differs"
     assert raw[138:170] == decode_pubkey(TOKEN_PROGRAM), "Deployed token program differs"
     assert raw[170:202] == decode_pubkey(TREASURY), "Deployed platform treasury differs"

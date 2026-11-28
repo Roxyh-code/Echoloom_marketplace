@@ -217,6 +217,9 @@ test("voice-enabled creation keeps portrait and voice selection in one creation 
   await expect(page.getByRole("heading",{name:"Evelyn"})).toBeVisible();
   await expect(page).toHaveURL(/create=1.*character=/);
   await expect(page.getByLabel("Shared dialogue sample")).toContainText("The stars have not forgotten us.");
+  await page.getByRole("region",{name:"Voice identity"}).evaluate(el=>el.scrollIntoView({block:"start"}));
+  await page.evaluate(()=>document.fonts.ready);
+  await page.screenshot({path:"test-results/editorial-voice-selection.png",fullPage:false});
   const candidate=page.getByRole("button",{name:/ALTERNATIVE Voice b/});
   await candidate.click();
   await expect(candidate).toHaveAttribute("aria-pressed","true");

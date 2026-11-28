@@ -103,7 +103,7 @@ sequenceDiagram
     end
 ```
 
-The contract accepts generic signed payout terms, not a hardcoded 45/45/10 policy. FastAPI selects the product, price, split and recipients; the contract enforces signer, expiry, config version, account identity, conservation and one durable receipt per order. The buyer signs each actual transaction. The signer is an application authorization key, not a custodian of buyer funds.
+The contract accepts generic signed payout terms, not a hardcoded 45/45/10 policy. The Devnet-synchronized contract requires an initialized classic six-decimal payment mint and exactly one positive configured-treasury payout; the backend signs the 45/45/10 economics. FastAPI selects the product, price, split and recipients; the contract enforces signer, expiry, config version, account identity, conservation and one durable receipt per order. The buyer signs each actual transaction. The signer is an application authorization key, not a custodian of buyer funds.
 
 ## 4. Data and identity
 

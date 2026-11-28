@@ -601,6 +601,8 @@ def create_app(
     from .payments.routes import register_payments
 
     register_payments(app, factory, settings)
+    from .voice.routes import register_voice
+    register_voice(app, settings)
 
     if chat_memory:
         from contextlib import asynccontextmanager

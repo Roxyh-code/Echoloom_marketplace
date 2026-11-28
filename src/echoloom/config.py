@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     companion_worker_enabled: bool = False
     allow_additional_accounts: bool = False
 
+    # Existing ElevenLabs voices only; opt in after reviewing voice rights.
+    elevenlabs_enabled: bool = False
+    elevenlabs_api_key: SecretStr = SecretStr("")
+    elevenlabs_voice_ids: str = ""
+    elevenlabs_catalog_ttl_seconds: int = Field(3600, ge=60, le=86400)
+    elevenlabs_timeout_seconds: float = Field(15, ge=1, le=60)
+
     # Devnet checkout remains opt-in and fails closed without wallet verification.
     solana_payments_enabled: bool = False
     solana_creator_self_service_enabled: bool = False

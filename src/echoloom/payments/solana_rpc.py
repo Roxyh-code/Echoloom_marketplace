@@ -7,7 +7,8 @@ from solders.pubkey import Pubkey
 
 from .authorization import TOKEN_PROGRAM, decode_pubkey
 
-DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+# Full getGenesisHash() result; the 32-character CAIP-2 reference is NOT the RPC value.
+DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
 
 
 def pda(program_id: str, *seeds: bytes) -> str:

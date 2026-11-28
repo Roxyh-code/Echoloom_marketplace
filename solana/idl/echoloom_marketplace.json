@@ -762,6 +762,16 @@
       "code": 6032,
       "name": "PrefundedAccountInitializationFailed",
       "msg": "PDA initialization failed."
+    },
+    {
+      "code": 6033,
+      "name": "InvalidMintDecimals",
+      "msg": "Payment mint must have exactly six decimals."
+    },
+    {
+      "code": 6034,
+      "name": "MissingTreasuryPayout",
+      "msg": "Payouts must include a positive payment to the configured treasury."
     }
   ],
   "types": [

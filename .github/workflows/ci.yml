@@ -23,7 +23,7 @@ jobs:
       - name: Payment regression tests
         run: python -m pytest -q tests/mvp/test_payment_*.py
       - name: Voice catalog regression tests
-        run: python -m pytest -q tests/mvp/test_voice_catalog.py
+        run: python -m pytest -q tests/mvp/test_voice_*.py
 
   frontend:
     runs-on: ubuntu-latest

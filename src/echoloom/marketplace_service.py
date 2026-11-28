@@ -245,6 +245,7 @@ def publish_listing(
             and previous.profile_revision_id == profile.id
             and previous.portrait_id == character.current_image_id
             and previous.public_data == public_data
+            and previous.voice_identity == character.voice_identity
             and previous.payout_wallet_address == payout_wallet
             and listing.monetization_enabled == enable
             and previous.rights_basis == body.rights_basis
@@ -293,6 +294,7 @@ def publish_listing(
                 character_version=profile.version,
                 portrait_id=character.current_image_id,
                 public_data=public_data,
+                voice_identity=character.voice_identity,
                 # Never use a caller-supplied payout address.
                 payout_wallet_address=payout_wallet,
                 rights_basis=body.rights_basis,

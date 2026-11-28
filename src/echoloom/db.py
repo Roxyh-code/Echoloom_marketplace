@@ -35,6 +35,7 @@ class Character(Base):
     original_description: Mapped[str] = mapped_column(Text)
     current_profile_version: Mapped[int] = mapped_column(default=1)
     current_image_id: Mapped[str | None] = mapped_column(String(36), default=None)
+    voice_identity: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     created_at: Mapped[str] = mapped_column(default=now)
     updated_at: Mapped[str] = mapped_column(default=now)
 

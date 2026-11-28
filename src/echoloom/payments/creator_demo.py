@@ -72,6 +72,7 @@ def activate_demo_pair(db, listing_ids):
                 character_version=previous.character_version,
                 portrait_id=previous.portrait_id,
                 public_data=deepcopy(previous.public_data),
+                voice_identity=deepcopy(previous.voice_identity),
                 payout_wallet_address=binding.wallet,
                 rights_basis=previous.rights_basis,
                 rights_confirmed_at=previous.rights_confirmed_at,

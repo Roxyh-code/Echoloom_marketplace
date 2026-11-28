@@ -19,3 +19,6 @@ Restart FastAPI. Sign in and GET /api/voice/catalog (e.g. in the logged-in brows
 18B: profile-conditioned ranking with three diverse candidates, preview and explicit save, publication and immutable cast identity. 18C: on-demand authorized story audio, cache and generation limits. Until then no voice-selection UI or playback exists. Standard CI uses mocked provider responses only; live account access and preview playback need acceptance testing.
 
 Official docs: https://elevenlabs.io/docs/api-reference/voices/search and https://elevenlabs.io/docs/overview/capabilities/voices.
+
+## Phase 18B
+Run alembic upgrade head (0012). Open a saved Character Studio detail page: automatic three-candidate matching if no voice is selected; existing provider preview URLs, explicit confirmation, optional rematch. The existing LLM ranks a metadata shortlist of at most 16 approved IDs; invalid/unavailable ranking falls back to metadata matching. In-memory results cached by profile version and catalog, no new voice synthesis. Confirmed identities live independently of profile revisions, and publishing pins the current selected identity. Existing scene snapshots remain unchanged. No custom voice or cloning. Existing characters/listings migrate with null voice; select and republish/recast to use audio. Actual provider test pending.

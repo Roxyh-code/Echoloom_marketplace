@@ -602,7 +602,7 @@ def create_app(
 
     register_payments(app, factory, settings)
     from .voice.routes import register_voice
-    register_voice(app, settings)
+    register_voice(app, settings, factory)
 
     if chat_memory:
         from contextlib import asynccontextmanager

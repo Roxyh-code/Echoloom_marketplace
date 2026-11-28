@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     elevenlabs_catalog_ttl_seconds: int = Field(3600, ge=60, le=86400)
     elevenlabs_timeout_seconds: float = Field(15, ge=1, le=60)
 
+    elevenlabs_audio_enabled: bool = False
+    elevenlabs_tts_model: Literal["eleven_multilingual_v2", "eleven_flash_v2_5", "eleven_v3"] = "eleven_multilingual_v2"
+    elevenlabs_narrator_voice_id: str = ""
+    elevenlabs_audio_directory: Path = Path("work/voice-audio")
+    elevenlabs_audio_daily_chars: int = Field(5000, ge=1, le=100000)
+    elevenlabs_audio_global_daily_chars: int = Field(20000, ge=1, le=1000000)
+
     # Devnet checkout remains opt-in and fails closed without wallet verification.
     solana_payments_enabled: bool = False
     solana_creator_self_service_enabled: bool = False

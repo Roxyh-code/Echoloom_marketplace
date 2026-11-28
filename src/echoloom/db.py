@@ -302,3 +302,5 @@ class RehearsalOperation(Base):
 from . import marketplace_models  # noqa: F401
 from . import scene_access_models  # noqa: F401
 from .payments import models as payment_models  # noqa: F401
+
+from .voice import models as voice_models  # noqa: F401

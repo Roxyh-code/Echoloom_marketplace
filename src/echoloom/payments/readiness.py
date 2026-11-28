@@ -22,6 +22,9 @@ def deployment_readiness(settings):
         if len(domain) != 32 or not any(domain):
             raise ValueError("Invalid domain")
         signer = AuthorizationSigner.from_keypair_file(settings.solana_backend_signer_path)
+        expected = getattr(settings, "solana_expected_signer_pubkey", "")
+        if expected and decode_pubkey(expected) != decode_pubkey(signer.public_key):
+            raise ValueError("Signer keypair differs from the deployed authorization signer")
     except (ValueError, TypeError, OSError):
         return False, "deployment_config_invalid"
     try:

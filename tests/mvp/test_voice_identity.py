@@ -4,6 +4,13 @@ from echoloom.voice.matching import recommend
 from echoloom.schemas import Profile
 from test_marketplace import register_account, seed_character, publish
 from test_marketplace_scene import request_scene, listing_ref, private_ref
+from uuid import uuid4
+
+
+def create_valid_character(client, name):
+    r = client.post('/api/rehearsal/characters', json={'operation_id': str(uuid4()), 'name': name, 'description': 'A quiet fictional investigator.'})
+    assert r.status_code == 201, r.text
+    return r.json()['character_id']
 
 
 def voices():
@@ -29,7 +36,7 @@ def test_selection_and_immutable_listing_cast(setup, monkeypatch):
     settings.elevenlabs_enabled = True
     monkeypatch.setattr(ElevenLabsCatalog,"catalog",lambda self:VoiceCatalogResponse(enabled=True,reason="ready",voices=voices()))
     owner = register_account(setup)
-    a,b = seed_character(setup,owner),seed_character(setup,owner)
+    a,b = create_valid_character(client, 'Mira'),create_valid_character(client, 'Rowan')
     path="/api/voice/characters/"+a
     assert len(client.post(path+"/recommend").json()["choices"]) == 3
     assert client.put(path,json={"voice_id":"bad","expected_profile_version":1}).status_code == 422

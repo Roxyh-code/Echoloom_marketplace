@@ -418,7 +418,7 @@ For three prepared accounts, two original listings and a 40-sentence checkout sc
 
 ### Enable Devnet checkout
 
-Only after the program and config have been deployed and independently checked, configure the values in [.env.example](.env.example) using the [deployment checklist](docs/PAYMENT_DEPLOYMENT_CHECKLIST.md). The backend signer file must stay outside the repository. Keep `SOLANA_PAYMENTS_ENABLED=false` until readiness checks pass. Buyer and recipient wallets must use Devnet test assets, never real funds.
+The teammate has supplied Devnet public deployment details, now staged in [.env.example](.env.example) and [web/.env.example](web/.env.example). Follow the [Devnet integration and acceptance runbook](docs/DEVNET_INTEGRATION.md) and [deployment checklist](docs/PAYMENT_DEPLOYMENT_CHECKLIST.md) to verify the deployed program, mint and owner token accounts before considering activation. The backend signer file must stay outside the repository. Keep `SOLANA_PAYMENTS_ENABLED=false` until readiness checks pass. Buyer and recipient wallets must use Devnet test assets, never real funds.
 
 ## Repository map
 
@@ -475,7 +475,7 @@ Pytest covers research discovery, background execution and explicit revision app
 | Payment integration safeguards | PR #52 merged; standard CI passed |
 | Local validator and ledger acceptance | PR #53 merged; standard CI passed; full validator run not confirmed |
 | Disposable demo environment | PR #54 merged; standard CI passed; actual operator run not confirmed |
-| Devnet settlement and earnings | Deployment parameters and live end-to-end acceptance outstanding |
+| Devnet settlement and earnings | Teammate public parameters and source/IDL compatibility committed to an integration branch; complete read-only deployment checks, secure signer custody, real wallet/transaction and 40→80 entitlement still pending |
 | Production readiness | Public authentication hardening, cross-device order reconciliation, concurrency safeguards, job queue, operations and licensing review outstanding |
 
 Run payment regressions from the root:
@@ -490,7 +490,7 @@ For real local-validator testing, install the Linux/WSL toolchain and follow [Lo
 bash scripts/run-local-payment-e2e.sh
 ```
 
-The standard CI workflow does not execute that full validator suite. The local bridge uses seeded order attribution and is not a complete browser/HTTP checkout test. The final demo must verify actual balance changes, receipt, 40→80→120 access, repeated verification and both creators' earnings. The [historical integration decision log](docs/HACKATHON_CONTRACT.md) includes superseded proposals; use this README and the current implementation guide for active behavior.
+The standard CI workflow does not execute that full validator suite. The local bridge uses seeded order attribution and is not a complete browser/HTTP checkout test. The final demo must verify actual balance changes, receipt, 40→80→120 access, repeated verification and both creators' earnings. Public Devnet PDA/ATA derivations are covered by [the integration preflight](docs/DEVNET_INTEGRATION.md); those offline checks alone do not prove live payment. The [historical integration decision log](docs/HACKATHON_CONTRACT.md) includes superseded proposals; use this README and the current implementation guide for active behavior.
 
 ## Project background & responsible use
 

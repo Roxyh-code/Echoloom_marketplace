@@ -11,6 +11,7 @@ export type Actor = {
   description: string;
   profile: Record<string, unknown>;
   snapshot_revision: number;
+  voice_identity?: {provider: "elevenlabs"; voice_id: string; name: string};
 };
 export type Setup = {
   premise: string;

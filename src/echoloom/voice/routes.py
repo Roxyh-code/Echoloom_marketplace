@@ -1,17 +1,19 @@
 from collections import OrderedDict
 from threading import Lock
 from uuid import UUID
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Response
 from sqlalchemy import select, update
 from ..db import Character, ProfileRevision, now
 from ..schemas import Profile
 from .elevenlabs import ElevenLabsCatalog, VoiceProviderError
-from .schemas import VoiceCatalogResponse, VoiceIdentity, VoiceSelection
+from .schemas import VoiceCatalogResponse, VoiceIdentity, VoiceSelection, AudioRequest
+from .audio import AudioService
 from .matching import recommend
 
 
 def register_voice(app, settings, factory):
     catalog = ElevenLabsCatalog(settings)
+    audio = AudioService(settings,catalog,factory)
     cache = OrderedDict()
     gate = Lock()
 
@@ -91,3 +93,18 @@ def register_voice(app, settings, factory):
                 raise HTTPException(409, "Character changed. Refresh voice suggestions.")
             db.commit()
         return {"voice": identity}
+
+
+    @app.get("/api/voice/audio/status")
+    def audio_status(request: Request):
+        owner(request)
+        return {"enabled":audio.enabled(),"narration":bool(settings.elevenlabs_narrator_voice_id)}
+
+    @app.post("/api/voice/scenes/{scene_id}/audio")
+    def story_audio(scene_id: UUID, body: AudioRequest, request: Request):
+        try:
+            data,cached=audio.audio(owner(request),scene_id,body)
+            return Response(content=data,media_type="audio/mpeg",headers={
+                "Cache-Control":"private, no-store","X-Audio-Cache":"hit" if cached else "miss"})
+        except VoiceProviderError as exc:
+            raise HTTPException(503,str(exc)) from None

@@ -5,6 +5,7 @@ import { MobileAppFrame } from "./mobile-app-frame";
 import { countLines, nextPassageEnd, visibleLines, readState } from "./rehearsal-reading";
 import { useEffect, useRef, useState } from "react";
 import { CheckoutPanel } from "./rehearsal-checkout";
+import { StoryAudio } from "./story-audio";
 import {
   Actor,
   CastSource,
@@ -1885,6 +1886,7 @@ export function RehearsalApp() {
                   <p>{version.setup.premise}</p>
                   <span className="rh-reading-divider">✧</span>
                 </div>
+                <StoryAudio key={scene.id} sceneId={scene.id} versionId={version.id} nodes={visibleNodes} actors={actors} language={version.setup.language} />
                 {bodyBlocks(visibleNodes)}
                 {!nodes.length && !job && (
                   <div className="rh-empty">

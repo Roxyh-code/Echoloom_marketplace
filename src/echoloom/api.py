@@ -203,6 +203,7 @@ def create_app(
                     and settings.image_provider == "openai"
                 ),
                 "max_profile_input_chars": settings.max_profile_input_chars,
+                "voice_enabled": settings.elevenlabs_enabled,
                 "mode": "local-single-user",
             },
         )

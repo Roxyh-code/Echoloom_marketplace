@@ -54,6 +54,7 @@ export type Revision = {
   profile: Profile;
 };
 export type Health = {
+  voice_enabled?: boolean;
   creator_database_ready?: boolean;
   text_configured: boolean;
   image_configured: boolean;

@@ -40,9 +40,14 @@ class VoiceRankItem(Model):
 
 class VoiceRanking(Model):
     choices: list[VoiceRankItem] = Field(min_length=3, max_length=3)
+    sample_text: str = Field(default="", max_length=180)
 
 
 class AudioRequest(Model):
     version_id: str = Field(min_length=1, max_length=60)
     node_id: str = Field(min_length=1, max_length=60)
     block_id: str = Field(min_length=1, max_length=60)
+
+
+class VoicePreviewRequest(VoiceSelection):
+    sample_id: str = Field(pattern=r"^[a-f0-9]{64}$")

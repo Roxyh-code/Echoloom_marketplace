@@ -433,6 +433,83 @@ def register_creator(app, factory, locks, settings, image_render, serialize_char
                 raise HTTPException(404, "Job not found.")
             return {"status": r.status, "result": r.result}
 
+    def usable_portrait(db, cid, image_id):
+        item = db.get(Portrait, image_id) if image_id else None
+        return item if (item and item.character_id == str(cid)
+                        and (settings.image_directory / item.file_path).is_file()) else None
+
+    def initial_jobs(db, c):
+        return [j for j in db.scalars(select(CreatorRequest).where(
+            CreatorRequest.owner_id == c.owner_id, CreatorRequest.scope == "character"
+        ).order_by(CreatorRequest.created_at.desc()))
+            if (j.result or {}).get("character_id") == c.id]
+
+    @app.get("/api/creator/characters/{cid}/portrait/status")
+    def portrait_status(cid: UUID, request: Request):
+        with factory() as db:
+            c = character(db, cid, owner(request))
+            if usable_portrait(db, cid, c.current_image_id):
+                return {"state": "ready"}
+            if c.archived:
+                return {"state": "archived"}
+            jobs = initial_jobs(db, c)
+            with active_portraits_guard:
+                if any(j.status == "pending" and j.id in active_portraits for j in jobs):
+                    return {"state": "pending"}
+            # An interrupted initial worker is recoverable on the next explicit
+            # click. No provider calls and no writes during a status read.
+            if any(j.status == "pending" for j in jobs):
+                return {"state": "interrupted"}
+            if any((j.result or {}).get("phase") == "portrait_failed" for j in jobs):
+                return {"state": "failed"}
+            return {"state": "missing"}
+
+    @app.post("/api/creator/characters/{cid}/portrait/recover")
+    def recover_portrait(cid: UUID, request: Request):
+        user = owner(request)
+        # Serialize recovery requests per character, including across tabs.
+        # image_render itself uses the separate character mutation lock.
+        with locks.hold("portrait-recovery:" + str(cid)), factory() as db:
+            c = character(db, cid, user)
+            if c.archived:
+                raise HTTPException(409, "Unarchive this character before generating a portrait.")
+            if usable_portrait(db, cid, c.current_image_id):
+                return serialize_character(db, c)
+            jobs = initial_jobs(db, c)
+            with active_portraits_guard:
+                if any(j.status == "pending" and j.id in active_portraits for j in jobs):
+                    raise HTTPException(409, "The initial portrait is still generating.")
+                # The existing creation worker is explicitly single-process.
+                # A pending record without a live worker survived a restart.
+                for j in jobs:
+                    if j.status == "pending":
+                        j.status = "succeeded"
+                        j.result = {"character_id": c.id, "phase": "portrait_failed",
+                                    "image_error": "Portrait generation was interrupted."}
+                db.commit()
+            expected = c.current_image_id
+            existing = next((p for p in db.scalars(select(Portrait).where(
+                Portrait.character_id == c.id).order_by(Portrait.version.desc()))
+                if (settings.image_directory / p.file_path).is_file()), None)
+            if existing:
+                image_id = existing.id
+            else:
+                try:
+                    result = image_render(cid, ImageInput(expected_image_id=expected), False, db)
+                    image_id = result["id"]
+                except (ProviderError, HTTPException):
+                    raise
+                except Exception as exc:
+                    logger.warning("portrait recovery failed type=%s", type(exc).__name__)
+                    raise HTTPException(502, "Portrait generation failed. Please retry.") from None
+            with locks.hold(str(cid)):
+                db.refresh(c)
+                if c.current_image_id == expected and not usable_portrait(db, cid, c.current_image_id):
+                    c.current_image_id = image_id
+                    c.updated_at = now()
+                    db.commit()
+                return serialize_character(db, c)
+
     @app.post("/api/creator/characters/{cid}/portrait")
     def portrait(cid: UUID, body: CreatorImageInput, request: Request):
         user = owner(request)

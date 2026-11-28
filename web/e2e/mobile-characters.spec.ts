@@ -229,3 +229,27 @@ test("voice-enabled creation keeps portrait and voice selection in one creation 
   await expect(page).not.toHaveURL(/create=1/);
   await expect(page.getByRole("button",{name:/Rehearse with Evelyn/})).toBeVisible();
 });
+
+
+test("failed portrait can be recovered from private Discover detail after reload", async ({page,request})=>{
+  const backend="http://127.0.0.1:8001";
+  await request.post(backend+"/__test/image-failure/true");
+  try{
+    await page.goto("/characters/new");
+    await page.getByLabel("Describe your character").fill("A quiet wizard in black robes.");
+    await page.getByRole("button",{name:/^Create character/}).last().click();
+    await expect(page.getByRole("button",{name:"Retry portrait",exact:true})).toBeVisible();
+    const cs=await (await request.get("/api/creator/characters")).json();
+    expect(cs).toHaveLength(1);
+    await page.goto("/marketplace/private/"+cs[0].id);
+    await page.reload();
+    await expect(page.getByRole("button",{name:"Retry portrait",exact:true})).toBeVisible();
+    await request.post(backend+"/__test/image-failure/false");
+    await page.getByRole("button",{name:"Retry portrait",exact:true}).click();
+    await expect(page.getByAltText("Portrait of "+cs[0].profile.name)).toBeVisible();
+    const after=await (await request.get("/api/creator/characters")).json();
+    expect(after).toHaveLength(1);
+    expect(after[0].profile_version).toBe(cs[0].profile_version);
+    expect(after[0].current_image_id).toBeTruthy();
+  }finally{await request.post(backend+"/__test/image-failure/false");}
+});

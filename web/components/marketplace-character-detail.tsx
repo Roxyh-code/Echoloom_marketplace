@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState, type ReactNode } from "react";
 
 type CharacterDetailProps = {
   name: string;
@@ -14,6 +15,7 @@ type CharacterDetailProps = {
   appearance?: Record<string, string>;
   backstory?: string;
   onAddToCast: () => void;
+  portraitRecovery?: ReactNode;
 };
 
 /** Shared presentation for public Listings and owner-only private Characters.
@@ -21,8 +23,10 @@ type CharacterDetailProps = {
  */
 export function CharacterDetailArticle({
   name, description, image, source, revision, creator, tags = [], traits = [],
-  appearance, backstory, onAddToCast,
+  appearance, backstory, onAddToCast, portraitRecovery,
 }: CharacterDetailProps) {
+  const [broken,setBroken]=useState(false);
+  useEffect(()=>setBroken(false),[image]);
   const appearanceEntries = Object.entries(appearance || {})
     .filter(([, detail]) => typeof detail === "string" && detail.trim());
   return (
@@ -32,8 +36,8 @@ export function CharacterDetailArticle({
       </span>
       <div className="em-character-intro">
         <div className="em-detail-portrait">
-          {image ? (
-            <img src={image} alt={"Portrait of " + name} />
+          {image && !broken ? (
+            <img src={image} alt={"Portrait of " + name} onError={()=>setBroken(true)} />
           ) : (
             <span className="em-cover-monogram">{name.slice(0, 1)}</span>
           )}
@@ -46,6 +50,7 @@ export function CharacterDetailArticle({
           <p className="em-detail-summary">{description}</p>
         </div>
       </div>
+      {source === "private" && portraitRecovery}
       {tags.length > 0 && (
         <section className="em-detail-section" aria-label="Story tags">
           <h2>Story tags</h2>

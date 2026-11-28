@@ -1,0 +1,6 @@
+.panel { margin: 12px 0 16px; padding: 14px; border: 1px solid #514064; border-radius: 12px; background: #191522; color: #e7d9fb; }
+.label { margin: 0 0 5px !important; font-size: 15px !important; font-weight: 600; line-height: 1.4; }
+.help { margin: 0 0 10px !important; font-size: 13px !important; color: #bfb2cf; line-height: 1.5; }
+.button { width: 100%; min-height: 42px; border: 1px solid #8065ba; border-radius: 8px; padding: 8px 12px; background: #2b213e; color: #eee4ff; font: inherit; cursor: pointer; }
+.button:disabled { opacity: .6; cursor: wait; }
+.error { margin: 10px 0 0; color: #f3adab; font-size: 13px; overflow-wrap: anywhere; }

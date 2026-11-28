@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, portraitUrl, type Character } from "@/components/api";
+import { PortraitRecovery } from "@/components/portrait-recovery";
 import { CharacterDetailArticle } from "@/components/marketplace-character-detail";
 import { addCast, privateChoice, readCast, saveCast } from "@/components/marketplace-casting";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -69,6 +70,7 @@ export default function PrivateCharacterDetailPage() {
             traits={character.profile.personality?.core_traits || []}
             appearance={character.profile.appearance}
             backstory={character.profile.backstory}
+            portraitRecovery={<PortraitRecovery key={character.id} character={character} onRecovered={setCharacter} />}
             onAddToCast={addToCast}
           />
         ) : null}

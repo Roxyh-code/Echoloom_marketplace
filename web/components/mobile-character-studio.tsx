@@ -11,6 +11,7 @@ import {
 } from "./api";
 import { creator } from "./creator-api";
 import { CharacterVoice } from "./character-voice";
+import { PortraitRecovery } from "./portrait-recovery";
 import { listOwnedListings, type OwnedListingDetail } from "./marketplace-api";
 import { localGet, localPut, operation } from "./rehearsal-api";
 type Mode = "library" | "create" | "detail";
@@ -807,6 +808,7 @@ export function MobileCharacterStudio({
               </div>
             )}
             <div className="rh-pad mc-profile-body">
+              {!person.archived && !portraitGenerating && !imageError && <PortraitRecovery key={person.id} character={person} onRecovered={c=>{if(personRef.current?.id===c.id){setPerson(c);void changed().catch(()=>{});}}} />}
               {reviewing && <p className="rh-muted">Your profile is saved. Choose a voice while your portrait finishes, or continue without one.</p>}
               {!person.archived && (!picking || reviewing) && <CharacterVoice key={person.id} id={person.id} profileVersion={person.profile_version} />}
               <div className="mc-edit-actions">

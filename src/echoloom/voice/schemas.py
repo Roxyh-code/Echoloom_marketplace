@@ -26,3 +26,17 @@ class VoiceCatalogResponse(Model):
     enabled: bool
     reason: Literal["disabled", "not_configured", "ready", "insufficient_voices"]
     voices: list[CatalogVoice] = Field(default_factory=list)
+
+
+class VoiceSelection(Model):
+    voice_id: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    expected_profile_version: int = Field(ge=1)
+
+
+class VoiceRankItem(Model):
+    voice_id: str
+    reason: str = Field(min_length=1, max_length=240)
+
+
+class VoiceRanking(Model):
+    choices: list[VoiceRankItem] = Field(min_length=3, max_length=3)

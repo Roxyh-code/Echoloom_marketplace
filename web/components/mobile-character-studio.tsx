@@ -10,6 +10,7 @@ import {
   Revision,
 } from "./api";
 import { creator } from "./creator-api";
+import { CharacterVoice } from "./character-voice";
 import { listOwnedListings, type OwnedListingDetail } from "./marketplace-api";
 import { localGet, localPut, operation } from "./rehearsal-api";
 type Mode = "library" | "create" | "detail";
@@ -834,6 +835,7 @@ export function MobileCharacterStudio({
                     </section>
                   ))}
               </div>
+              {!person.archived && !picking && <CharacterVoice key={person.id} id={person.id} profileVersion={person.profile_version} />}
               <details className="rh-details">
                 <summary>
                   Background & private details <span>＋</span>

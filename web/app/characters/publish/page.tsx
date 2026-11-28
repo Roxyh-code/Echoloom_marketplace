@@ -259,6 +259,7 @@ export default function PublishCharacterPage() {
             <span>I confirm I have the rights to publicly share this character and its artwork. Publishing makes the preview details and current portrait visible to anyone who opens the Marketplace.</span>
           </label>
 
+          <p className="rh-muted">If you selected a character voice, publishing also shares that voice with future story casts.</p>
           <section style={{ margin: "22px 0", padding: 18, border: "1px solid #665184", borderRadius: 12, background: "#241b35", color: "#eee5fa" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <strong style={{ fontSize: 17 }}>Earn with your character</strong>

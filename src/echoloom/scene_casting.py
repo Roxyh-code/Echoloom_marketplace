@@ -35,6 +35,7 @@ def snapshot_private_character(db, cid, owner):
         "profile": profile.model_dump(),
         "description": c.original_description,
         "snapshot_revision": c.current_profile_version,
+        **({"voice_identity": c.voice_identity} if c.voice_identity else {}),
         "avatar": f"/api/characters/{c.id}/images/{c.current_image_id}/file"
         if c.current_image_id
         else None,
@@ -86,6 +87,7 @@ def resolve_cast_sources(db, sources, owner):
                 "profile": safe_profile.model_dump(),
                 "description": public.short_description,
                 "snapshot_revision": pinned.character_version,
+                **({"voice_identity": pinned.voice_identity} if pinned.voice_identity else {}),
                 # Placeholder is replaced with a scene-owner-only pinned URL.
                 "avatar": "pending-scene-portrait" if pinned.portrait_id else None,
             }

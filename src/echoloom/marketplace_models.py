@@ -94,6 +94,7 @@ class ListingRevision(Base):
         ForeignKey("character_images.id", ondelete="RESTRICT"), nullable=True
     )
     public_data: Mapped[dict] = mapped_column(JSON)
+    voice_identity: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     payout_wallet_address: Mapped[str | None] = mapped_column(
         String(64), nullable=True, default=None
     )

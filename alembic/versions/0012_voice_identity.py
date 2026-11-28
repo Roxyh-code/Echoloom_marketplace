@@ -12,7 +12,9 @@ def upgrade():
     op.add_column("character_listing_revisions", sa.Column("voice_identity", sa.JSON(), nullable=True))
 
 def downgrade():
-    with op.batch_alter_table("character_listing_revisions") as batch:
-        batch.drop_column("voice_identity")
-    with op.batch_alter_table("characters") as batch:
-        batch.drop_column("voice_identity")
+    # SQLite >= 3.35 supports native DROP COLUMN. Rebuilding characters via
+    # batch_alter_table would DROP the parent table under foreign_keys=ON,
+    # cascading deletion of profiles/conversations/messages.
+    # Neither of these optional JSON columns participates in an FK or index.
+    op.drop_column("character_listing_revisions", "voice_identity")
+    op.drop_column("characters", "voice_identity")
